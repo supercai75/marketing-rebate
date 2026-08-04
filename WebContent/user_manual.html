@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用手册 - 营销返利项目管理系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #409eff;
+            font-size: 28px;
+            margin-bottom: 10px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #409eff;
+        }
+        .subtitle {
+            color: #909399;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #303133;
+            font-size: 20px;
+            margin: 30px 0 15px 0;
+            padding-left: 12px;
+            border-left: 4px solid #409eff;
+        }
+        h3 {
+            color: #606266;
+            font-size: 16px;
+            margin: 20px 0 10px 0;
+        }
+        p { margin: 12px 0; color: #606266; }
+        ul, ol { margin: 12px 0 12px 25px; color: #606266; }
+        li { margin: 6px 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        th {
+            background: #409eff;
+            color: #fff;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ebeef5;
+        }
+        tr:hover { background: #f5f7fa; }
+        .info-box {
+            background: #ecf5ff;
+            border-left: 4px solid #409eff;
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .warn-box {
+            background: #fff7e6;
+            border-left: 4px solid #e6a23c;
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .error-box {
+            background: #fef0f0;
+            border-left: 4px solid #f56c6c;
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .success-box {
+            background: #f0f9eb;
+            border-left: 4px solid #67c23a;
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .example-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .example-box h4 {
+            color: #409eff;
+            margin-bottom: 12px;
+            font-size: 15px;
+        }
+        .step-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .step-title {
+            font-weight: 600;
+            color: #303133;
+            margin-bottom: 10px;
+        }
+        .step-content {
+            color: #606266;
+            padding-left: 20px;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+        .tag-blue { background: #ecf5ff; color: #409eff; }
+        .tag-green { background: #f0f9eb; color: #67c23a; }
+        .tag-yellow { background: #fdf6ec; color: #e6a23c; }
+        .tag-red { background: #fef0f0; color: #f56c6c; }
+        .formula {
+            background: #f5f7fa;
+            padding: 15px 20px;
+            border-radius: 6px;
+            font-family: Consolas, monospace;
+            margin: 15px 0;
+            border-left: 3px solid #409eff;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #ebeef5;
+            margin: 30px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #909399;
+            font-size: 13px;
+            padding: 20px;
+        }
+        .nav {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .nav a {
+            color: #409eff;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 14px;
+        }
+        .nav a:hover { text-decoration: underline; }
+        .toc-item {
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .toc-item a {
+            color: #606266;
+            text-decoration: none;
+            padding: 5px 12px;
+            background: #f5f7fa;
+            border-radius: 4px;
+            font-size: 13px;
+            display: inline-block;
+        }
+        .toc-item a:hover {
+            background: #409eff;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>📘 营销返利项目管理系统 - 用户使用手册</h1>
+            <p class="subtitle">系统版本 1.0 · 最后更新 2024年6月</p>
+            
+            <div class="info-box">
+                <strong>💡 快速访问：</strong> 
+                登录系统后，点击左侧菜单 <span class="tag tag-blue">系统管理</span> → <span class="tag tag-blue">用户使用手册</span> 可随时查看本手册。
+            </div>
+            
+            <h2>📑 目录导航</h2>
+            <div style="margin: 15px 0;">
+                <span class="toc-item"><a href="#section-1">1. 系统概述</a></span>
+                <span class="toc-item"><a href="#section-2">2. 登录与首页</a></span>
+                <span class="toc-item"><a href="#section-3">3. 项目管理</a></span>
+                <span class="toc-item"><a href="#section-4">4. 作业人员管理</a></span>
+                <span class="toc-item"><a href="#section-5">5. 上游协议</a></span>
+                <span class="toc-item"><a href="#section-6">6. 下游协议</a></span>
+                <span class="toc-item"><a href="#section-7">7. 流向管理</a></span>
+                <span class="toc-item"><a href="#section-8">8. 费用与人工投入</a></span>
+                <span class="toc-item"><a href="#section-9">9. 应收应付</a></span>
+                <span class="toc-item"><a href="#section-12">12. 返利计算规则详解</a></span>
+                <span class="toc-item"><a href="#section-10">10. 项目概览</a></span>
+                <span class="toc-item"><a href="#section-11">11. 系统管理</a></span>
+                <span class="toc-item"><a href="#faq">常见问题</a></span>
+            </div>
+        </div>
+
+        <div class="card" id="section-1">
+            <h2>1. 系统概述</h2>
+            <p>营销返利项目管理系统用于管理营销返利项目的全生命周期，主要功能包括：</p>
+            <ul>
+                <li><strong>项目管理</strong> - 项目立项、年度管理</li>
+                <li><strong>协议管理</strong> - 上游供应商协议、下游分销商协议</li>
+                <li><strong>流向管理</strong> - 上游/下游销售流向数据导入与查询</li>
+                <li><strong>投入管理</strong> - 费用投入、人工成本的分摊与统计</li>
+                <li><strong>财务结算</strong> - 应收、应付、实收、实付管理</li>
+                <li><strong>数据概览</strong> - 项目概览、平衡表</li>
+            </ul>
+            <div class="info-box">
+                <strong>涉及部门：</strong> 运营、营销、财务、采购、人力
+            </div>
+        </div>
+
+        <div class="card" id="section-2">
+            <h2>2. 登录与系统首页</h2>
+            
+            <h3>2.1 系统登录</h3>
+            <div class="step-box">
+                <div class="step-title">操作步骤：</div>
+                <div class="step-content">
+                    <ol>
+                        <li>访问系统登录页面</li>
+                        <li>输入用户名和密码</li>
+                        <li>点击"登录"按钮</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="success-box">
+                <strong>默认账号：</strong> 用户名 <span class="tag tag-blue">admin</span> 密码 <span class="tag tag-yellow">12345</span>
+            </div>
+            
+            <h3>2.2 系统主页面</h3>
+            <p>登录成功后进入系统主页面，页面布局如下：</p>
+            <ul>
+                <li><strong>顶部栏</strong> - 显示系统名称、当前用户信息、修改密码、退出登录</li>
+                <li><strong>左侧菜单</strong> - 按功能模块组织的导航菜单</li>
+                <li><strong>右侧内容区</strong> - 显示各功能模块的内容</li>
+            </ul>
+        </div>
+
+        <div class="card" id="section-3">
+            <h2>3. 项目管理</h2>
+            
+            <h3>3.1 项目列表</h3>
+            <p>进入"项目管理"模块，可查看所有项目列表。</p>
+            <div class="step-box">
+                <div class="step-title">查询操作：</div>
+                <div class="step-content">
+                    <ol>
+                        <li>选择 <span class="tag tag-blue">合作年度</span></li>
+                        <li>点击"查询"按钮查看该年度的项目列表</li>
+                        <li>可按项目名称进行搜索</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <h3>3.2 项目立项</h3>
+            <p>支持两种方式创建项目：</p>
+            <ul>
+                <li><strong>从BPM引入</strong> - 导入已审批通过的项目</li>
+                <li><strong>手动新建</strong> - 点击"+ 新建项目"手动录入</li>
+            </ul>
+            
+            <h3>3.3 项目信息</h3>
+            <p>项目基本信息包括：</p>
+            <table>
+                <tr><th>字段</th><th>说明</th></tr>
+                <tr><td>项目名称</td><td>项目的名称</td></tr>
+                <tr><td>合作年度</td><td>项目所属年度</td></tr>
+                <tr><td>合作周期</td><td>项目起止时间</td></tr>
+                <tr><td>预计收益</td><td>预计的收益金额</td></tr>
+            </table>
+        </div>
+
+        <div class="card" id="section-4">
+            <h2>4. 作业人员管理</h2>
+            
+            <h3>4.1 查询作业人员</h3>
+            <p>选择年度和项目后查询该项目的作业人员列表。</p>
+            
+            <h3>4.2 添加作业人员</h3>
+            <p>点击"添加人员"按钮，填写人员基本信息。</p>
+            
+            <h3>4.3 投入类型</h3>
+            <p>作业人员有三种投入类型：</p>
+            <table>
+                <tr><th>类型</th><th>说明</th><th>分摊方式</th></tr>
+                <tr><td><span class="tag tag-blue">全职</span></td><td>100%投入该项目</td><td>费用100%计入本项目</td></tr>
+                <tr><td><span class="tag tag-yellow">兼职</span></td><td>同时参与多个项目</td><td>按分摊比例分配</td></tr>
+                <tr><td><span class="tag tag-green">外包</span></td><td>类似兼职，按比例分摊</td><td>按分摊比例分配</td></tr>
+            </table>
+            
+            <h3>4.4 分摊比例设置（重要）</h3>
+            <div class="error-box">
+                <strong>⚠️ 注意：</strong> 对于兼职或外包人员，必须设置分摊比例！
+            </div>
+            <table>
+                <tr><th>字段</th><th>说明</th></tr>
+                <tr><td>人工费用比例(%)</td><td>该人员人工成本在本项目的分摊权重</td></tr>
+                <tr><td>报销费用比例(%)</td><td>该人员报销费用在本项目的分摊权重</td></tr>
+            </table>
+            
+            <h3>4.5 分摊规则详解</h3>
+            <div class="formula">
+                <strong>分摊公式：</strong><br>
+                本项目分摊金额 = 费用金额 × (本项目比例 ÷ 所有项目比例之和)
+            </div>
+            
+            <div class="example-box">
+                <h4>📋 示例1：单项目全职人员</h4>
+                <p>张三是项目A的全职人员，发生报销费用1000元。</p>
+                <p>→ 项目A分摊：<strong>1000元（100%）</strong></p>
+            </div>
+            
+            <div class="example-box">
+                <h4>📋 示例2：多项目兼职人员（比例和=100%）</h4>
+                <p>李四同时参与项目A和项目B：</p>
+                <table>
+                    <tr><th>项目</th><th>人工费用比例</th><th>报销费用比例</th></tr>
+                    <tr><td>项目A</td><td>60%</td><td>50%</td></tr>
+                    <tr><td>项目B</td><td>40%</td><td>50%</td></tr>
+                </table>
+                <p>发生人工成本5000元，报销2000元：</p>
+                <ul>
+                    <li>人工成本 → 项目A：3000元，项目B：2000元</li>
+                    <li>报销费用 → 项目A：1000元，项目B：1000元</li>
+                </ul>
+            </div>
+            
+            <div class="example-box">
+                <h4>📋 示例3：多项目兼职人员（比例和≠100%）</h4>
+                <p>王五同时参与3个项目，比例分别为30%、30%、30%（总和90%）。</p>
+                <p>系统自动按权重计算：每项 = 金额 × (30 ÷ 90)</p>
+            </div>
+        </div>
+
+        <div class="card" id="section-5">
+            <h2>5. 上游协议管理</h2>
+            
+            <h3>5.1 上游协议列表</h3>
+            <p>选择年度和项目，查询该项目的上游供应商协议列表。</p>
+            
+            <h3>5.2 新建上游协议</h3>
+            <p>点击"新建上游协议"，填写协议信息：</p>
+            <ul>
+                <li>协议基本信息（供应商、协议编号、生效日期等）</li>
+                <li>阶段指标设置</li>
+                <li>返利计算规则设置</li>
+            </ul>
+            
+            <h3>5.3 返利计算规则（重要）</h3>
+            <p>在"返利计算规则"区域设置返利规则。</p>
+            
+            <h4>5.3.1 计算类型</h4>
+            <table>
+                <tr><th>类型</th><th>代码</th><th>计算依据</th></tr>
+                <tr><td>按达成率</td><td>PERSENT</td><td>实际达成 ÷ 目标达成</td></tr>
+                <tr><td>按销售增长</td><td>GROWTH</td><td>本年达成 ÷ 上年同期达成</td></tr>
+                <tr><td>按达成额</td><td>SCALE</td><td>实际达成金额</td></tr>
+            </table>
+            
+            <h4>5.3.2 考核组说明</h4>
+            <ul>
+                <li>单考核组（默认组）：无需管理考核组</li>
+                <li>多考核组：需先管理考核组，再为每个组设置规则</li>
+            </ul>
+            
+            <h4>5.3.3 规则设置</h4>
+            <p>每条规则包含：阶段、计算类型、阈值下限、阈值上限、返利比例</p>
+            
+            <div class="example-box">
+                <h4>📊 示例：按达成率阶梯返利</h4>
+                <table>
+                    <tr><th>阈值下限</th><th>阈值上限</th><th>返利比例</th></tr>
+                    <tr><td>0%</td><td>80%</td><td>0%</td></tr>
+                    <tr><td>80%</td><td>100%</td><td>3%</td></tr>
+                    <tr><td>100%</td><td>无上限</td><td>5%</td></tr>
+                </table>
+                <p>假设达成率110%，目标100万，实际90万：</p>
+                <ul>
+                    <li>80%-100%段：20万 × 3% = 0.6万</li>
+                    <li>100%-110%段：10万 × 5% = 0.5万</li>
+                    <li>合计返利：<strong>1.1万</strong></li>
+                </ul>
+            </div>
+            
+            <div class="example-box">
+                <h4>📊 示例：按销售增长返利</h4>
+                <p>规则：下限5%，上限无，比例4%</p>
+                <p>上年同期100万，本年达成115万（增长15%）：</p>
+                <ul>
+                    <li>增长倍数 = 115 ÷ 100 = 1.15</li>
+                    <li>在阈值范围(≥1.05)，返利 = 115万 × 4% = <strong>4.6万</strong></li>
+                </ul>
+            </div>
+            
+            <h3>5.4 克隆协议</h3>
+            <p>可克隆已有协议快速创建新协议。注意：协议编号和附件不会克隆。</p>
+        </div>
+
+        <div class="card" id="section-6">
+            <h2>6. 下游协议管理</h2>
+            <p>基于上游协议，针对不同分销商创建下游协议。</p>
+            <p>操作方式与上游协议类似，包括新建、编辑、克隆等功能。</p>
+        </div>
+
+        <div class="card" id="section-7">
+            <h2>7. 流向管理</h2>
+            
+            <h3>7.1 上游流向管理</h3>
+            
+            <h4>导入流向数据</h4>
+            <div class="step-box">
+                <div class="step-title">导入步骤：</div>
+                <div class="step-content">
+                    <ol>
+                        <li>点击"导入Excel"按钮</li>
+                        <li>下载并填写导入模板</li>
+                        <li>上传填写好的Excel文件</li>
+                        <li>确认导入</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 注意：</strong> 导入前请查看导入模板，确保格式正确。
+            </div>
+            
+            <h4>查看流向数据</h4>
+            <ul>
+                <li><strong>明细数据</strong> - 查看每条流向记录，支持按月份筛选，可导出</li>
+                <li><strong>月份汇总</strong> - 按月份汇总的流向数据，可导出</li>
+            </ul>
+            
+            <h4>设置终版</h4>
+            <p>可将某月份的流向设置为"终版"，终版后不可修改。</p>
+            
+            <h3>7.2 下游流向管理</h3>
+            <p>与上游流向管理类似，包括数据导入、明细查询、汇总、设置终版等功能。</p>
+        </div>
+
+        <div class="card" id="section-8">
+            <h2>8. 费用与人工投入管理</h2>
+            
+            <h3>8.1 费用投入管理</h3>
+            <p>导入项目费用投入数据，系统自动按作业人员分摊比例分摊。</p>
+            
+            <h4>分摊规则</h4>
+            <ol>
+                <li>优先按报销日期和项目名称匹配</li>
+                <li>如未匹配，按人员和日期匹配</li>
+                <li>多项目人员按分摊比例自动分摊</li>
+            </ol>
+            
+            <h3>8.2 人工投入管理</h3>
+            <p>导入人工成本数据，同样按作业人员分摊比例自动分摊到各项目。</p>
+        </div>
+
+        <div class="card" id="section-9">
+            <h2>9. 应收与应付管理</h2>
+            
+            <h3>9.1 应收管理</h3>
+            
+            <h4>新建应收</h4>
+            <p>点击"新增应收"，填写应收信息。</p>
+            
+            <h4>估算应收（重要）</h4>
+            <p>点击"系统估算"旁边的 <span class="tag tag-blue">?</span> 按钮，系统自动计算估算应收。</p>
+            
+            <div class="info-box">
+                <strong>估算依据：</strong>
+                <ul>
+                    <li>上游协议的返利规则</li>
+                    <li>当前阶段的实际流向数据</li>
+                    <li>上年同期的流向数据（用于"按销售增长"类型规则）</li>
+                </ul>
+            </div>
+            
+            <div class="formula">
+                <strong>估算逻辑：</strong><br>
+                1. 获取协议返利规则<br>
+                2. 获取当前阶段流向数据<br>
+                3. 获取上年同期数据（按考核组名称匹配）<br>
+                4. 按规则逐行计算返利<br>
+                5. 汇总各考核组返利
+            </div>
+            
+            <div class="example-box">
+                <h4>📈 示例：多考核组项目估算</h4>
+                <p>项目有两个考核组：</p>
+                <table>
+                    <tr><th>考核组</th><th>阶段1目标</th><th>阶段1实际</th></tr>
+                    <tr><td>华东组</td><td>50万</td><td>55万</td></tr>
+                    <tr><td>华南组</td><td>50万</td><td>60万</td></tr>
+                </table>
+                <p>返利规则：0%-100%比例3%，100%以上比例5%</p>
+                <ul>
+                    <li>华东组(110%)：50×3% + 5×5% = 1.75万</li>
+                    <li>华南组(120%)：50×3% + 10×5% = 2.0万</li>
+                    <li><strong>合计估算应收：3.75万</strong></li>
+                </ul>
+            </div>
+            
+            <h4>审核与终版</h4>
+            <p>应收状态为"草稿"，运营审核后变为"终版"。终版后该阶段流向自动锁定。</p>
+            
+            <h3>9.2 应付管理</h3>
+            <p>与应收管理类似，包括应付记录的新建、编辑、审核等功能。</p>
+        </div>
+
+        <div class="card" id="section-10">
+            <h2>10. 项目概览与平衡表</h2>
+            
+            <h3>10.1 项目概览</h3>
+            <p>查看单个项目的完整概览：</p>
+            <ul>
+                <li>项目基本信息</li>
+                <li>协议信息</li>
+                <li>流向达成情况</li>
+                <li>应收应付汇总</li>
+                <li>投入汇总</li>
+            </ul>
+            
+            <h3>10.2 项目平衡表</h3>
+            <p>查看所有项目的平衡汇总表，包括应收、应付、实收、实付、投入等财务数据。</p>
+        </div>
+
+        <div class="card" id="section-11">
+            <h2>11. 系统管理</h2>
+            
+            <h3>11.1 用户管理</h3>
+            <p>管理系统用户，包括新建、编辑、删除用户，分配角色等。</p>
+            
+            <h3>11.2 角色管理</h3>
+            <p>管理系统角色，设置角色权限。</p>
+            
+            <h3>11.3 操作日志</h3>
+            <p>查看系统操作日志，支持：</p>
+            <ul>
+                <li>按时间范围筛选</li>
+                <li>导出日志</li>
+                <li>清理半年前的日志</li>
+            </ul>
+            
+            <h3>11.4 使用手册</h3>
+            <p>即本手册，可随时查阅。</p>
+        </div>
+
+        <div class="card" id="section-12">
+            <h2>12. 返利计算规则详解</h2>
+            
+            <h3>12.1 返利规则类型概述</h3>
+            <p>系统支持三种返利计算规则类型，不同类型适用于不同的业务场景：</p>
+            
+            <table>
+                <tr><th>类型</th><th>代码</th><th>适用场景</th></tr>
+                <tr><td>📊 按达成额</td><td>SCALE</td><td>根据分销商实际达成的金额计算返利，适用于按销售额阶梯返利的场景</td></tr>
+                <tr><td>📈 按达成率</td><td>PERCENT</td><td>根据分销商达成率计算返利，适用于考核目标完成情况的场景</td></tr>
+                <tr><td>📉 按销售增长</td><td>GROWTH</td><td>根据销售额同比增长率计算返利，适用于激励销售增长的场景</td></tr>
+            </table>
+            
+            <h3>12.2 核心计算公式</h3>
+            <div class="formula">
+                <strong>通用公式：</strong><br>
+                返利金额 = 计算基数 × 返利比例
+            </div>
+            <p><strong>返利比例存储</strong>：数据库存储为小数（如0.05表示5%），显示时乘以100。</p>
+            
+            <h4>🔹 SCALE - 按达成额</h4>
+            <div class="formula">返利金额 = 实际达成额 × 返利比例</div>
+            <div class="example-box">
+                <h4>示例：</h4>
+                <p>规则：达成额 ≥ 10万，返利比例 3%</p>
+                <p>实际达成：150,000 元</p>
+                <p>计算：150,000 × 3% = <strong>4,500 元</strong></p>
+            </div>
+            
+            <h4>🔹 PERCENT - 按达成率</h4>
+            <div class="formula">
+                达成率 = 实际达成额 / 阶段目标<br>
+                返利金额 = 实际达成额 × 返利比例
+            </div>
+            <div class="example-box">
+                <h4>示例：</h4>
+                <p>规则：达成率 ≥ 80%，返利比例 2%</p>
+                <p>阶段目标：100,000 元，实际达成：90,000 元</p>
+                <p>达成率：90,000 / 100,000 = 90%</p>
+                <p>计算：90,000 × 2% = <strong>1,800 元</strong></p>
+            </div>
+            
+            <h4>🔹 GROWTH - 按销售增长</h4>
+            <div class="formula">
+                增长率 = 本期达成额 / 上年同期达成额<br>
+                返利金额 = 本期达成额 × 返利比例
+            </div>
+            <div class="example-box">
+                <h4>示例：</h4>
+                <p>规则：增长率 ≥ 110%（即增长10%以上），返利比例 1.5%</p>
+                <p>上年同期：80,000 元，本期达成：95,000 元</p>
+                <p>增长率：95,000 / 80,000 = 118.75%</p>
+                <p>计算：95,000 × 1.5% = <strong>1,425 元</strong></p>
+            </div>
+            
+            <h3>12.3 阈值范围判断规则</h3>
+            <table>
+                <tr><th>参数</th><th>说明</th><th>示例</th></tr>
+                <tr><td>thresholdLow</td><td>阈值下限（包含）</td><td>100000 表示 ≥ 10万</td></tr>
+                <tr><td>thresholdHigh</td><td>阈值上限（不包含），0表示无上限</td><td>0 表示无上限</td></tr>
+            </table>
+            
+            <div class="info-box">
+                <strong>判断逻辑：</strong><br>
+                - 当 thresholdHigh = 0（无上限）：计算值 ≥ thresholdLow → 符合条件<br>
+                - 当 thresholdHigh ≠ 0（有上限）：thresholdLow ≤ 计算值 &lt; thresholdHigh → 符合条件
+            </div>
+            
+            <h3>12.4 多规则累进计算</h3>
+            <p>当存在多条规则时，系统按以下优先级排序：</p>
+            <ol>
+                <li>按规则类型排序：PERCENT（1）→ GROWTH（2）→ SCALE（3）</li>
+                <li>同类型规则按阈值下限升序排列</li>
+            </ol>
+            
+            <div class="formula">
+                <strong>累进计算公式：</strong><br>
+                返利金额 = Σ [(区间上限 - 区间下限) × 对应比例]
+            </div>
+            
+            <div class="example-box">
+                <h4>📊 示例：按达成额累进返利</h4>
+                <table>
+                    <tr><th>阈值下限</th><th>阈值上限</th><th>返利比例</th></tr>
+                    <tr><td>0</td><td>100,000</td><td>1%</td></tr>
+                    <tr><td>100,000</td><td>300,000</td><td>2%</td></tr>
+                    <tr><td>300,000</td><td>无上限</td><td>3%</td></tr>
+                </table>
+                <p>实际达成：450,000 元</p>
+                <p>计算：</p>
+                <ul>
+                    <li>100,000 × 1% = 1,000 元</li>
+                    <li>(300,000 - 100,000) × 2% = 4,000 元</li>
+                    <li>(450,000 - 300,000) × 3% = 4,500 元</li>
+                    <li><strong>合计：9,500 元</strong></li>
+                </ul>
+            </div>
+            
+            <h3>12.5 估算应收计算流程</h3>
+            <div class="step-box">
+                <div class="step-title">计算步骤：</div>
+                <div class="step-content">
+                    <ol>
+                        <li><strong>获取基础数据</strong>：当前阶段实际达成额、阶段目标、上年同期数据、返利规则</li>
+                        <li><strong>按考核组分组计算</strong>：系统支持多考核组场景</li>
+                        <li><strong>匹配适用规则</strong>：根据阶段编码和考核组ID筛选规则</li>
+                        <li><strong>执行返利计算</strong>：根据规则类型执行相应的计算逻辑</li>
+                        <li><strong>汇总结果</strong>：将各考核组的返利金额汇总得到估算应收总额</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <h3>12.6 估算应付计算流程</h3>
+            <p>估算应付的计算逻辑与估算应收基本相同，但数据来源不同：</p>
+            <table>
+                <tr><th>对比项</th><th>估算应收</th><th>估算应付</th></tr>
+                <tr><td>数据来源</td><td>上游协议返利规则</td><td>下游协议返利规则</td></tr>
+                <tr><td>计算对象</td><td>上游供应商（公司应收）</td><td>下游分销商（公司应付）</td></tr>
+                <tr><td>流向数据</td><td>上游流向记录</td><td>下游流向记录</td></tr>
+            </table>
+            
+            <h3>12.7 特殊情况处理</h3>
+            <div class="warn-box">
+                <strong>⚠️ 情况1：上年同期数据为0（GROWTH类型）</strong><br>
+                当上年同期达成额为0时，无法计算增长率，该规则不生效，不计入返利。
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 情况2：计算值不在阈值范围内</strong><br>
+                当计算值（达成额/达成率/增长率）不在任何规则的阈值范围内时，该规则类型不计入返利。
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 情况3：目标值为0（PERCENT类型）</strong><br>
+                当阶段目标为0时，达成率无法计算（除以0），此时达成率视为0。
+            </div>
+            
+            <h3>12.8 数据存储说明</h3>
+            <div class="formula">数据库存储值 = 显示值 / 100</div>
+            <div class="example-box">
+                <h4>存储格式示例：</h4>
+                <p>显示为 5% → 数据库存储 0.05</p>
+                <p>显示为 2.5% → 数据库存储 0.025</p>
+                <p>显示为 10% → 数据库存储 0.10</p>
+            </div>
+        </div>
+
+        <div class="card" id="faq">
+            <h2>❓ 常见问题</h2>
+            
+            <div class="example-box">
+                <h4>Q1：分摊比例总和必须是100%吗？</h4>
+                <p><strong>A：</strong> 不一定。系统按权重比例自动计算，例如两个项目分别设置60%和60%，则每个项目分摊50%。</p>
+            </div>
+            
+            <div class="example-box">
+                <h4>Q2：上年考核组ID变化了，能获取上年数据吗？</h4>
+                <p><strong>A：</strong> 可以。系统按考核组名称匹配，只要名称相同就能正确获取上年数据。</p>
+            </div>
+            
+            <div class="example-box">
+                <h4>Q3：设置终版后还能修改流向吗？</h4>
+                <p><strong>A：</strong> 不能。终版后流向锁定，如需修改请联系管理员。</p>
+            </div>
+            
+            <div class="example-box">
+                <h4>Q4：估算应收的计算依据？</h4>
+                <p><strong>A：</strong> 根据上游协议的返利规则和实际流向数据自动计算。</p>
+            </div>
+            
+            <div class="example-box">
+                <h4>Q5：费用导入后能重新分摊吗？</h4>
+                <p><strong>A：</strong> 可以。删除已导入的费用记录，重新导入即可。</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>📚 营销返利项目管理系统 - 用户使用手册 v1.0</p>
+            <p>如有疑问，请联系系统管理员</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>登录 - 营销返利项目管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="login-page">
+    <div class="login-box">
+        <h1>营销返利项目管理系统</h1>
+        <div class="form-item">
+            <label>登录名称</label>
+            <input type="text" id="loginName" placeholder="请输入登录名" value="admin">
+        </div>
+        <div class="form-item">
+            <label>密码</label>
+            <input type="password" id="password" placeholder="请输入密码" value="123456">
+        </div>
+        <button class="btn-login" id="btnLogin">登 录</button>
+        <p style="margin-top: 16px; color: #888; font-size: 12px; text-align: center;">
+            默认管理员: admin / 123456
+        </p>
+    </div>
+</div>
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    $(function () {
+        $('#btnLogin').on('click', doLogin);
+        $('#password').on('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+
+        function doLogin() {
+            var loginName = $('#loginName').val().trim();
+            var password = $('#password').val();
+            if (!loginName || !password) { RB.toast('请填写完整', 'error'); return; }
+            RB.post('/api/auth?op=login', { loginName: loginName, password: password }).done(function (r) {
+                if (r.code === 0) {
+                    // 保存token
+                    if (r.data && r.data.token) {
+                        RB.saveToken(r.data.token);
+                    }
+                    location.href = 'main.html';
+                }
+                else { RB.toast(r.msg, 'error'); }
+            });
+        }
+    });
+</script>
+</body>
+</html>

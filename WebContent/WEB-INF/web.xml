@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+         http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+         version="4.0">
+
+    <display-name>营销返利项目管理系统</display-name>
+
+    <context-param>
+        <param-name>config.dir</param-name>
+        <param-value></param-value>
+    </context-param>
+
+    <!-- 字符编码过滤器 -->
+    <filter>
+        <filter-name>characterEncodingFilter</filter-name>
+        <filter-class>com.rebate.filter.CharacterEncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>UTF-8</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>characterEncodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!-- 鉴权过滤器 -->
+    <filter>
+        <filter-name>authFilter</filter-name>
+        <filter-class>com.rebate.filter.AuthFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>authFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!-- 操作日志过滤器 -->
+    <filter>
+        <filter-name>opLogFilter</filter-name>
+        <filter-class>com.rebate.filter.OpLogFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>opLogFilter</filter-name>
+        <url-pattern>/api/*</url-pattern>
+    </filter-mapping>
+
+    <!-- 监听器 -->
+    <listener>
+        <listener-class>com.rebate.listener.AppContextListener</listener-class>
+    </listener>
+
+    <!-- 默认首页 -->
+    <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+
+    <!-- 会话超时 -->
+    <session-config>
+        <session-timeout>480</session-timeout>
+    </session-config>
+
+    <!-- Servlet 映射 -->
+    <servlet>
+        <servlet-name>healthServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.HealthServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>healthServlet</servlet-name>
+        <url-pattern>/api/health</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>authServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.AuthServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>authServlet</servlet-name>
+        <url-pattern>/api/auth</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>userServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.UserServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>userServlet</servlet-name>
+        <url-pattern>/api/user</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>projectServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.ProjectServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>projectServlet</servlet-name>
+        <url-pattern>/api/project</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>projectPersonServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.ProjectPersonServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>projectPersonServlet</servlet-name>
+        <url-pattern>/api/project-person</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>upstreamAgreementServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.UpstreamAgreementServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>upstreamAgreementServlet</servlet-name>
+        <url-pattern>/api/upstream-agreement</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>downstreamAgreementServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.DownstreamAgreementServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>downstreamAgreementServlet</servlet-name>
+        <url-pattern>/api/downstream-agreement</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>upstreamFlowServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.UpstreamFlowServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>upstreamFlowServlet</servlet-name>
+        <url-pattern>/api/upstream-flow</url-pattern>
+    </servlet-mapping>
+    
+    <servlet>
+        <servlet-name>downstreamFlowServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.DownstreamFlowServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>downstreamFlowServlet</servlet-name>
+        <url-pattern>/api/downstream-flow</url-pattern>
+    </servlet-mapping>
+    
+    <servlet>
+        <servlet-name>opLogServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.OpLogServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>opLogServlet</servlet-name>
+        <url-pattern>/api/op-log</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>costServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.CostServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>costServlet</servlet-name>
+        <url-pattern>/api/cost</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>receivablePayableServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.ReceivablePayableServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>receivablePayableServlet</servlet-name>
+        <url-pattern>/api/receivable-payable</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>receivedPaidServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.ReceivedPaidServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>receivedPaidServlet</servlet-name>
+        <url-pattern>/api/received-paid</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>overviewServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.OverviewServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>overviewServlet</servlet-name>
+        <url-pattern>/api/overview</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>fileDownloadServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.FileDownloadServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>fileDownloadServlet</servlet-name>
+        <url-pattern>/api/file/download</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>roleServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.RoleServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>roleServlet</servlet-name>
+        <url-pattern>/api/role</url-pattern>
+    </servlet-mapping>
+
+    <!-- 错误页面 -->
+    <error-page>
+        <error-code>404</error-code>
+        <location>/index.html</location>
+    </error-page>
+
+</web-app>

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>项目概览</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .overview-header { background:#fff; padding:16px 20px; border-radius:6px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+        .overview-header h2 { margin:0 0 8px 0; font-size:18px; color:#303133; }
+        .overview-header .meta { color:#606266; font-size:13px; line-height:1.8; }
+        .overview-header .meta span { margin-right:24px; }
+        .overview-header .meta strong { color:#303133; }
+        
+        .kpi-row { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+        .kpi-card { flex:1; min-width:180px; background:#fff; border-radius:6px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+        .kpi-card .label { color:#909399; font-size:12px; margin-bottom:6px; }
+        .kpi-card .value { color:#303133; font-size:22px; font-weight:600; }
+        .kpi-card .value.green { color:#67c23a; }
+        .kpi-card .value.red { color:#f56c6c; }
+        .kpi-card .value.blue { color:#409eff; }
+        .kpi-card .sub { color:#909399; font-size:12px; margin-top:4px; }
+        
+        .stage-bar { background:#fff; padding:16px 20px; border-radius:6px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+        .stage-bar h3 { margin:0 0 12px 0; font-size:14px; color:#303133; }
+        .stage-progress { margin-bottom:10px; }
+        .stage-progress .head { display:flex; justify-content:space-between; font-size:12px; color:#606266; margin-bottom:4px; }
+        .stage-progress .progress { background:#ebeef5; border-radius:4px; height:18px; overflow:hidden; position:relative; }
+        .stage-progress .progress .fill { background:#409eff; height:100%; line-height:18px; color:#fff; font-size:12px; padding:0 6px; transition:width .3s; }
+        
+        .section { background:#fff; padding:16px 20px; border-radius:6px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+        .section h3 { margin:0 0 10px 0; font-size:15px; color:#303133; border-left:3px solid #409eff; padding-left:8px; display:flex; justify-content:space-between; align-items:center; }
+        .section h3 .btn { font-size:12px; padding:4px 10px; }
+        
+        .table-compact th, .table-compact td { padding:6px 8px; font-size:12px; }
+        
+        .tab-container { background:#fff; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+        .tabs { display:flex; border-bottom:1px solid #e8e8e8; padding:0 16px; flex-wrap:wrap; }
+        .tab { padding:12px 16px; cursor:pointer; border-bottom:3px solid transparent; font-size:14px; color:#606266; transition:all .3s; white-space:nowrap; }
+        .tab:hover { color:#409eff; background:#f5f7fa; }
+        .tab.active { color:#409eff; border-bottom-color:#409eff; background:#f5f7fa; }
+        .tab-pane { padding:16px; display:none; }
+        .tab-pane.active { display:block; }
+        
+        .agreement-card { background:#f5f7fa; padding:14px; border-radius:6px; margin-bottom:12px; }
+        .agreement-card .title { font-weight:600; font-size:14px; color:#303133; margin-bottom:10px; }
+        .agreement-card .row { display:flex; flex-wrap:wrap; margin-bottom:8px; font-size:13px; }
+        .agreement-card .row .label { color:#909399; width:100px; flex-shrink:0; }
+        .agreement-card .row .value { color:#303133; }
+        .agreement-card .attach-list { margin-top:10px; }
+        .agreement-card .attach-item { display:flex; align-items:center; padding:6px 0; border-bottom:1px solid #e8e8e8; }
+        .agreement-card .attach-item:last-child { border-bottom:none; }
+        .agreement-card .attach-item .name { flex:1; font-size:13px; }
+        .agreement-card .attach-item .op a { color:#409eff; margin-left:10px; font-size:12px; }
+        
+        .month-summary { display:flex; flex-wrap:wrap; gap:10px; }
+        .month-item { background:#f0f9ff; padding:10px 16px; border-radius:6px; min-width:120px; }
+        .month-item .label { font-size:12px; color:#909399; }
+        .month-item .value { font-size:16px; font-weight:600; color:#409eff; margin-top:4px; }
+    </style>
+</head>
+<body>
+<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:8px; padding:32px 48px; text-align:center; box-shadow:0 2px 12px rgba(0,0,0,0.2);">
+        <div style="width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid #409eff; border-radius:50%; animation: spin 1s linear infinite; margin:0 auto 16px;"></div>
+        <div style="font-size:16px; color:#333;">正在导出，请稍候...</div>
+    </div>
+</div>
+<style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+<div class="toolbar">
+    <select id="selYear" style="width:120px;">
+    </select>
+    <select id="selProject" style="width:300px;"></select>
+    <button class="btn btn-primary" id="btnSearch">查看概览</button>
+    <button class="btn" id="btnExport">导出数据</button>
+    <span style="flex:1;"></span>
+    <span id="lastUpdate" style="color:#909399; font-size:12px;"></span>
+</div>
+
+<div id="empty" style="text-align:center; color:#999; padding:60px;">请选择项目查看概览</div>
+<div id="content" style="display:none;">
+    <div class="overview-header">
+        <h2 id="ovName"></h2>
+        <div class="meta" id="ovMeta"></div>
+    </div>
+    
+    <div class="tab-container">
+        <div class="tabs">
+            <div class="tab active" data-tab="main">项目信息与收益</div>
+            <div class="tab" data-tab="upstream">上游协议</div>
+            <div class="tab" data-tab="downstream">下游协议</div>
+            <div class="tab" data-tab="upstreamFlow">上游流向</div>
+            <div class="tab" data-tab="downstreamFlow">下游流向</div>
+            <div class="tab" data-tab="receivable">应收台账</div>
+            <div class="tab" data-tab="received">实收台账</div>
+            <div class="tab" data-tab="payable">应付台账</div>
+            <div class="tab" data-tab="paid">实付台账</div>
+            <div class="tab" data-tab="cost">费用投入</div>
+        </div>
+        
+        <div id="tab-main" class="tab-pane active">
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="label">总体规模达成率</div>
+                    <div class="value blue" id="ovTotalRate">-</div>
+                    <div class="sub" id="ovTotalScale">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">应收达成率</div>
+                    <div class="value green" id="ovRecvRate">-</div>
+                    <div class="sub" id="ovRecvDetail">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">实际收益达成率</div>
+                    <div class="value green" id="ovActualRate">-</div>
+                    <div class="sub" id="ovActualDetail">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">收益兑现率</div>
+                    <div class="value" id="ovCashRate">-</div>
+                    <div class="sub" id="ovCashDetail">-</div>
+                </div>
+            </div>
+            
+            <div class="stage-bar">
+                <h3>规模达成（分阶段）</h3>
+                <div class="stage-progress">
+                    <div class="head"><span>第一阶段</span><span id="s1Text">-</span></div>
+                    <div class="progress"><div class="fill" id="s1Fill" style="width:0%;"></div></div>
+                </div>
+                <div class="stage-progress">
+                    <div class="head"><span>第二阶段</span><span id="s2Text">-</span></div>
+                    <div class="progress"><div class="fill" id="s2Fill" style="width:0%; background:#67c23a;"></div></div>
+                </div>
+                <div class="stage-progress">
+                    <div class="head"><span>第三阶段</span><span id="s3Text">-</span></div>
+                    <div class="progress"><div class="fill" id="s3Fill" style="width:0%; background:#e6a23c;"></div></div>
+                </div>
+                <div class="stage-progress">
+                    <div class="head"><span>第四阶段</span><span id="s4Text">-</span></div>
+                    <div class="progress"><div class="fill" id="s4Fill" style="width:0%; background:#f56c6c;"></div></div>
+                </div>
+            </div>
+            
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="label">项目预计收益（元）</div>
+                    <div class="value" id="ovExpected">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">应收总额（元）</div>
+                    <div class="value blue" id="ovRecvTotal">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">实收总额（元）</div>
+                    <div class="value green" id="ovReceived">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">外部应付（元）</div>
+                    <div class="value red" id="ovExternalPayable">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">外部实付（元）</div>
+                    <div class="value red" id="ovExternalPaid">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">投入合计（元）</div>
+                    <div class="value" id="ovInvest">-</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="tab-upstream" class="tab-pane">
+            <div id="upstreamInfo"></div>
+        </div>
+        
+        <div id="tab-downstream" class="tab-pane">
+            <div class="table-wrap"><table class="table-compact">
+                <thead><tr><th>协议名称</th><th>编号</th><th>分销商</th><th>类型</th><th>合作周期</th><th>起始</th><th>终止</th><th>操作</th></tr></thead>
+                <tbody id="downBody"></tbody>
+            </table></div>
+        </div>
+        
+        <div id="tab-upstreamFlow" class="tab-pane">
+            <div class="section" style="margin-bottom:0; box-shadow:none; padding:0;">
+                <h3>月度规模明细</h3>
+                <div class="table-wrap"><table class="table-compact">
+                    <thead><tr><th>月份</th><th>数量</th><th>核算金额</th><th>记录数</th><th>状态</th></tr></thead>
+                    <tbody id="upstreamFlowBody"></tbody>
+                    <tfoot id="upstreamFlowFoot"></tfoot>
+                </table></div>
+            </div>
+        </div>
+        
+        <div id="tab-downstreamFlow" class="tab-pane">
+            <div class="table-wrap"><table class="table-compact">
+                <thead><tr><th>协议名称</th><th>月份</th><th>数量</th><th>核算金额</th><th>记录数</th><th>状态</th></tr></thead>
+                <tbody id="downstreamFlowBody"></tbody>
+                <tfoot id="downstreamFlowFoot"></tfoot>
+            </table></div>
+        </div>
+        
+        <div id="tab-receivable" class="tab-pane">
+            <div class="table-wrap"><table class="table-compact">
+                <thead><tr><th>阶段</th><th>依据规模应收</th><th>依据考核应收</th><th>合计应收</th><th>系统估算</th><th>状态</th></tr></thead>
+                <tbody id="recvBody"></tbody>
+                <tfoot id="recvFoot"></tfoot>
+            </table></div>
+        </div>
+        
+        <div id="tab-received" class="tab-pane">
+            <div class="table-wrap"><table class="table-compact">
+                <thead><tr><th>阶段</th><th>类型</th><th>返利金额</th><th>价税合计</th><th>本部门应得</th><th>发票号</th><th>收款部门</th></tr></thead>
+                <tbody id="receivedBody"></tbody>
+                <tfoot id="receivedFoot"></tfoot>
+            </table></div>
+        </div>
+        
+        <div id="tab-payable" class="tab-pane">
+            <div class="table-wrap"><table class="table-compact">
+                <thead><tr><th>阶段</th><th>下游分销商</th><th>分销商类型</th><th>依据规模应付</th><th>依据考核应付</th><th>合计应付</th><th>系统估算</th><th>状态</th></tr></thead>
+                <tbody id="payBody"></tbody>
+                <tfoot id="payFoot"></tfoot>
+            </table></div>
+        </div>
+        
+        <div id="tab-paid" class="tab-pane">
+            <div class="table-wrap"><table class="table-compact">
+                <thead><tr><th>阶段</th><th>下游协议</th><th>客户/分销商</th><th>类型</th><th>返利总额</th><th>实际返利</th><th>冲差价</th><th>执行状态</th></tr></thead>
+                <tbody id="paidBody"></tbody>
+                <tfoot id="paidFoot"></tfoot>
+            </table></div>
+        </div>
+        
+        <div id="tab-cost" class="tab-pane">
+            <div class="section" style="margin-bottom:16px; box-shadow:none; padding:0;">
+                <h3>费用投入分月分类型汇总</h3>
+                <div class="table-wrap"><table class="table-compact">
+                    <thead><tr><th>月份</th><th>费用类型</th><th>发票金额</th><th>本项目分摊金额</th></tr></thead>
+                    <tbody id="expenseSummary"></tbody>
+                    <tfoot id="expenseFoot"></tfoot>
+                </table></div>
+            </div>
+            <div class="section" style="margin-bottom:0; box-shadow:none; padding:0;">
+                <h3>人工投入分月汇总</h3>
+                <div class="table-wrap"><table class="table-compact">
+                    <thead><tr><th>月份</th><th>费用类型</th><th>费用合计</th><th>本项目分摊金额</th></tr></thead>
+                    <tbody id="laborSummary"></tbody>
+                    <tfoot id="laborFoot"></tfoot>
+                </table></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 查看协议弹窗 -->
+<div class="modal-mask" id="modalViewAgreement">
+    <div class="modal" style="width:700px;">
+        <div class="modal-header">查看协议<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalViewAgreement')">×</span></div>
+        <div class="modal-body" id="viewAgreementContent"></div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalViewAgreement')">关闭</button>
+        </div>
+    </div>
+</div>
+
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    function mapStatus(st) {
+        var map = {
+            'DRAFT': '草稿',
+            'AUDIT': '待终稿',
+            'FINAL': '已终稿',
+            'REJECTED': '已驳回'
+        };
+        return map[st] || st || '草稿';
+    }
+    var pageData = null;
+    
+    $(function () {
+        RB.checkLogin(function () { loadYears(); });
+        
+        $('#btnSearch').on('click', function () { load(); });
+        $('#btnExport').on('click', function () {
+            var pid = $('#selProject').val();
+            if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+            $('#loadingOverlay').show();
+            downloadWithXhr('./api/overview?op=exportExcel&projectId=' + pid, '项目概览数据.xlsx');
+        });
+        
+        function downloadWithXhr(url, defaultFileName) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.setRequestHeader('X-Token', RB.getToken());
+            xhr.responseType = 'blob';
+            
+            xhr.onload = function() {
+                $('#loadingOverlay').hide();
+                if (xhr.status === 200) {
+                    var blob = xhr.response;
+                    var contentDisposition = xhr.getResponseHeader('Content-Disposition');
+                    var fileName = defaultFileName;
+                    if (contentDisposition && contentDisposition.indexOf('attachment') !== -1) {
+                        var match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        if (match && match[1]) {
+                            fileName = decodeURIComponent(match[1].replace(/['"]/g, ''));
+                        }
+                    }
+                    
+                    var downloadUrl = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+                } else {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            var response = JSON.parse(e.target.result);
+                            RB.toast(response.msg || '导出失败', 'error');
+                        } catch (err) {
+                            RB.toast('导出失败', 'error');
+                        }
+                    };
+                    reader.readAsText(xhr.response);
+                }
+            };
+            
+            xhr.onerror = function() {
+                $('#loadingOverlay').hide();
+                RB.toast('网络错误', 'error');
+            };
+            
+            xhr.send();
+        }
+        
+        $('#selYear').on('change', function() {
+            loadProjects();
+        });
+        
+        var qp = RB.getQueryParam('projectId');
+        if (qp) { $('#selProject').data('pre', qp); }
+        
+        $('.tabs').on('click', '.tab', function() {
+            var tab = $(this).data('tab');
+            $('.tab').removeClass('active');
+            $(this).addClass('active');
+            $('.tab-pane').removeClass('active');
+            $('#tab-' + tab).addClass('active');
+        });
+    });
+
+    function loadYears() {
+        RB.post('/api/project?op=listYears', {}).done(function (r) {
+            if (r.code === 0 && r.data) {
+                var html = '';
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i] + '">' + r.data[i] + '</option>';
+                }
+                $('#selYear').html(html);
+            }
+            loadProjects();
+        });
+    }
+
+    function loadProjects() {
+        var coYear = $('#selYear').val();
+        var param = coYear ? { coYear: coYear } : {};
+        RB.post('/api/project?op=listByYear', param).done(function (r) {
+            var html = '<option value="">请选择项目</option>';
+            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
+            }
+            $('#selProject').html(html);
+            var pre = $('#selProject').data('pre');
+            if (pre) { $('#selProject').val(pre); load(); }
+        });
+    }
+
+    function load() {
+        var pid = $('#selProject').val();
+        if (!pid) { $('#empty').show(); $('#content').hide(); return; }
+        RB.showLoading('加载中...');
+        RB.post('/api/overview?op=overview', { projectId: pid }).done(function (r) {
+            RB.hideLoading();
+            if (r.code !== 0) { RB.toast(r.msg, 'error'); return; }
+            if (!r.data || !r.data.project) { $('#empty').show(); $('#content').hide(); return; }
+            $('#empty').hide(); $('#content').show();
+            currentData = r.data;
+            render(r.data);
+            $('#lastUpdate').text('更新于 ' + new Date().toLocaleString());
+        }).fail(function() {
+            RB.hideLoading();
+            RB.toast('加载失败', 'error');
+        });
+    }
+
+    function pct(v) { return (v == null ? 0 : Number(v)).toFixed(2) + '%'; }
+    function barWidth(v) { var n = Number(v); if (!isFinite(n) || n < 0) n = 0; if (n > 100) n = 100; return n + '%'; }
+    function emptyRow(cols, msg) { return '<tr><td colspan="' + cols + '" style="text-align:center;color:#999;padding:20px;">' + (msg || '暂无') + '</td></tr>'; }
+
+    function render(d) {
+        var p = d.project;
+        $('#ovName').text(p.projectName);
+        $('#ovMeta').html(
+            '<span>厂牌：<strong>' + (p.brand || '-') + '</strong></span>' +
+            '<span>合作年度：<strong>' + (p.coYear || '-') + '</strong></span>' +
+            '<span>覆盖地区：<strong>' + (p.region || '-') + '</strong></span>' +
+            '<span>合作模式：<strong>' + (p.coMode || '-') + '</strong></span>');
+
+        $('#ovTotalRate').text(pct(d.totalRate));
+        $('#ovTotalScale').text('实际 ' + RB.formatMoney(d.totalActual) + ' / 指标 ' + RB.formatMoney(d.totalTarget));
+
+        $('#ovRecvRate').text(pct(d.receivableRate));
+        $('#ovRecvDetail').text('应收 ' + RB.formatMoney(d.receivableTotal) + ' - 投入 ' + RB.formatMoney(d.investTotal) + ' - 外部应付 ' + RB.formatMoney(d.externalPayable));
+        $('#ovActualRate').text(pct(d.actualIncomeRate));
+        $('#ovActualDetail').text('实收 ' + RB.formatMoney(d.receivedTotal) + ' - 投入 ' + RB.formatMoney(d.investTotal) + ' - 外部实付 ' + RB.formatMoney(d.externalPaid));
+        $('#ovCashRate').text(pct(d.cashRate));
+        $('#ovCashDetail').text('实收 / 应收');
+
+        $('#s1Text').text(RB.formatMoney(d.stage1Actual) + ' / ' + RB.formatMoney(d.stage1Target) + '  达成 ' + pct(d.stage1Rate));
+        $('#s2Text').text(RB.formatMoney(d.stage2Actual) + ' / ' + RB.formatMoney(d.stage2Target) + '  达成 ' + pct(d.stage2Rate));
+        $('#s3Text').text(RB.formatMoney(d.stage3Actual) + ' / ' + RB.formatMoney(d.stage3Target) + '  达成 ' + pct(d.stage3Rate));
+        $('#s4Text').text(RB.formatMoney(d.stage4Actual) + ' / ' + RB.formatMoney(d.stage4Target) + '  达成 ' + pct(d.stage4Rate));
+        $('#s1Fill').css('width', barWidth(d.stage1Rate));
+        $('#s2Fill').css('width', barWidth(d.stage2Rate));
+        $('#s3Fill').css('width', barWidth(d.stage3Rate));
+        $('#s4Fill').css('width', barWidth(d.stage4Rate));
+
+        $('#ovExpected').text(RB.formatMoney(d.expectedRebate));
+        $('#ovRecvTotal').text(RB.formatMoney(d.receivableTotal));
+        $('#ovReceived').text(RB.formatMoney(d.receivedTotal));
+        $('#ovExternalPayable').text(RB.formatMoney(d.externalPayable));
+        $('#ovExternalPaid').text(RB.formatMoney(d.externalPaid));
+        $('#ovInvest').text(RB.formatMoney(d.investTotal));
+
+        renderUpstream(d.upstream);
+        
+        var downs = d.downstreams || [];
+        var dhtml = '';
+        for (var i = 0; i < downs.length; i++) {
+            var x = downs[i];
+            dhtml += '<tr><td>' + (x.agreementName || '') + '</td><td>' + (x.agreementNo || '') + '</td>' +
+                '<td>' + (x.distributor || '') + '</td><td>' + (x.distributorType || '') + '</td>' +
+                '<td>' + (x.coYear || '') + '</td><td>' + (x.periodStartDate || '') + '</td><td>' + (x.periodEndDate || '') + '</td>' +
+                '<td><a class="op" onclick="viewDownstreamAgreement(' + x.id + ')">查看</a></td></tr>';
+        }
+        $('#downBody').html(dhtml || emptyRow(8));
+
+        var recs = d.receivables || [];
+        var rh = '';
+        var recvTotalScale = 0, recvTotalAssess = 0, recvTotal = 0, recvTotalEstimate = 0;
+        for (var i = 0; i < recs.length; i++) {
+            var r = recs[i];
+            recvTotalScale += Number(r.scaleAmount || 0);
+            recvTotalAssess += Number(r.assessAmount || 0);
+            recvTotal += Number(r.totalAmount || 0);
+            recvTotalEstimate += Number(r.estimateAmount || 0);
+            rh += '<tr><td>' + (r.stage || '') + '</td>' +
+                '<td>' + RB.formatMoney(r.scaleAmount) + '</td>' +
+                '<td>' + RB.formatMoney(r.assessAmount) + '</td>' +
+                '<td>' + RB.formatMoney(r.totalAmount) + '</td>' +
+                '<td>' + RB.formatMoney(r.estimateAmount) + '</td>' +
+                '<td>' + mapStatus(r.status) + '</td></tr>';
+        }
+        $('#recvBody').html(rh || emptyRow(6));
+        $('#recvFoot').html('<tr style="background:#f5f7fa;font-weight:bold;"><td>合计</td><td>' + RB.formatMoney(recvTotalScale) + '</td><td>' + RB.formatMoney(recvTotalAssess) + '</td><td>' + RB.formatMoney(recvTotal) + '</td><td>' + RB.formatMoney(recvTotalEstimate) + '</td><td></td></tr>');
+
+        var pays = d.payables || [];
+        var ph = '';
+        var payTotalScale = 0, payTotalAssess = 0, payTotal = 0, payTotalEstimate = 0;
+        for (var i = 0; i < pays.length; i++) {
+            var p2 = pays[i];
+            payTotalScale += Number(p2.scaleAmount || 0);
+            payTotalAssess += Number(p2.assessAmount || 0);
+            payTotal += Number(p2.totalAmount || 0);
+            payTotalEstimate += Number(p2.estimateAmount || 0);
+            ph += '<tr><td>' + (p2.stage || '') + '</td><td>' + (p2.distributor || '') + '</td><td>' + (p2.distributorType || '') + '</td>' +
+                '<td>' + RB.formatMoney(p2.scaleAmount) + '</td>' +
+                '<td>' + RB.formatMoney(p2.assessAmount) + '</td>' +
+                '<td>' + RB.formatMoney(p2.totalAmount) + '</td>' +
+                '<td>' + RB.formatMoney(p2.estimateAmount) + '</td>' +
+                '<td>' + mapStatus(p2.status) + '</td></tr>';
+        }
+        $('#payBody').html(ph || emptyRow(8));
+        $('#payFoot').html('<tr style="background:#f5f7fa;font-weight:bold;"><td>合计</td><td></td><td></td><td>' + RB.formatMoney(payTotalScale) + '</td><td>' + RB.formatMoney(payTotalAssess) + '</td><td>' + RB.formatMoney(payTotal) + '</td><td>' + RB.formatMoney(payTotalEstimate) + '</td><td></td></tr>');
+
+        var recd = d.receivedList || [];
+        var rch = '';
+        var receivedTotalRebate = 0, receivedTotalPriceTax = 0, receivedTotalDeptShare = 0;
+        for (var i = 0; i < recd.length; i++) {
+            var x = recd[i];
+            receivedTotalRebate += Number(x.rebateAmount || 0);
+            receivedTotalPriceTax += Number(x.totalPriceTax || 0);
+            receivedTotalDeptShare += Number(x.deptShare || 0);
+            rch += '<tr><td>' + (x.stage || '') + '</td><td>' + (x.rebateType || '') + '</td>' +
+                '<td>' + RB.formatMoney(x.rebateAmount) + '</td><td>' + RB.formatMoney(x.totalPriceTax) + '</td>' +
+                '<td>' + RB.formatMoney(x.deptShare) + '</td><td>' + (x.invoiceNo || '') + '</td>' +
+                '<td>' + (x.receiveDept || '') + '</td></tr>';
+        }
+        $('#receivedBody').html(rch || emptyRow(7));
+        $('#receivedFoot').html('<tr style="background:#f5f7fa;font-weight:bold;"><td>合计</td><td></td><td>' + RB.formatMoney(receivedTotalRebate) + '</td><td>' + RB.formatMoney(receivedTotalPriceTax) + '</td><td>' + RB.formatMoney(receivedTotalDeptShare) + '</td><td></td><td></td></tr>');
+
+        var pd = d.paidList || [];
+        var pth = '';
+        var paidTotalRebate = 0, paidTotalActual = 0, paidTotalDiff = 0;
+        for (var i = 0; i < pd.length; i++) {
+            var x = pd[i];
+            paidTotalRebate += Number(x.totalRebate || 0);
+            paidTotalActual += Number(x.actualRebate || 0);
+            paidTotalDiff += Number(x.diffAmount || 0);
+            pth += '<tr><td>' + (x.stage || '') + '</td><td>' + (x.agreementName || '') + '</td>' +
+                '<td>' + (x.customerName || '') + '</td><td>' + (x.rebateType || '') + '</td>' +
+                '<td>' + RB.formatMoney(x.totalRebate) + '</td>' +
+                '<td>' + RB.formatMoney(x.actualRebate) + '</td>' +
+                '<td>' + RB.formatMoney(x.diffAmount) + '</td>' +
+                '<td>' + (x.executeStatus || '') + '</td></tr>';
+        }
+        $('#paidBody').html(pth || emptyRow(8));
+        $('#paidFoot').html('<tr style="background:#f5f7fa;font-weight:bold;"><td>合计</td><td></td><td></td><td></td><td>' + RB.formatMoney(paidTotalRebate) + '</td><td>' + RB.formatMoney(paidTotalActual) + '</td><td>' + RB.formatMoney(paidTotalDiff) + '</td><td></td></tr>');
+
+        // 上游流向分月汇总
+        var upFlows = d.upstreamMonthSummary || [];
+        var upfh = '';
+        var upTotalQty = 0, upTotalScale = 0, upTotalCount = 0;
+        for (var i = 0; i < upFlows.length; i++) {
+            var f = upFlows[i];
+            upTotalQty += Number(f.qtyCount || 0);
+            upTotalScale += Number(f.scale || 0);
+            upTotalCount += Number(f.count || 0);
+            upfh += '<tr><td>' + (f.month || '') + '</td>' +
+                '<td>' + RB.formatNumber(f.qtyCount) + '</td>' +
+                '<td>' + RB.formatMoney(f.scale) + '</td>' +
+                '<td>' + (f.count || '') + '</td>' +
+                '<td>' + (f.isFinal === 'Y' ? '终稿' : '草稿') + '</td></tr>';
+        }
+        $('#upstreamFlowBody').html(upfh || emptyRow(5, '暂无上游流向数据'));
+        $('#upstreamFlowFoot').html('<tr style="background:#f5f7fa;font-weight:bold;"><td>合计</td><td>' + RB.formatNumber(upTotalQty) + '</td><td>' + RB.formatMoney(upTotalScale) + '</td><td>' + upTotalCount + '</td><td></td></tr>');
+
+        // 下游流向按协议分组
+        var dsFlows = d.downstreamFlows || [];
+        var dsfh = '';
+        var dsTotalQty = 0, dsTotalScale = 0, dsTotalCount = 0;
+        for (var i = 0; i < dsFlows.length; i++) {
+            var df = dsFlows[i];
+            var flows = df.flows || [];
+            for (var j = 0; j < flows.length; j++) {
+                var f = flows[j];
+                dsTotalQty += Number(f.qtyCount || 0);
+                dsTotalScale += Number(f.scale || 0);
+                dsTotalCount += Number(f.count || 0);
+                dsfh += '<tr><td>' + (df.agreementName || '') + '</td><td>' + (f.month || '') + '</td>' +
+                    '<td>' + RB.formatNumber(f.qtyCount) + '</td>' +
+                    '<td>' + RB.formatMoney(f.scale) + '</td>' +
+                    '<td>' + (f.count || '') + '</td>' +
+                    '<td>' + (f.isFinal === 'Y' ? '终稿' : '草稿') + '</td></tr>';
+            }
+        }
+        $('#downstreamFlowBody').html(dsfh || emptyRow(6, '暂无下游流向数据'));
+        $('#downstreamFlowFoot').html('<tr style="background:#f5f7fa;font-weight:bold;"><td>合计</td><td></td><td>' + RB.formatNumber(dsTotalQty) + '</td><td>' + RB.formatMoney(dsTotalScale) + '</td><td>' + dsTotalCount + '</td><td></td></tr>');
+        
+        renderCostSummary(d);
+    }
+
+    function renderUpstream(up) {
+        if (!up) {
+            $('#upstreamInfo').html('<div class="section" style="margin:0; padding:16px; text-align:center; color:#999; box-shadow:none;">尚未引入上游协议</div>');
+            return;
+        }
+        
+        // 专职团队信息
+        var formalInfo = '';
+        if (up.formalCount) formalInfo += '正式 ' + up.formalCount + '人';
+        if (up.formalNames) formalInfo += (formalInfo ? '：' : '') + up.formalNames;
+        var informalInfo = '';
+        if (up.informalCount) informalInfo += '非正式 ' + up.informalCount + '人';
+        if (up.informalNames) informalInfo += (informalInfo ? '：' : '') + up.informalNames;
+        
+        var html = '<div class="agreement-card">' +
+            '<div class="title">' + (up.agreementName || '上游协议') + '</div>' +
+            '<div class="row"><span class="label">协议编号</span><span class="value">' + (up.agreementNo || '-') + '</span></div>' +
+            '<div class="row"><span class="label">合作年度</span><span class="value">' + (up.coYear || '-') + '</span></div>' +
+            '<div class="row"><span class="label">合作周期</span><span class="value">' + (up.periodStartDate || '-') + ' 至 ' + (up.periodEndDate || '-') + '</span></div>' +
+            '<div class="row"><span class="label">上游供应商</span><span class="value">' + (up.supplier || '-') + '</span></div>' +
+            '<div class="row"><span class="label">指标承接部门</span><span class="value">' + (up.targetDept || '-') + '</span></div>' +
+            '<div class="row"><span class="label">指标计算依据</span><span class="value">' + (up.calcBasis === 'QTY' ? '数量' : '金额') + '</span></div>' +
+            '<div class="row"><span class="label">指标规模</span><span class="value">' + RB.formatMoney(up.targetScale) + '</span></div>' +
+            '<div class="row"><span class="label">阶段指标</span><span class="value">' +
+            'S1=' + RB.formatMoney(up.stage1Target) + ' / S2=' + RB.formatMoney(up.stage2Target) + ' / ' +
+            'S3=' + RB.formatMoney(up.stage3Target) + ' / S4=' + RB.formatMoney(up.stage4Target) + '</span></div>' +
+            '<div class="row"><span class="label">结算方式</span><span class="value">' + (up.settleBasis || '-') + (up.settleRatio ? ' ' + up.settleRatio : '') + '</span></div>' +
+            '<div class="row"><span class="label">专职团队考核</span><span class="value">' + (up.teamAssessSettle || '-') + '</span></div>' +
+            '<div class="row"><span class="label">专职团队</span><span class="value">' + (formalInfo || '-') + (informalInfo ? '；' + informalInfo : '') + '</span></div>' +
+            '<div class="row"><span class="label">流向联系人</span><span class="value">' + (up.flowContact || '-') + ' ' + (up.flowPhone || '') + '</span></div>' +
+            '<div class="row"><span class="label">返利支付方式</span><span class="value">' + (up.rebatePayType || '-') + '</span></div>' +
+            '<div class="row"><span class="label">支付时间</span><span class="value">' + (up.rebatePayTime || '-') + '</span></div>' +
+            '<div class="row"><span class="label">责任人</span><span class="value">' + (up.ownerName || '-') + '</span></div>';
+        
+        // 附件
+        var hasAttach = false;
+        var attachHtml = '<div class="attach-list">';
+        var attToken = (typeof RB !== 'undefined' && RB.getToken) ? RB.getToken() : '';
+        function attUrl(u) { return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(attToken); }
+        if (up.attachFiles && up.attachFiles.length > 0) {
+            hasAttach = true;
+            for (var i = 0; i < up.attachFiles.length; i++) {
+                var a = up.attachFiles[i];
+                var typeLabel = a.attachType === 'SUPP' ? ' (补充)' : '';
+                var url = attUrl(a.downloadUrl || ('./api/file/download?path=' + encodeURIComponent(a.filePath)));
+                attachHtml += '<div class="attach-item">' +
+                    '<span class="name">' + (a.fileName || '') + typeLabel + '</span>' +
+                    '<span class="op"><a href="' + url + '" target="_blank">下载</a></span>' +
+                    '</div>';
+            }
+        }
+        if (up.remarkFiles && up.remarkFiles.length > 0) {
+            hasAttach = true;
+            for (var i = 0; i < up.remarkFiles.length; i++) {
+                var a = up.remarkFiles[i];
+                var url = attUrl(a.downloadUrl || ('./api/file/download?path=' + encodeURIComponent(a.filePath)));
+                attachHtml += '<div class="attach-item">' +
+                    '<span class="name">' + (a.fileName || '') + ' (备注)</span>' +
+                    '<span class="op"><a href="' + url + '" target="_blank">下载</a></span>' +
+                    '</div>';
+            }
+        }
+        attachHtml += '</div>';
+        if (hasAttach) {
+            html += '<div class="row"><span class="label">附件</span><span class="value"></span></div>' + attachHtml;
+        }
+        
+        html += '</div>';
+        $('#upstreamInfo').html(html);
+    }
+
+    function renderCostSummary(d) {
+        var expenseByType = d.expenseByMonthAndType || [];
+        var expenseHtml = '';
+        var expenseTotalInvoice = 0, expenseTotalAmount = 0;
+        for (var i = 0; i < expenseByType.length; i++) {
+            var m = expenseByType[i];
+            expenseTotalInvoice += Number(m.invoiceAmount || 0);
+            expenseTotalAmount += Number(m.amount || 0);
+            expenseHtml += '<tr><td>' + (m.month || '') + '</td><td>' + (m.expenseType || '') + '</td>' +
+                '<td>' + RB.formatMoney(m.invoiceAmount) + '</td><td>' + RB.formatMoney(m.amount) + '</td></tr>';
+        }
+        $('#expenseSummary').html(expenseHtml || '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">暂无费用数据</td></tr>');
+        $('#expenseFoot').html('<tr style="background:#f5f7fa;font-weight:bold;"><td>合计</td><td></td><td>' + RB.formatMoney(expenseTotalInvoice) + '</td><td>' + RB.formatMoney(expenseTotalAmount) + '</td></tr>');
+        
+        var laborByMonth = d.laborByMonthWithDetail || [];
+        var laborHtml = '';
+        var laborTotalInvoice = 0, laborTotalAmount = 0;
+        for (var i = 0; i < laborByMonth.length; i++) {
+            var m = laborByMonth[i];
+            laborTotalInvoice += Number(m.invoiceAmount || 0);
+            laborTotalAmount += Number(m.amount || 0);
+            laborHtml += '<tr><td>' + (m.month || '') + '</td><td>' + (m.expenseType || '') + '</td>' +
+                '<td>' + RB.formatMoney(m.invoiceAmount) + '</td><td>' + RB.formatMoney(m.amount) + '</td></tr>';
+        }
+        $('#laborSummary').html(laborHtml || '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">暂无人工数据</td></tr>');
+        $('#laborFoot').html('<tr style="background:#f5f7fa;font-weight:bold;"><td>合计</td><td></td><td>' + RB.formatMoney(laborTotalInvoice) + '</td><td>' + RB.formatMoney(laborTotalAmount) + '</td></tr>');
+    }
+
+    function viewDownstreamAgreement(id) {
+        RB.post('/api/downstream-agreement', { op: 'get', id: id }).done(function(r) {
+            if (r.code !== 0 || !r.data) { RB.toast('获取协议失败', 'error'); return; }
+            var down = r.data;
+            
+            // 专职团队信息
+            var formalInfo = '';
+            if (down.formalCount) formalInfo += '正式 ' + down.formalCount + '人';
+            if (down.formalNames) formalInfo += (formalInfo ? '：' : '') + down.formalNames;
+            var informalInfo = '';
+            if (down.informalCount) informalInfo += '非正式 ' + down.informalCount + '人';
+            if (down.informalNames) informalInfo += (informalInfo ? '：' : '') + down.informalNames;
+            
+            var html = '<div class="agreement-card">' +
+                '<div class="title">' + (down.agreementName || '下游协议') + '</div>' +
+                '<div class="row"><span class="label">协议编号</span><span class="value">' + (down.agreementNo || '-') + '</span></div>' +
+                '<div class="row"><span class="label">分销商</span><span class="value">' + (down.distributor || '-') + '</span></div>' +
+                '<div class="row"><span class="label">分销商类型</span><span class="value">' + (down.distributorType || '-') + '</span></div>' +
+                '<div class="row"><span class="label">合作年度</span><span class="value">' + (down.coYear || '-') + '</span></div>' +
+                '<div class="row"><span class="label">合作周期</span><span class="value">' + (down.periodStartDate || '-') + ' 至 ' + (down.periodEndDate || '-') + '</span></div>' +
+                '<div class="row"><span class="label">指标规模</span><span class="value">' + RB.formatMoney(down.targetScale) + '</span></div>' +
+                '<div class="row"><span class="label">阶段指标</span><span class="value">' +
+                'S1=' + RB.formatMoney(down.stage1Target) + ' / S2=' + RB.formatMoney(down.stage2Target) + ' / ' +
+                'S3=' + RB.formatMoney(down.stage3Target) + ' / S4=' + RB.formatMoney(down.stage4Target) + '</span></div>' +
+                '<div class="row"><span class="label">结算方式</span><span class="value">' + (down.settleBasis || '-') + (down.settleRatio ? ' ' + down.settleRatio : '') + '</span></div>' +
+                '<div class="row"><span class="label">专职团队考核</span><span class="value">' + (down.teamAssessSettle || '-') + '</span></div>' +
+                '<div class="row"><span class="label">专职团队</span><span class="value">' + (formalInfo || '-') + (informalInfo ? '；' + informalInfo : '') + '</span></div>' +
+                '<div class="row"><span class="label">责任人</span><span class="value">' + (down.ownerName || '-') + '</span></div>';
+            
+            var hasAttach = false;
+        var attachHtml = '<div class="attach-list">';
+        var attToken2 = (typeof RB !== 'undefined' && RB.getToken) ? RB.getToken() : '';
+        function attUrl2(u) { return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(attToken2); }
+        if (down.attachFiles && down.attachFiles.length > 0) {
+            hasAttach = true;
+            for (var i = 0; i < down.attachFiles.length; i++) {
+                var a = down.attachFiles[i];
+                var typeLabel = a.attachType === 'SUPP' ? ' (补充)' : '';
+                var url = attUrl2(a.downloadUrl || ('./api/file/download?path=' + encodeURIComponent(a.filePath)));
+                attachHtml += '<div class="attach-item">' +
+                    '<span class="name">' + (a.fileName || '') + typeLabel + '</span>' +
+                    '<span class="op"><a href="' + url + '" target="_blank">下载</a></span>' +
+                    '</div>';
+            }
+        }
+        if (down.remarkFiles && down.remarkFiles.length > 0) {
+            hasAttach = true;
+            for (var i = 0; i < down.remarkFiles.length; i++) {
+                var a = down.remarkFiles[i];
+                var url = attUrl2(a.downloadUrl || ('./api/file/download?path=' + encodeURIComponent(a.filePath)));
+                attachHtml += '<div class="attach-item">' +
+                    '<span class="name">' + (a.fileName || '') + ' (备注)</span>' +
+                    '<span class="op"><a href="' + url + '" target="_blank">下载</a></span>' +
+                    '</div>';
+            }
+        }
+            attachHtml += '</div>';
+            if (hasAttach) {
+                html += '<div class="row"><span class="label">附件</span><span class="value"></span></div>' + attachHtml;
+            }
+            
+            html += '</div>';
+            $('#viewAgreementContent').html(html);
+            RB.openModal('modalViewAgreement');
+        });
+    }
+</script>
+</body>
+</html>

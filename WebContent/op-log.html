@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>操作日志</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="lib/jquery-3.7.1.min.js"></script>
+    <script src="js/utils.js"></script>
+</head>
+<body>
+    <div class="toolbar">
+        <input type="text" id="keyword" placeholder="关键词搜索（用户名/内容）">
+        <input type="text" id="startTime" placeholder="开始日期" class="date-picker">
+        <input type="text" id="endTime" placeholder="结束日期" class="date-picker">
+        <select id="module">
+            <option value="">全部模块</option>
+        </select>
+        <select id="action">
+            <option value="">全部操作</option>
+        </select>
+        <button class="btn btn-primary" onclick="search()">查询</button>
+        <button class="btn" onclick="reset()">重置</button>
+        <span style="flex:1;"></span>
+        <button class="btn" onclick="doExport()">导出Excel</button>
+        <button class="btn" onclick="doCleanup()">清理半年以上日志</button>
+    </div>
+    
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>操作时间</th>
+                    <th>操作人</th>
+                    <th>模块</th>
+                    <th>操作</th>
+                    <th>内容</th>
+                    <th>IP地址</th>
+                </tr>
+            </thead>
+            <tbody id="logBody">
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="pagination" id="pagination" style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:center;gap:8px;padding:12px 0;"></div>
+
+<script>
+    var currentPage = 1;
+    var totalPages = 1;
+    var totalRecords = 0;
+    var pageSize = 20;
+    
+    $(function() {
+        RB.checkLogin(function() {
+            loadModules();
+            search();
+        });
+        
+        $('#module').on('change', function() {
+            loadActions($(this).val());
+        });
+    });
+    
+    function loadModules() {
+        RB.post('/api/op-log', { op: 'listModules' }).done(function(r) {
+            var html = '<option value="">全部模块</option>';
+            if (r.code === 0 && r.data) {
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i].module + '">' + r.data[i].module + '</option>';
+                }
+            }
+            $('#module').html(html);
+        });
+    }
+    
+    function loadActions(module) {
+        RB.post('/api/op-log', { op: 'listActions', module: module }).done(function(r) {
+            var html = '<option value="">全部操作</option>';
+            if (r.code === 0 && r.data) {
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i].action + '">' + r.data[i].action + '</option>';
+                }
+            }
+            $('#action').html(html);
+        });
+    }
+    
+    function search() {
+        currentPage = 1;
+        loadLogs();
+    }
+    
+    function loadLogs() {
+        var params = {
+            op: 'list',
+            keyword: $('#keyword').val(),
+            startTime: $('#startTime').val(),
+            endTime: $('#endTime').val(),
+            module: $('#module').val(),
+            action: $('#action').val(),
+            page: currentPage,
+            pageSize: pageSize
+        };
+        RB.post('/api/op-log', params).done(function(r) {
+            if (r.code === 0) {
+                renderLogs(r.data.list || r.data);
+                totalRecords = r.data.total || 0;
+                totalPages = r.data.totalPages || 1;
+                pageSize = r.data.pageSize || 20;
+                renderPagination();
+            }
+        });
+    }
+    
+    function renderLogs(logs) {
+        if (!Array.isArray(logs)) {
+            logs = [];
+        }
+        var html = '';
+        for (var i = 0; i < logs.length; i++) {
+            var log = logs[i];
+            var opTime = log.opTime ? log.opTime.replace('T', ' ') : '';
+            html += '<tr>' +
+                '<td>' + opTime + '</td>' +
+                '<td>' + (log.loginName || '') + '</td>' +
+                '<td>' + (log.module || '') + '</td>' +
+                '<td>' + (log.action || '') + '</td>' +
+                '<td style="max-width:400px;word-break:break-all;">' + (log.content || '') + '</td>' +
+                '<td>' + (log.ip || '') + '</td>' +
+                '</tr>';
+        }
+        $('#logBody').html(html || '<tr><td colspan="6" style="text-align:center;color:#999;padding:24px;">暂无日志</td></tr>');
+    }
+    
+    function renderPagination() {
+        var html = '<span style="margin-right:12px;">共 ' + totalRecords + ' 条，每页 ' + pageSize + ' 条</span>';
+        
+        html += '<button class="btn btn-sm" onclick="goPage(1)" ' + (currentPage <= 1 ? 'disabled' : '') + '>首页</button>';
+        html += '<button class="btn btn-sm" onclick="goPage(currentPage - 1)" ' + (currentPage <= 1 ? 'disabled' : '') + '>上一页</button>';
+        
+        // 页码输入跳转
+        html += '<span style="margin:0 4px;">第 ' + currentPage + ' / ' + totalPages + ' 页</span>';
+        html += '<input type="text" id="jumpPage" placeholder="页码" onkeydown="if(event.keyCode===13)jumpToPage()" style="width:50px;padding:4px;text-align:center;border:1px solid #ddd;border-radius:4px;">';
+        html += '<button class="btn btn-sm" onclick="jumpToPage()">跳转</button>';
+        
+        html += '<button class="btn btn-sm" onclick="goPage(currentPage + 1)" ' + (currentPage >= totalPages ? 'disabled' : '') + '>下一页</button>';
+        html += '<button class="btn btn-sm" onclick="goPage(totalPages)" ' + (currentPage >= totalPages ? 'disabled' : '') + '>末页</button>';
+        
+        // 每页条数选择
+        html += '<span style="margin-left:16px;">每页:</span>';
+        html += '<select id="pageSizeSelect" onchange="changePageSize(this.value)" style="padding:4px;border:1px solid #ddd;border-radius:4px;">';
+        html += '<option value="10"' + (pageSize === 10 ? ' selected' : '') + '>10</option>';
+        html += '<option value="20"' + (pageSize === 20 ? ' selected' : '') + '>20</option>';
+        html += '<option value="50"' + (pageSize === 50 ? ' selected' : '') + '>50</option>';
+        html += '<option value="100"' + (pageSize === 100 ? ' selected' : '') + '>100</option>';
+        html += '</select>';
+        
+        $('#pagination').html(html);
+    }
+    
+    function goPage(page) {
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        currentPage = page;
+        loadLogs();
+    }
+    
+    function jumpToPage() {
+        var page = parseInt($('#jumpPage').val());
+        if (page && page > 0) {
+            goPage(page);
+        }
+    }
+    
+    function changePageSize(size) {
+        pageSize = parseInt(size);
+        currentPage = 1;
+        loadLogs();
+    }
+    
+    function reset() {
+        $('#keyword').val('');
+        $('#startTime').val('');
+        $('#endTime').val('');
+        $('#module').val('');
+        $('#action').html('<option value="">全部操作</option>');
+        search();
+    }
+    
+    function doExport() {
+        var params = {
+            op: 'export',
+            keyword: $('#keyword').val(),
+            startTime: $('#startTime').val(),
+            endTime: $('#endTime').val(),
+            module: $('#module').val(),
+            action: $('#action').val()
+        };
+        // 使用表单提交方式下载文件
+        var form = $('<form method="POST" style="display:none;"></form>');
+        form.attr('action', './api/op-log');
+        for (var key in params) {
+            if (params[key]) {
+                form.append('<input type="hidden" name="' + key + '" value="' + params[key] + '">');
+            }
+        }
+        $('body').append(form);
+        form.submit();
+        form.remove();
+    }
+    
+    function doCleanup() {
+        if (!confirm('确定要清理半年以上的操作日志吗？此操作不可恢复！')) {
+            return;
+        }
+        RB.post('/api/op-log', { op: 'cleanup' }).done(function(r) {
+            if (r.code === 0) {
+                RB.toast('已清理 ' + r.data + ' 条日志', 'success');
+                search();
+            } else {
+                RB.toast(r.msg || '清理失败', 'error');
+            }
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,3684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API接口文档 - 营销返利项目管理系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+        h1 {
+            color: #409eff;
+            font-size: 28px;
+            margin-bottom: 10px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #409eff;
+        }
+        .subtitle {
+            color: #909399;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #303133;
+            font-size: 20px;
+            margin: 30px 0 15px 0;
+            padding-left: 12px;
+            border-left: 4px solid #409eff;
+        }
+        h3 {
+            color: #606266;
+            font-size: 16px;
+            margin: 25px 0 12px 0;
+        }
+        h4 {
+            color: #409eff;
+            font-size: 14px;
+            margin: 20px 0 10px 0;
+            background: #f5f7fa;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+        p { margin: 12px 0; color: #606266; }
+        ul, ol { margin: 12px 0 12px 25px; color: #606266; }
+        li { margin: 6px 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+        th {
+            background: #409eff;
+            color: #fff;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 500;
+        }
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #ebeef5;
+        }
+        tr:hover { background: #f5f7fa; }
+        pre {
+            background: #2d2d2d;
+            color: #ccc;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: Consolas, "Courier New", monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+            font-family: Consolas, monospace;
+        }
+        .info-box {
+            background: #ecf5ff;
+            border-left: 4px solid #409eff;
+            padding: 12px 16px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .warn-box {
+            background: #fff7e6;
+            border-left: 4px solid #e6a23c;
+            padding: 12px 16px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .success-box {
+            background: #f0f9eb;
+            border-left: 4px solid #67c23a;
+            padding: 12px 16px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .error-box {
+            background: #fef0f0;
+            border-left: 4px solid #f56c6c;
+            padding: 12px 16px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-right: 5px;
+        }
+        .tag-blue { background: #ecf5ff; color: #409eff; }
+        .tag-green { background: #f0f9eb; color: #67c23a; }
+        .tag-yellow { background: #fdf6ec; color: #e6a23c; }
+        .tag-red { background: #fef0f0; color: #f56c6c; }
+        .tag-purple { background: #f4f0ff; color: #9c27b0; }
+        .nav {
+            background: #fff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .nav a {
+            color: #409eff;
+            text-decoration: none;
+            margin: 0 8px;
+            font-size: 13px;
+        }
+        .nav a:hover { text-decoration: underline; }
+        .toc-item {
+            display: inline-block;
+            margin: 4px 0;
+        }
+        .toc-item a {
+            color: #606266;
+            text-decoration: none;
+            padding: 4px 10px;
+            background: #f5f7fa;
+            border-radius: 4px;
+            font-size: 12px;
+            display: inline-block;
+        }
+        .toc-item a:hover {
+            background: #409eff;
+            color: #fff;
+        }
+        .section-divider {
+            border: none;
+            border-top: 2px dashed #e4e7ed;
+            margin: 40px 0;
+        }
+        .method-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .method-post { background: #67c23a; color: #fff; }
+        .method-get { background: #409eff; color: #fff; }
+        .method-delete { background: #f56c6c; color: #fff; }
+        .footer {
+            text-align: center;
+            color: #909399;
+            font-size: 12px;
+            padding: 20px;
+        }
+        .api-endpoint {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #409eff;
+        }
+        .api-endpoint strong {
+            color: #303133;
+            font-size: 14px;
+        }
+        .param-table td:nth-child(2) { width: 120px; }
+        .param-table td:nth-child(3) { width: 100px; }
+        .param-table td:nth-child(4) { color: #909399; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>📘 API接口文档</h1>
+            <p class="subtitle">营销返利项目管理系统 v1.0</p>
+            
+            <div class="info-box">
+                <strong>💡 认证说明：</strong> 
+                系统采用基于Token的认证方式，登录成功后返回token，后续所有API请求需要在请求头中携带token。
+                <br><br>
+                <code style="background:#f5f7fa;padding:5px 10px;border-radius:4px;">X-Token: &lt;登录返回的token值&gt;</code>
+            </div>
+            
+            <h2>📑 目录导航</h2>
+            <div style="margin: 15px 0;">
+                <span class="toc-item"><a href="#auth">1. 认证接口</a></span>
+                <span class="toc-item"><a href="#role">2. 角色管理</a></span>
+                <span class="toc-item"><a href="#user">3. 用户管理</a></span>
+                <span class="toc-item"><a href="#project">4. 项目管理</a></span>
+                <span class="toc-item"><a href="#upstream">5. 上游协议</a></span>
+                <span class="toc-item"><a href="#downstream">6. 下游协议</a></span>
+                <span class="toc-item"><a href="#upstream-flow">7. 上游流向</a></span>
+                <span class="toc-item"><a href="#downstream-flow">8. 下游流向</a></span>
+                <span class="toc-item"><a href="#expense">9. 费用投入</a></span>
+                <span class="toc-item"><a href="#labor">10. 人工投入</a></span>
+                <span class="toc-item"><a href="#receivable">11. 应收管理</a></span>
+                <span class="toc-item"><a href="#payable">12. 应付管理</a></span>
+                <span class="toc-item"><a href="#received">13. 实收管理</a></span>
+                <span class="toc-item"><a href="#paid">14. 实付管理</a></span>
+                <span class="toc-item"><a href="#overview">15. 项目概览</a></span>
+                <span class="toc-item"><a href="#balance">16. 项目平衡表</a></span>
+            </div>
+        </div>
+
+        <!-- ==================== 1. 认证接口 ==================== -->
+        <div class="card" id="auth">
+            <h2>1. 认证接口 /api/auth</h2>
+            <p>提供用户登录、退出、当前用户获取、密码修改等功能。</p>
+            
+            <!-- 1.1 登录 -->
+            <h3>1.1 用户登录</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/auth?op=login</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>loginName</td><td>String</td><td>是</td><td>登录用户名</td></tr>
+                <tr><td>password</td><td>String</td><td>是</td><td>登录密码</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "loginName": "admin",
+  "password": "123456"
+}</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>token</td><td>String</td><td>访问令牌，后续请求需在请求头中携带</td></tr>
+                <tr><td>user.id</td><td>Long</td><td>用户ID</td></tr>
+                <tr><td>user.name</td><td>String</td><td>用户姓名</td></tr>
+                <tr><td>user.loginName</td><td>String</td><td>登录用户名</td></tr>
+                <tr><td>user.isAdmin</td><td>Integer</td><td>是否管理员(1=是,0=否)</td></tr>
+                <tr><td>user.permCodes</td><td>Array</td><td>权限码数组</td></tr>
+                <tr><td>user.roleCodes</td><td>Array</td><td>角色代码数组</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiJ9...",
+    "user": {
+      "id": 1,
+      "name": "系统管理员",
+      "loginName": "admin",
+      "isAdmin": 1,
+      "permCodes": [],
+      "roleCodes": []
+    }
+  }
+}</pre>
+            <div class="success-box">
+                <strong>提示：</strong> 登录成功后，请将返回的token值放入后续所有请求的Header中：<code>X-Token: &lt;token值&gt;</code>
+            </div>
+
+            <!-- 1.2 退出登录 -->
+            <h3>1.2 退出登录</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/auth?op=logout</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td colspan="4" style="text-align:center;color:#909399;">无需参数，需要登录状态</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 1.3 获取当前用户 -->
+            <h3>1.3 获取当前用户</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/auth?op=current</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td colspan="4" style="text-align:center;color:#909399;">无需参数，需要登录状态</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 1,
+    "name": "系统管理员",
+    "loginName": "admin",
+    "isAdmin": 1,
+    "permCodes": [],
+    "roleCodes": []
+  }
+}</pre>
+
+            <!-- 1.4 修改密码 -->
+            <h3>1.4 修改密码</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/auth?op=changePassword</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>oldPassword</td><td>String</td><td>是</td><td>原密码</td></tr>
+                <tr><td>newPassword</td><td>String</td><td>是</td><td>新密码</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "oldPassword": "123456",
+  "newPassword": "654321"
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+            <div class="error-box">
+                <strong>错误码：</strong> 若原密码错误返回 <code>{"code": 500, "msg": "原密码错误"}</code>
+            </div>
+
+            <!-- 1.5 获取部门列表 -->
+            <h3>1.5 获取部门列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/auth?op=departments</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td colspan="4" style="text-align:center;color:#909399;">无需参数，需要登录状态</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {"id": 1, "deptName": "销售部"},
+    {"id": 2, "deptName": "市场部"}
+  ]
+}</pre>
+
+            <!-- 1.6 获取公司列表 -->
+            <h3>1.6 获取公司列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/auth?op=companies</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td colspan="4" style="text-align:center;color:#909399;">无需参数，需要登录状态</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {"id": 1, "companyName": "总公司"},
+    {"id": 2, "companyName": "分公司A"}
+  ]
+}</pre>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 2. 角色管理 ==================== -->
+        <div class="card" id="role">
+            <h2>2. 角色管理 /api/role</h2>
+            <div class="warn-box">
+                <strong>⚠️ 权限要求：</strong> 仅限管理员(admin用户)访问
+            </div>
+            <p>管理系统角色，包括角色的增删改查和权限分配。</p>
+
+            <!-- 2.1 角色列表 -->
+            <h3>2.1 角色列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/role?op=list</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td colspan="4" style="text-align:center;color:#909399;">无需参数</td></tr>
+            </table>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>[].id</td><td>Long</td><td>角色ID</td></tr>
+                <tr><td>[].roleCode</td><td>String</td><td>角色代码</td></tr>
+                <tr><td>[].roleName</td><td>String</td><td>角色名称</td></tr>
+                <tr><td>[].description</td><td>String</td><td>角色描述</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {"id": 1, "roleCode": "ADMIN", "roleName": "管理员", "description": "系统管理员"},
+    {"id": 2, "roleCode": "USER", "roleName": "普通用户", "description": "普通用户"}
+  ]
+}</pre>
+
+            <!-- 2.2 获取角色详情 -->
+            <h3>2.2 获取角色详情</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/role?op=get</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>角色ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/role?op=get&id=1</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 1,
+    "roleCode": "ADMIN",
+    "roleName": "管理员",
+    "description": "系统管理员"
+  }
+}</pre>
+
+            <!-- 2.3 新增角色 -->
+            <h3>2.3 新增角色</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/role?op=add</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>roleCode</td><td>String</td><td>是</td><td>角色代码，唯一标识</td></tr>
+                <tr><td>roleName</td><td>String</td><td>是</td><td>角色名称</td></tr>
+                <tr><td>description</td><td>String</td><td>否</td><td>角色描述</td></tr>
+                <tr><td>permIds</td><td>String</td><td>否</td><td>权限ID列表，多个用逗号分隔，如"1,2,3"</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "roleCode": "PROJECT_MANAGER",
+  "roleName": "项目经理",
+  "description": "负责项目管理",
+  "permIds": "1,2,3"
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": 1  // 返回新增的角色ID
+}</pre>
+
+            <!-- 2.4 更新角色 -->
+            <h3>2.4 更新角色</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/role?op=update</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>角色ID</td></tr>
+                <tr><td>roleCode</td><td>String</td><td>是</td><td>角色代码</td></tr>
+                <tr><td>roleName</td><td>String</td><td>是</td><td>角色名称</td></tr>
+                <tr><td>description</td><td>String</td><td>否</td><td>角色描述</td></tr>
+                <tr><td>permIds</td><td>String</td><td>否</td><td>权限ID列表，多个用逗号分隔</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "id": 1,
+  "roleCode": "ADMIN",
+  "roleName": "超级管理员",
+  "description": "系统最高权限",
+  "permIds": "1,2,3,4,5"
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 2.5 删除角色 -->
+            <h3>2.5 删除角色</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/role?op=delete</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>角色ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/role?op=delete&id=5</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 2.6 获取角色权限 -->
+            <h3>2.6 获取角色权限</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/role?op=getPermissions</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>roleId</td><td>Long</td><td>是</td><td>角色ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/role?op=getPermissions&roleId=1</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>allPerms</td><td>Array</td><td>所有权限列表</td></tr>
+                <tr><td>rolePerms</td><td>Array</td><td>该角色已有的权限ID列表</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "allPerms": [
+      {"id": 1, "permCode": "user:view", "permName": "查看用户"},
+      {"id": 2, "permCode": "user:edit", "permName": "编辑用户"}
+    ],
+    "rolePerms": [1, 2]
+  }
+}</pre>
+
+            <!-- 2.7 更新角色权限 -->
+            <h3>2.7 更新角色权限</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/role?op=updatePermissions</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>roleId</td><td>Long</td><td>是</td><td>角色ID</td></tr>
+                <tr><td>permIds</td><td>String</td><td>是</td><td>权限ID列表，多个用逗号分隔</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "roleId": 1,
+  "permIds": "1,2,3,4,5"
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 3. 用户管理 ==================== -->
+        <div class="card" id="user">
+            <h2>3. 用户管理 /api/user</h2>
+            <p>管理系统用户，包括用户的增删改查等功能。</p>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>user:view</code> - 查看用户列表和详情</li>
+                    <li><code>user:edit</code> - 新增、编辑、删除用户</li>
+                </ul>
+            </div>
+
+            <!-- 3.1 分页查询用户 -->
+            <h3>3.1 分页查询用户</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/user?op=page</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>keyword</td><td>String</td><td>否</td><td>搜索关键词（匹配用户名、姓名）</td></tr>
+                <tr><td>page</td><td>Integer</td><td>否</td><td>页码，默认1</td></tr>
+                <tr><td>size</td><td>Integer</td><td>否</td><td>每页条数，默认20，最大100</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/user?op=page&keyword=admin&page=1&size=20</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>page</td><td>Integer</td><td>当前页码</td></tr>
+                <tr><td>size</td><td>Integer</td><td>每页条数</td></tr>
+                <tr><td>total</td><td>Long</td><td>总记录数</td></tr>
+                <tr><td>totalPages</td><td>Integer</td><td>总页数</td></tr>
+                <tr><td>rows</td><td>Array</td><td>用户数据列表</td></tr>
+                <tr><td>rows[].id</td><td>Long</td><td>用户ID</td></tr>
+                <tr><td>rows[].workNo</td><td>String</td><td>工号</td></tr>
+                <tr><td>rows[].name</td><td>String</td><td>姓名</td></tr>
+                <tr><td>rows[].loginName</td><td>String</td><td>登录用户名</td></tr>
+                <tr><td>rows[].phone</td><td>String</td><td>手机号</td></tr>
+                <tr><td>rows[].email</td><td>String</td><td>邮箱</td></tr>
+                <tr><td>rows[].status</td><td>Integer</td><td>状态(1=正常,0=停用)</td></tr>
+                <tr><td>rows[].roleId</td><td>Long</td><td>角色ID</td></tr>
+                <tr><td>rows[].roleName</td><td>String</td><td>角色名称</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "size": 20,
+    "total": 50,
+    "totalPages": 3,
+    "rows": [
+      {
+        "id": 1,
+        "workNo": "A001",
+        "name": "系统管理员",
+        "loginName": "admin",
+        "phone": "13800138000",
+        "email": "admin@example.com",
+        "status": 1,
+        "roleId": 1,
+        "roleName": "管理员"
+      }
+    ]
+  }
+}</pre>
+
+            <!-- 3.2 获取单个用户 -->
+            <h3>3.2 获取单个用户</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/user?op=get</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>用户ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/user?op=get&id=1</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 1,
+    "workNo": "A001",
+    "name": "系统管理员",
+    "loginName": "admin",
+    "password": "123456",
+    "phone": "13800138000",
+    "email": "admin@example.com",
+    "status": 1,
+    "roleId": 1,
+    "roleName": "管理员",
+    "deptId": 1,
+    "deptName": "销售部",
+    "companyId": 1,
+    "companyName": "总公司"
+  }
+}</pre>
+
+            <!-- 3.3 新增用户 -->
+            <h3>3.3 新增用户</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/user?op=add</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>workNo</td><td>String</td><td>否</td><td>工号</td></tr>
+                <tr><td>name</td><td>String</td><td>是</td><td>姓名</td></tr>
+                <tr><td>loginName</td><td>String</td><td>是</td><td>登录用户名，唯一</td></tr>
+                <tr><td>password</td><td>String</td><td>否</td><td>密码，默认123456</td></tr>
+                <tr><td>phone</td><td>String</td><td>否</td><td>手机号</td></tr>
+                <tr><td>email</td><td>String</td><td>否</td><td>邮箱</td></tr>
+                <tr><td>deptId</td><td>Long</td><td>否</td><td>部门ID</td></tr>
+                <tr><td>companyId</td><td>Long</td><td>否</td><td>公司ID</td></tr>
+                <tr><td>roleId</td><td>Long</td><td>否</td><td>角色ID</td></tr>
+                <tr><td>status</td><td>Integer</td><td>否</td><td>状态，默认1(正常)</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "workNo": "A002",
+  "name": "张三",
+  "loginName": "zhangsan",
+  "password": "123456",
+  "phone": "13800138001",
+  "email": "zhangsan@example.com",
+  "deptId": 1,
+  "companyId": 1,
+  "roleId": 2,
+  "status": 1
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"id": 5}
+}</pre>
+
+            <!-- 3.4 更新用户 -->
+            <h3>3.4 更新用户</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/user?op=update</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>用户ID</td></tr>
+                <tr><td>workNo</td><td>String</td><td>否</td><td>工号</td></tr>
+                <tr><td>name</td><td>String</td><td>否</td><td>姓名</td></tr>
+                <tr><td>loginName</td><td>String</td><td>否</td><td>登录用户名</td></tr>
+                <tr><td>phone</td><td>String</td><td>否</td><td>手机号</td></tr>
+                <tr><td>email</td><td>String</td><td>否</td><td>邮箱</td></tr>
+                <tr><td>deptId</td><td>Long</td><td>否</td><td>部门ID</td></tr>
+                <tr><td>companyId</td><td>Long</td><td>否</td><td>公司ID</td></tr>
+                <tr><td>roleId</td><td>Long</td><td>否</td><td>角色ID</td></tr>
+                <tr><td>status</td><td>Integer</td><td>否</td><td>状态(1=正常,0=停用)</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "id": 5,
+  "name": "张三（修改）",
+  "phone": "13900139001",
+  "roleId": 3
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 3.5 删除用户 -->
+            <h3>3.5 删除用户</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/user?op=delete</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>用户ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/user?op=delete&id=5</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 4. 项目管理 ==================== -->
+        <div class="card" id="project">
+            <h2>4. 项目管理 /api/project</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>project:view</code> - 查看项目列表、详情</li>
+                    <li><code>project:edit</code> - 新增、编辑、删除项目</li>
+                    <li><code>project:import</code> - 从BPM引入项目</li>
+                </ul>
+            </div>
+
+            <!-- 4.1 分页查询项目 -->
+            <h3>4.1 分页查询项目</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/project?op=page</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>keyword</td><td>String</td><td>否</td><td>搜索关键词（匹配项目名称）</td></tr>
+                <tr><td>status</td><td>String</td><td>否</td><td>项目状态（如：NEW,ACTIVE,CLOSED）</td></tr>
+                <tr><td>coYear</td><td>String</td><td>否</td><td>合作年度（如：2024）</td></tr>
+                <tr><td>page</td><td>Integer</td><td>否</td><td>页码，默认1</td></tr>
+                <tr><td>size</td><td>Integer</td><td>否</td><td>每页条数，默认20，最大100</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/project?op=page&coYear=2024&status=ACTIVE&page=1&size=20</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>page</td><td>Integer</td><td>当前页码</td></tr>
+                <tr><td>size</td><td>Integer</td><td>每页条数</td></tr>
+                <tr><td>total</td><td>Long</td><td>总记录数</td></tr>
+                <tr><td>totalPages</td><td>Integer</td><td>总页数</td></tr>
+                <tr><td>rows</td><td>Array</td><td>项目数据列表</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "size": 20,
+    "total": 10,
+    "totalPages": 1,
+    "rows": [
+      {
+        "id": 1,
+        "projectCode": "PRJ2024001",
+        "projectName": "某品牌营销返利项目",
+        "brand": "品牌A",
+        "coYear": "2024",
+        "status": "ACTIVE",
+        "targetScale": 1000000.00,
+        "expectedRebate": 50000.00
+      }
+    ]
+  }
+}</pre>
+
+            <!-- 4.2 项目列表 -->
+            <h3>4.2 项目列表（全部）</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/project?op=list</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td colspan="4" style="text-align:center;color:#909399;">无需参数，返回所有项目</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {"id": 1, "projectName": "项目A"},
+    {"id": 2, "projectName": "项目B"}
+  ]
+}</pre>
+
+            <!-- 4.3 年度列表 -->
+            <h3>4.3 合作年度列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/project?op=listYears</strong>
+            </div>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": ["2024", "2023", "2022"]
+}</pre>
+
+            <!-- 4.4 按年度查询项目 -->
+            <h3>4.4 按年度查询项目</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/project?op=listByYear</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>coYear</td><td>String</td><td>是</td><td>合作年度（如：2024）</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/project?op=listByYear&coYear=2024</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {"id": 1, "projectName": "2024年返利项目"}
+  ]
+}</pre>
+
+            <!-- 4.5 项目详情 -->
+            <h3>4.5 项目详情</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/project?op=get</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/project?op=get&id=1</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>项目ID</td></tr>
+                <tr><td>projectCode</td><td>String</td><td>项目编号</td></tr>
+                <tr><td>projectName</td><td>String</td><td>项目名称</td></tr>
+                <tr><td>brand</td><td>String</td><td>品牌</td></tr>
+                <tr><td>coProduct</td><td>String</td><td>合作产品</td></tr>
+                <tr><td>coMode</td><td>String</td><td>合作模式</td></tr>
+                <tr><td>coYear</td><td>String</td><td>合作年度</td></tr>
+                <tr><td>periodStartDate</td><td>Date</td><td>合作周期开始</td></tr>
+                <tr><td>periodEndDate</td><td>Date</td><td>合作周期结束</td></tr>
+                <tr><td>region</td><td>String</td><td>区域</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>目标规模</td></tr>
+                <tr><td>expectedRebate</td><td>BigDecimal</td><td>预计返利</td></tr>
+                <tr><td>expectedCost</td><td>BigDecimal</td><td>预计成本</td></tr>
+                <tr><td>status</td><td>String</td><td>状态</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 1,
+    "projectCode": "PRJ2024001",
+    "projectName": "某品牌营销返利项目",
+    "brand": "品牌A",
+    "coProduct": "产品X",
+    "coMode": "年度合作",
+    "coYear": "2024",
+    "periodStartDate": "2024-01-01",
+    "periodEndDate": "2024-12-31",
+    "region": "全国",
+    "targetScale": 1000000.00,
+    "expectedRebate": 50000.00,
+    "expectedCost": 10000.00,
+    "status": "ACTIVE"
+  }
+}</pre>
+
+            <!-- 4.6 新增项目 -->
+            <h3>4.6 新增项目</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/project?op=add</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectCode</td><td>String</td><td>否</td><td>项目编号</td></tr>
+                <tr><td>projectName</td><td>String</td><td>是</td><td>项目名称</td></tr>
+                <tr><td>brand</td><td>String</td><td>否</td><td>品牌</td></tr>
+                <tr><td>coProduct</td><td>String</td><td>否</td><td>合作产品</td></tr>
+                <tr><td>coMode</td><td>String</td><td>否</td><td>合作模式</td></tr>
+                <tr><td>coYear</td><td>String</td><td>是</td><td>合作年度</td></tr>
+                <tr><td>periodStartDate</td><td>String</td><td>否</td><td>合作周期开始(yyyy-MM-dd)</td></tr>
+                <tr><td>periodEndDate</td><td>String</td><td>否</td><td>合作周期结束(yyyy-MM-dd)</td></tr>
+                <tr><td>region</td><td>String</td><td>否</td><td>区域</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>否</td><td>目标规模</td></tr>
+                <tr><td>expectedRebate</td><td>BigDecimal</td><td>否</td><td>预计返利</td></tr>
+                <tr><td>expectedCost</td><td>BigDecimal</td><td>否</td><td>预计成本</td></tr>
+                <tr><td>description</td><td>String</td><td>否</td><td>项目描述</td></tr>
+                <tr><td>ownerUserId</td><td>Long</td><td>否</td><td>负责人用户ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "projectCode": "PRJ2024002",
+  "projectName": "2024年新品推广项目",
+  "brand": "品牌B",
+  "coProduct": "新品Y",
+  "coMode": "季度合作",
+  "coYear": "2024",
+  "periodStartDate": "2024-04-01",
+  "periodEndDate": "2024-06-30",
+  "region": "华东",
+  "targetScale": 500000.00,
+  "expectedRebate": 25000.00,
+  "expectedCost": 5000.00,
+  "ownerUserId": 2
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"id": 6}
+}</pre>
+
+            <!-- 4.7 更新项目 -->
+            <h3>4.7 更新项目</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/project?op=update</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>projectCode</td><td>String</td><td>否</td><td>项目编号</td></tr>
+                <tr><td>projectName</td><td>String</td><td>否</td><td>项目名称</td></tr>
+                <tr><td>brand</td><td>String</td><td>否</td><td>品牌</td></tr>
+                <tr><td>coProduct</td><td>String</td><td>否</td><td>合作产品</td></tr>
+                <tr><td>coMode</td><td>String</td><td>否</td><td>合作模式</td></tr>
+                <tr><td>coYear</td><td>String</td><td>否</td><td>合作年度</td></tr>
+                <tr><td>periodStartDate</td><td>String</td><td>否</td><td>合作周期开始</td></tr>
+                <tr><td>periodEndDate</td><td>String</td><td>否</td><td>合作周期结束</td></tr>
+                <tr><td>region</td><td>String</td><td>否</td><td>区域</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>否</td><td>目标规模</td></tr>
+                <tr><td>expectedRebate</td><td>BigDecimal</td><td>否</td><td>预计返利</td></tr>
+                <tr><td>expectedCost</td><td>BigDecimal</td><td>否</td><td>预计成本</td></tr>
+                <tr><td>status</td><td>String</td><td>否</td><td>状态</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "id": 6,
+  "projectName": "2024年新品推广项目（修订）",
+  "expectedRebate": 30000.00
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 4.8 删除项目 -->
+            <h3>4.8 删除项目</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/project?op=delete</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/project?op=delete&id=6</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 4.9 从BPM引入项目 -->
+            <h3>4.9 从BPM引入项目</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/project?op=importFromBpm</strong>
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 权限要求：</strong> 需要 <code>project:import</code> 权限
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td colspan="4" style="text-align:center;color:#909399;">无需参数</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"synced": 5}  // 引入了5个项目
+}</pre>
+
+            <!-- 4.10 检查上年项目 -->
+            <h3>4.10 检查上年同名项目</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/project?op=checkPrevYear</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectName</td><td>String</td><td>是</td><td>项目名称</td></tr>
+                <tr><td>coYear</td><td>String</td><td>是</td><td>当前合作年度</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/project?op=checkPrevYear&projectName=某品牌营销返利项目&coYear=2024</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {"id": 1, "projectName": "某品牌营销返利项目", "coYear": "2023"}
+  ]
+}</pre>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 5. 上游协议 ==================== -->
+        <div class="card" id="upstream">
+            <h2>5. 上游协议 /api/upstream-agreement</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>agreement:view</code> - 查看协议列表、详情</li>
+                    <li><code>agreement:edit</code> - 新增、编辑、删除协议，上传附件，管理考核组</li>
+                    <li><code>agreement:import</code> - 从BPM引入协议</li>
+                </ul>
+            </div>
+
+            <!-- 5.1 协议列表 -->
+            <h3>5.1 协议列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-agreement?op=list</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>showHistory</td><td>String</td><td>否</td><td>是否显示历史版本，"0"表示显示所有版本</td></tr>
+                <tr><td>page</td><td>Integer</td><td>否</td><td>页码，默认1</td></tr>
+                <tr><td>pageSize</td><td>Integer</td><td>否</td><td>每页条数，默认20</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/upstream-agreement?op=list&projectId=1&page=1&pageSize=20</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>list</td><td>Array</td><td>协议列表</td></tr>
+                <tr><td>total</td><td>Integer</td><td>总记录数</td></tr>
+                <tr><td>totalPages</td><td>Integer</td><td>总页数</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "agreementName": "上游供应商协议V1",
+        "agreementNo": "UA2024001",
+        "version": 1,
+        "isCurrent": 1,
+        "supplier": "供应商A",
+        "targetScale": 1000000.00,
+        "calcMethod": "达成率",
+        "status": "ACTIVE"
+      }
+    ],
+    "total": 5,
+    "totalPages": 1,
+    "page": 1,
+    "pageSize": 20
+  }
+}</pre>
+
+            <!-- 5.2 所有当前协议 -->
+            <h3>5.2 所有当前协议</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-agreement?op=listAll</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td colspan="4" style="text-align:center;color:#909399;">无需参数，返回所有项目的当前版本协议</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {"id": 1, "agreementName": "供应商A协议", "projectId": 1},
+    {"id": 2, "agreementName": "供应商B协议", "projectId": 1}
+  ]
+}</pre>
+
+            <!-- 5.3 协议详情 -->
+            <h3>5.3 协议详情</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-agreement?op=get</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/upstream-agreement?op=get&id=1</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>协议ID</td></tr>
+                <tr><td>projectId</td><td>Long</td><td>项目ID</td></tr>
+                <tr><td>agreementName</td><td>String</td><td>协议名称</td></tr>
+                <tr><td>agreementNo</td><td>String</td><td>协议编号</td></tr>
+                <tr><td>supplier</td><td>String</td><td>供应商名称</td></tr>
+                <tr><td>periodStartDate</td><td>Date</td><td>协议周期开始</td></tr>
+                <tr><td>periodEndDate</td><td>Date</td><td>协议周期结束</td></tr>
+                <tr><td>region</td><td>String</td><td>区域</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>目标规模</td></tr>
+                <tr><td>calcMethod</td><td>String</td><td>计算方式</td></tr>
+                <tr><td>teamTargets</td><td>Array</td><td>团队目标列表</td></tr>
+                <tr><td>attachFiles</td><td>Array</td><td>附件列表</td></tr>
+                <tr><td>remarkFiles</td><td>Array</td><td>备注文件列表</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 1,
+    "projectId": 1,
+    "agreementName": "上游供应商协议",
+    "agreementNo": "UA2024001",
+    "supplier": "供应商A",
+    "periodStartDate": "2024-01-01",
+    "periodEndDate": "2024-12-31",
+    "region": "全国",
+    "targetScale": 1000000.00,
+    "calcMethod": "达成率",
+    "teamTargets": [
+      {"id": 1, "teamName": "华东区", "target": 500000.00}
+    ],
+    "attachFiles": [
+      {"id": 1, "fileName": "协议扫描件.pdf", "downloadUrl": "/api/file/download?path=..."}
+    ]
+  }
+}</pre>
+
+            <!-- 5.4 新增协议 -->
+            <h3>5.4 新增协议</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-agreement?op=add</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>agreementName</td><td>String</td><td>是</td><td>协议名称</td></tr>
+                <tr><td>agreementNo</td><td>String</td><td>否</td><td>协议编号</td></tr>
+                <tr><td>supplier</td><td>String</td><td>否</td><td>供应商名称</td></tr>
+                <tr><td>periodStartDate</td><td>String</td><td>否</td><td>协议周期开始</td></tr>
+                <tr><td>periodEndDate</td><td>String</td><td>否</td><td>协议周期结束</td></tr>
+                <tr><td>region</td><td>String</td><td>否</td><td>区域</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>否</td><td>目标规模</td></tr>
+                <tr><td>calcMethod</td><td>String</td><td>否</td><td>计算方式</td></tr>
+                <tr><td>teamTargets</td><td>JSON</td><td>否</td><td>团队目标，JSON数组格式</td></tr>
+                <tr><td>rebateRules</td><td>JSON</td><td>否</td><td>返利规则，JSON数组格式</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "projectId": 1,
+  "agreementName": "2024年供应商协议",
+  "agreementNo": "UA2024002",
+  "supplier": "供应商B",
+  "periodStartDate": "2024-01-01",
+  "periodEndDate": "2024-12-31",
+  "region": "华东",
+  "targetScale": 800000.00,
+  "calcMethod": "达成率",
+  "teamTargets": [
+    {"teamName": "华东区", "target": 400000},
+    {"teamName": "华南区", "target": 400000}
+  ],
+  "rebateRules": [
+    {"stage": "阶段1", "calcType": "PERSENT", "minThreshold": 0, "maxThreshold": 80, "rebateRatio": 0},
+    {"stage": "阶段1", "calcType": "PERSENT", "minThreshold": 80, "maxThreshold": 100, "rebateRatio": 3},
+    {"stage": "阶段1", "calcType": "PERSENT", "minThreshold": 100, "maxThreshold": 999, "rebateRatio": 5}
+  ]
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"id": 10}
+}</pre>
+
+            <!-- 5.5 更新协议 -->
+            <h3>5.5 更新协议</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-agreement?op=update</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+                <tr><td>agreementName</td><td>String</td><td>否</td><td>协议名称</td></tr>
+                <tr><td>supplier</td><td>String</td><td>否</td><td>供应商名称</td></tr>
+                <tr><td>periodStartDate</td><td>String</td><td>否</td><td>协议周期开始</td></tr>
+                <tr><td>periodEndDate</td><td>String</td><td>否</td><td>协议周期结束</td></tr>
+                <tr><td>region</td><td>String</td><td>否</td><td>区域</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>否</td><td>目标规模</td></tr>
+                <tr><td>calcMethod</td><td>String</td><td>否</td><td>计算方式</td></tr>
+                <tr><td>teamTargets</td><td>JSON</td><td>否</td><td>团队目标</td></tr>
+                <tr><td>rebateRules</td><td>JSON</td><td>否</td><td>返利规则</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "id": 10,
+  "agreementName": "2024年供应商协议（修订版）",
+  "targetScale": 900000.00
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 5.6 删除协议 -->
+            <h3>5.6 删除协议</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-agreement?op=delete</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/upstream-agreement?op=delete&id=10</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 5.7 上传附件 -->
+            <h3>5.7 上传附件</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-agreement?op=uploadAttach</strong>
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 注意：</strong> 请求Content-Type需为<code>multipart/form-data</code>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+                <tr><td>attachType</td><td>String</td><td>是</td><td>附件类型：MAIN(主协议)、SUPP(补充协议)，其他值作为备注文件</td></tr>
+                <tr><td>file</td><td>File</td><td>是</td><td>上传的文件</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 5,
+    "fileName": "协议附件.pdf",
+    "fileUrl": "/api/file/5",
+    "fileSize": 102400
+  }
+}</pre>
+
+            <!-- 5.8 删除附件 -->
+            <h3>5.8 删除附件</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-agreement?op=deleteAttach</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>附件ID</td></tr>
+                <tr><td>type</td><td>String</td><td>否</td><td>附件类型，REMARK表示备注文件</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/upstream-agreement?op=deleteAttach&id=5&type=MAIN</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 5.9 附件列表 -->
+            <h3>5.9 附件列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-agreement?op=listAttachs</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "fileName": "协议.pdf",
+      "filePath": "agreement/upstream/xxx.pdf",
+      "downloadUrl": "/api/file/download?path=agreement/upstream/xxx.pdf",
+      "fileSize": 102400,
+      "attachType": "MAIN"
+    }
+  ]
+}</pre>
+
+            <!-- 5.10 返利规则列表 -->
+            <h3>5.10 返利规则列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-agreement?op=listRebateRules</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "stage": "阶段1",
+      "calcType": "PERSENT",
+      "minThreshold": 0,
+      "maxThreshold": 80,
+      "rebateRatio": 0
+    },
+    {
+      "id": 2,
+      "stage": "阶段1",
+      "calcType": "PERSENT",
+      "minThreshold": 80,
+      "maxThreshold": 100,
+      "rebateRatio": 3
+    }
+  ]
+}</pre>
+
+            <!-- 5.11 考核组列表 -->
+            <h3>5.11 考核组列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-agreement?op=listAssessGroups</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "groupCode": "G01",
+      "groupName": "华东组",
+      "targetScale": 500000.00,
+      "stage1Target": 100000.00
+    }
+  ]
+}</pre>
+
+            <!-- 5.12 考核组详情 -->
+            <h3>5.12 考核组详情</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-agreement?op=getAssessGroup</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>考核组ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 1,
+    "projectId": 1,
+    "groupCode": "G01",
+    "groupName": "华东组",
+    "description": "负责华东区域",
+    "targetScale": 500000.00,
+    "stage1Target": 100000.00,
+    "stage2Target": 150000.00,
+    "stage3Target": 250000.00,
+    "stage4Target": 300000.00
+  }
+}</pre>
+
+            <!-- 5.13 新增考核组 -->
+            <h3>5.13 新增考核组</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-agreement?op=addAssessGroup</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>groupCode</td><td>String</td><td>是</td><td>考核组代码</td></tr>
+                <tr><td>groupName</td><td>String</td><td>是</td><td>考核组名称</td></tr>
+                <tr><td>description</td><td>String</td><td>否</td><td>描述</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>否</td><td>目标规模</td></tr>
+                <tr><td>stage1Target</td><td>BigDecimal</td><td>否</td><td>阶段1目标</td></tr>
+                <tr><td>stage2Target</td><td>BigDecimal</td><td>否</td><td>阶段2目标</td></tr>
+                <tr><td>stage3Target</td><td>BigDecimal</td><td>否</td><td>阶段3目标</td></tr>
+                <tr><td>stage4Target</td><td>BigDecimal</td><td>否</td><td>阶段4目标</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "projectId": 1,
+  "groupCode": "G02",
+  "groupName": "华南组",
+  "description": "负责华南区域",
+  "targetScale": 500000.00,
+  "stage1Target": 100000.00,
+  "stage2Target": 150000.00,
+  "stage3Target": 250000.00,
+  "stage4Target": 300000.00
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"id": 5}
+}</pre>
+
+            <!-- 5.14 更新考核组 -->
+            <h3>5.14 更新考核组</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-agreement?op=updateAssessGroup</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>考核组ID</td></tr>
+                <tr><td>groupCode</td><td>String</td><td>否</td><td>考核组代码</td></tr>
+                <tr><td>groupName</td><td>String</td><td>否</td><td>考核组名称</td></tr>
+                <tr><td>description</td><td>String</td><td>否</td><td>描述</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>否</td><td>目标规模</td></tr>
+                <tr><td>stage1Target</td><td>BigDecimal</td><td>否</td><td>阶段1目标</td></tr>
+                <tr><td>stage2Target</td><td>BigDecimal</td><td>否</td><td>阶段2目标</td></tr>
+                <tr><td>stage3Target</td><td>BigDecimal</td><td>否</td><td>阶段3目标</td></tr>
+                <tr><td>stage4Target</td><td>BigDecimal</td><td>否</td><td>阶段4目标</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "id": 5,
+  "groupName": "华南组（修订）",
+  "targetScale": 600000.00
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 5.15 删除考核组 -->
+            <h3>5.15 删除考核组</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-agreement?op=deleteAssessGroup</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>考核组ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/upstream-agreement?op=deleteAssessGroup&id=5</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 5.16 从BPM引入协议 -->
+            <h3>5.16 从BPM引入协议</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-agreement?op=importFromBpm</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td colspan="4" style="text-align:center;color:#909399;">无需参数</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"synced": 3}
+}</pre>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 6. 下游协议 ==================== -->
+        <div class="card" id="downstream">
+            <h2>6. 下游协议 /api/downstream-agreement</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>agreement:view</code> - 查看协议列表、详情</li>
+                    <li><code>agreement:edit</code> - 新增、编辑、删除协议，上传附件</li>
+                </ul>
+            </div>
+            <p>下游协议基于上游协议创建，针对不同分销商制定返利规则。</p>
+
+            <!-- 6.1 协议列表 -->
+            <h3>6.1 协议列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-agreement?op=list</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>showHistory</td><td>String</td><td>否</td><td>是否显示历史版本，"0"表示显示所有</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/downstream-agreement?op=list&projectId=1</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "agreementName": "分销商A协议",
+      "agreementNo": "DA2024001",
+      "upstreamName": "供应商A",
+      "distributor": "分销商A",
+      "version": 1,
+      "isCurrent": 1,
+      "targetScale": 500000.00
+    }
+  ]
+}</pre>
+
+            <!-- 6.2 协议详情 -->
+            <h3>6.2 协议详情</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-agreement?op=get</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/downstream-agreement?op=get&id=1</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>协议ID</td></tr>
+                <tr><td>projectId</td><td>Long</td><td>项目ID</td></tr>
+                <tr><td>upstreamId</td><td>Long</td><td>上游协议ID</td></tr>
+                <tr><td>upstreamName</td><td>String</td><td>上游供应商名称</td></tr>
+                <tr><td>agreementName</td><td>String</td><td>协议名称</td></tr>
+                <tr><td>agreementNo</td><td>String</td><td>协议编号</td></tr>
+                <tr><td>distributor</td><td>String</td><td>分销商名称</td></tr>
+                <tr><td>distributorType</td><td>String</td><td>分销商类型</td></tr>
+                <tr><td>teamTargets</td><td>Array</td><td>团队目标列表</td></tr>
+                <tr><td>rebateRules</td><td>Array</td><td>返利规则列表</td></tr>
+                <tr><td>attachFiles</td><td>Array</td><td>附件列表</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 1,
+    "projectId": 1,
+    "upstreamId": 1,
+    "upstreamName": "供应商A",
+    "agreementName": "分销商A返利协议",
+    "agreementNo": "DA2024001",
+    "distributor": "分销商A",
+    "distributorType": "一级分销商",
+    "periodStartDate": "2024-01-01",
+    "periodEndDate": "2024-12-31",
+    "targetScale": 500000.00,
+    "calcMethod": "达成率",
+    "teamTargets": [
+      {"teamName": "华东区", "target": 250000.00}
+    ],
+    "rebateRules": [
+      {"stage": "阶段1", "calcType": "PERSENT", "minThreshold": 0, "maxThreshold": 100, "rebateRatio": 2}
+    ],
+    "attachFiles": []
+  }
+}</pre>
+
+            <!-- 6.3 新增协议 -->
+            <h3>6.3 新增协议</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/downstream-agreement?op=add</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>upstreamId</td><td>Long</td><td>是</td><td>上游协议ID</td></tr>
+                <tr><td>agreementName</td><td>String</td><td>是</td><td>协议名称</td></tr>
+                <tr><td>agreementNo</td><td>String</td><td>否</td><td>协议编号</td></tr>
+                <tr><td>upstreamName</td><td>String</td><td>否</td><td>上游供应商名称</td></tr>
+                <tr><td>distributor</td><td>String</td><td>否</td><td>分销商名称</td></tr>
+                <tr><td>distributorType</td><td>String</td><td>否</td><td>分销商类型</td></tr>
+                <tr><td>periodStartDate</td><td>String</td><td>否</td><td>协议周期开始</td></tr>
+                <tr><td>periodEndDate</td><td>String</td><td>否</td><td>协议周期结束</td></tr>
+                <tr><td>region</td><td>String</td><td>否</td><td>区域</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>否</td><td>目标规模</td></tr>
+                <tr><td>calcMethod</td><td>String</td><td>否</td><td>计算方式</td></tr>
+                <tr><td>teamTargets</td><td>JSON</td><td>否</td><td>团队目标，JSON数组</td></tr>
+                <tr><td>rebateRules</td><td>JSON</td><td>否</td><td>返利规则，JSON数组</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "projectId": 1,
+  "upstreamId": 1,
+  "agreementName": "分销商B返利协议",
+  "agreementNo": "DA2024002",
+  "upstreamName": "供应商A",
+  "distributor": "分销商B",
+  "distributorType": "二级分销商",
+  "periodStartDate": "2024-01-01",
+  "periodEndDate": "2024-12-31",
+  "region": "华南",
+  "targetScale": 300000.00,
+  "calcMethod": "达成率",
+  "teamTargets": [
+    {"teamName": "华南区", "target": 300000.00}
+  ],
+  "rebateRules": [
+    {"stage": "阶段1", "calcType": "PERSENT", "minThreshold": 0, "maxThreshold": 100, "rebateRatio": 2.5}
+  ]
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"id": 8}
+}</pre>
+
+            <!-- 6.4 更新协议 -->
+            <h3>6.4 更新协议</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/downstream-agreement?op=update</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+                <tr><td>agreementName</td><td>String</td><td>否</td><td>协议名称</td></tr>
+                <tr><td>distributor</td><td>String</td><td>否</td><td>分销商名称</td></tr>
+                <tr><td>distributorType</td><td>String</td><td>否</td><td>分销商类型</td></tr>
+                <tr><td>periodStartDate</td><td>String</td><td>否</td><td>协议周期开始</td></tr>
+                <tr><td>periodEndDate</td><td>String</td><td>否</td><td>协议周期结束</td></tr>
+                <tr><td>targetScale</td><td>BigDecimal</td><td>否</td><td>目标规模</td></tr>
+                <tr><td>teamTargets</td><td>JSON</td><td>否</td><td>团队目标</td></tr>
+                <tr><td>rebateRules</td><td>JSON</td><td>否</td><td>返利规则</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "id": 8,
+  "agreementName": "分销商B返利协议（修订）",
+  "targetScale": 350000.00
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 6.5 删除协议 -->
+            <h3>6.5 删除协议</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/downstream-agreement?op=delete</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/downstream-agreement?op=delete&id=8</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 6.6 上传附件 -->
+            <h3>6.6 上传附件</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/downstream-agreement?op=uploadAttach</strong>
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 注意：</strong> 请求Content-Type需为<code>multipart/form-data</code>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+                <tr><td>attachType</td><td>String</td><td>是</td><td>附件类型：MAIN/SUPP/其他(备注文件)</td></tr>
+                <tr><td>file</td><td>File</td><td>是</td><td>上传的文件</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 10,
+    "fileName": "分销协议.pdf",
+    "fileUrl": "/api/file/10",
+    "fileSize": 204800
+  }
+}</pre>
+
+            <!-- 6.7 删除附件 -->
+            <h3>6.7 删除附件</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/downstream-agreement?op=deleteAttach</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>附件ID</td></tr>
+                <tr><td>type</td><td>String</td><td>否</td><td>REMARK表示备注文件</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/downstream-agreement?op=deleteAttach&id=10&type=MAIN</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 6.8 附件列表 -->
+            <h3>6.8 附件列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-agreement?op=listAttachs</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 10,
+      "fileName": "分销协议.pdf",
+      "fileUrl": "/api/file/10",
+      "fileSize": 204800,
+      "attachType": "MAIN"
+    }
+  ]
+}</pre>
+
+            <!-- 6.9 返利规则列表 -->
+            <h3>6.9 返利规则列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-agreement?op=listRebateRules</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>协议ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "stage": "阶段1",
+      "calcType": "PERSENT",
+      "minThreshold": 0,
+      "maxThreshold": 100,
+      "rebateRatio": 2.5
+    }
+  ]
+}
+</pre>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 7. 上游流向 ==================== -->
+        <div class="card" id="upstream-flow">
+            <h2>7. 上游流向 /api/upstream-flow</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>flow:view</code> - 查看流向列表、批次、汇总、导出</li>
+                    <li><code>flow:import</code> - 导入流向数据</li>
+                    <li><code>flow:final</code> - 设置/取消终版</li>
+                </ul>
+            </div>
+            <p>管理上游供应商的销售流向数据，包括数据导入、明细查询、批次管理、终版设置等功能。</p>
+
+            <!-- 7.1 批次列表 -->
+            <h3>7.1 批次列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=listBatches</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/upstream-flow?op=listBatches&projectId=1</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>[].id</td><td>Long</td><td>批次ID</td></tr>
+                <tr><td>[].batchNo</td><td>String</td><td>批次号</td></tr>
+                <tr><td>[].importTime</td><td>Date</td><td>导入时间</td></tr>
+                <tr><td>[].recordCount</td><td>Integer</td><td>记录数量</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "batchNo": "BATCH20240101",
+      "importTime": "2024-01-01 10:00:00",
+      "recordCount": 150
+    }
+  ]
+}</pre>
+
+            <!-- 7.2 流向明细 -->
+            <h3>7.2 流向明细</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=listRecords</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>month</td><td>String</td><td>否</td><td>月份，格式YYYYMM</td></tr>
+                <tr><td>batchId</td><td>Long</td><td>否</td><td>批次ID</td></tr>
+                <tr><td>productName</td><td>String</td><td>否</td><td>产品名称（模糊匹配）</td></tr>
+                <tr><td>spec</td><td>String</td><td>否</td><td>规格（模糊匹配）</td></tr>
+                <tr><td>sellerName</td><td>String</td><td>否</td><td>销售方（模糊匹配）</td></tr>
+                <tr><td>buyerName</td><td>String</td><td>否</td><td>采购方（模糊匹配）</td></tr>
+                <tr><td>isValid</td><td>Integer</td><td>否</td><td>是否有效：1=有效，0=无效</td></tr>
+                <tr><td>page</td><td>Integer</td><td>否</td><td>页码，默认1</td></tr>
+                <tr><td>pageSize</td><td>Integer</td><td>否</td><td>每页条数，默认20</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/upstream-flow?op=listRecords&projectId=1&month=202401&page=1&pageSize=20</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>list</td><td>Array</td><td>记录列表</td></tr>
+                <tr><td>total</td><td>Long</td><td>总记录数</td></tr>
+                <tr><td>totalPages</td><td>Integer</td><td>总页数</td></tr>
+                <tr><td>page</td><td>Integer</td><td>当前页</td></tr>
+                <tr><td>pageSize</td><td>Integer</td><td>每页条数</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "monthYyyymm": "202401",
+        "businessDate": "2024-01-15",
+        "productName": "产品A",
+        "spec": "规格1",
+        "sellerName": "供应商A",
+        "sellerCity": "上海",
+        "calcPrice": 100.00,
+        "quantity": 50,
+        "calcAmount": 5000.00,
+        "buyerName": "采购商A",
+        "isValid": 1,
+        "isFinal": 0,
+        "assessGroupName": "华东组"
+      }
+    ],
+    "total": 100,
+    "totalPages": 5,
+    "page": 1,
+    "pageSize": 20
+  }
+}</pre>
+
+            <!-- 7.3 有效ID列表 -->
+            <h3>7.3 有效ID列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=listValidIds</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [1, 2, 3, 5, 8, 13, 21]
+}</pre>
+
+            <!-- 7.4 带过滤的有效ID列表 -->
+            <h3>7.4 带过滤的有效ID列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=listValidIdsWithFilters</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>month</td><td>String</td><td>否</td><td>月份</td></tr>
+                <tr><td>productName</td><td>String</td><td>否</td><td>产品名称</td></tr>
+                <tr><td>spec</td><td>String</td><td>否</td><td>规格</td></tr>
+                <tr><td>sellerName</td><td>String</td><td>否</td><td>销售方</td></tr>
+                <tr><td>buyerName</td><td>String</td><td>否</td><td>采购方</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [1, 5, 8]
+}</pre>
+
+            <!-- 7.5 可分解记录 -->
+            <h3>7.5 可分解记录（分页）</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=listCanSplit</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>month</td><td>String</td><td>否</td><td>月份</td></tr>
+                <tr><td>productName</td><td>String</td><td>否</td><td>产品名称</td></tr>
+                <tr><td>spec</td><td>String</td><td>否</td><td>规格</td></tr>
+                <tr><td>sellerName</td><td>String</td><td>否</td><td>销售方</td></tr>
+                <tr><td>buyerName</td><td>String</td><td>否</td><td>采购方</td></tr>
+                <tr><td>page</td><td>Integer</td><td>否</td><td>页码，默认1</td></tr>
+                <tr><td>pageSize</td><td>Integer</td><td>否</td><td>每页条数，默认20</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "list": [...],
+    "total": 50,
+    "totalPages": 3,
+    "page": 1,
+    "pageSize": 20
+  }
+}</pre>
+
+            <!-- 7.6 可分解记录ID列表 -->
+            <h3>7.6 可分解记录ID列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=listCanSplitIds</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>month</td><td>String</td><td>否</td><td>月份</td></tr>
+                <tr><td>productName</td><td>String</td><td>否</td><td>产品名称</td></tr>
+                <tr><td>spec</td><td>String</td><td>否</td><td>规格</td></tr>
+                <tr><td>sellerName</td><td>String</td><td>否</td><td>销售方</td></tr>
+                <tr><td>buyerName</td><td>String</td><td>否</td><td>采购方</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [2, 4, 6, 9]
+}</pre>
+
+            <!-- 7.7 导入Excel -->
+            <h3>7.7 导入流向Excel</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-flow?op=importExcel</strong>
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 权限要求：</strong> 需要 <code>flow:import</code> 权限
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 注意：</strong> 请求Content-Type需为<code>multipart/form-data</code>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>selectedMonths</td><td>String</td><td>否</td><td>选中的月份，多个用逗号分隔</td></tr>
+                <tr><td>file</td><td>File</td><td>是</td><td>Excel文件</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "success": 100,
+    "failed": 2,
+    "errors": ["第5行: 数据格式错误", "第10行: 缺少必填字段"]
+  }
+}</pre>
+
+            <!-- 7.8 月份汇总 -->
+            <h3>7.8 月份汇总</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=monthSummary</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>basis</td><td>String</td><td>否</td><td>汇总依据：AMT(金额)，QTY(数量)</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "month": "202401",
+      "qtyCount": 500,
+      "scale": 50000.00,
+      "count": 100,
+      "isFinal": "1"
+    },
+    {
+      "month": "202402",
+      "qtyCount": 600,
+      "scale": 60000.00,
+      "count": 120,
+      "isFinal": "0"
+    }
+  ]
+}</pre>
+
+            <!-- 7.9 设置终版 -->
+            <h3>7.9 设置终版</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-flow?op=setFinal</strong>
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 权限要求：</strong> 需要 <code>flow:final</code> 权限
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>month</td><td>String</td><td>是</td><td>月份，格式YYYYMM</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/upstream-flow?op=setFinal&projectId=1&month=202401</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+            <div class="info-box">
+                <strong>提示：</strong> 设置终版后，该月份的流向数据将被锁定，无法修改。
+            </div>
+
+            <!-- 7.10 取消终版 -->
+            <h3>7.10 取消终版</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-flow?op=cancelFinal</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>month</td><td>String</td><td>是</td><td>月份，格式YYYYMM</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 7.11 终版月份列表 -->
+            <h3>7.11 终版月份列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=listFinalMonths</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": ["202401", "202402"]
+}</pre>
+
+            <!-- 7.12 检查已存在月份 -->
+            <h3>7.12 检查已存在月份</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=checkExistingMonths</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "existingMonths": ["202401", "202402", "202403"],
+    "finalMonths": ["202401"]
+  }
+}</pre>
+
+            <!-- 7.13 考核组列表 -->
+            <h3>7.13 考核组列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=listAssessGroups</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {"id": 1, "groupName": "华东组", "groupCode": "G01"},
+    {"id": 2, "groupName": "华南组", "groupCode": "G02"}
+  ]
+}</pre>
+
+            <!-- 7.14 更新记录考核组 -->
+            <h3>7.14 更新流向记录考核组</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/upstream-flow?op=updateRecordAssessGroup</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>流向记录ID</td></tr>
+                <tr><td>assessGroupId</td><td>Long</td><td>是</td><td>考核组ID，设为0或空表示清除</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/upstream-flow?op=updateRecordAssessGroup&id=1&assessGroupId=1</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 7.15 导出明细 -->
+            <h3>7.15 导出流向明细</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=exportRecords</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>month</td><td>String</td><td>否</td><td>月份</td></tr>
+                <tr><td>showInvalid</td><td>String</td><td>否</td><td>是否显示无效，true/false</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载</p>
+
+            <!-- 7.16 导出月份汇总 -->
+            <h3>7.16 导出月份汇总</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/upstream-flow?op=exportMonthSummary</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>basis</td><td>String</td><td>否</td><td>汇总依据：AMT(金额)，QTY(数量)</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 8. 下游流向 ==================== -->
+        <div class="card" id="downstream-flow">
+            <h2>8. 下游流向 /api/downstream-flow</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>flow:view</code> - 查看流向列表、导出</li>
+                    <li><code>flow:split</code> - 分解流向到下游协议</li>
+                </ul>
+            </div>
+            <p>管理下游分销商的销售流向数据，包括数据分解、协议达成情况查看等功能。</p>
+
+            <!-- 8.1 流向列表 -->
+            <h3>8.1 下游流向列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-flow?op=listRecords</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>agreementId</td><td>Long</td><td>否</td><td>下游协议ID</td></tr>
+                <tr><td>month</td><td>String</td><td>否</td><td>月份，格式YYYYMM</td></tr>
+                <tr><td>buyerName</td><td>String</td><td>否</td><td>采购方名称</td></tr>
+                <tr><td>isValid</td><td>Integer</td><td>否</td><td>是否有效：1=有效，0=无效</td></tr>
+                <tr><td>page</td><td>Integer</td><td>否</td><td>页码，默认1</td></tr>
+                <tr><td>pageSize</td><td>Integer</td><td>否</td><td>每页条数，默认20</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/downstream-flow?op=listRecords&projectId=1&page=1&pageSize=20</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>list</td><td>Array</td><td>记录列表</td></tr>
+                <tr><td>total</td><td>Long</td><td>总记录数</td></tr>
+                <tr><td>totalPages</td><td>Integer</td><td>总页数</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "monthYyyymm": "202401",
+        "productName": "产品A",
+        "spec": "规格1",
+        "sellerName": "分销商A",
+        "sellerCity": "上海",
+        "calcPrice": 90.00,
+        "quantity": 40,
+        "calcAmount": 3600.00,
+        "buyerName": "采购商B",
+        "isValid": 1,
+        "upstreamRecordId": 101,
+        "assessGroupName": "华东组"
+      }
+    ],
+    "total": 80,
+    "totalPages": 4,
+    "page": 1,
+    "pageSize": 20
+  }
+}</pre>
+
+            <!-- 8.2 考核组列表 -->
+            <h3>8.2 考核组列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-flow?op=listAssessGroups</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {"id": 1, "groupName": "华东组", "groupCode": "G01"},
+    {"id": 2, "groupName": "华南组", "groupCode": "G02"}
+  ]
+}</pre>
+
+            <!-- 8.3 更新记录考核组 -->
+            <h3>8.3 更新流向记录考核组</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/downstream-flow?op=updateRecordAssessGroup</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>流向记录ID</td></tr>
+                <tr><td>assessGroupId</td><td>Long</td><td>是</td><td>考核组ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 8.4 可分解的上游ID列表 -->
+            <h3>8.4 可分解的上游ID列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-flow?op=listSplitUpstreamIds</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [1, 5, 10, 15]
+}</pre>
+
+            <!-- 8.5 分解流向 -->
+            <h3>8.5 分解流向到下游协议</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/downstream-flow?op=decompose</strong>
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 权限要求：</strong> 需要 <code>flow:split</code> 权限
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>下游协议ID</td></tr>
+                <tr><td>recordIds</td><td>String</td><td>是</td><td>上游流向记录ID列表，多个用逗号分隔</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/downstream-flow?op=decompose&projectId=1&agreementId=5&recordIds=1,2,3,4,5</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"count": 5}
+}</pre>
+
+            <!-- 8.6 协议达成概览 -->
+            <h3>8.6 下游协议达成概览</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-flow?op=agreementOverview</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>下游协议ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/downstream-flow?op=agreementOverview&agreementId=1</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "agreement": {
+      "id": 1,
+      "agreementName": "分销商A返利协议",
+      "targetScale": 500000.00,
+      "stage1Target": 100000.00,
+      "stage2Target": 150000.00,
+      "stage3Target": 250000.00,
+      "stage4Target": 300000.00
+    },
+    "totalActual": 450000.00,
+    "totalTarget": 500000.00,
+    "totalRate": "90.00",
+    "stage1Actual": 120000.00,
+    "stage1Target": 100000.00,
+    "stage1Rate": "120.00",
+    "stage2Actual": 130000.00,
+    "stage2Target": 150000.00,
+    "stage2Rate": "86.67",
+    "stage3Actual": 200000.00,
+    "stage3Target": 250000.00,
+    "stage3Rate": "80.00",
+    "stage4Actual": 0.00,
+    "stage4Target": 300000.00,
+    "stage4Rate": "0.00"
+  }
+}</pre>
+
+            <!-- 8.7 导出当前生效 -->
+            <h3>8.7 导出当前生效流向</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-flow?op=exportCurrent</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>agreementId</td><td>Long</td><td>否</td><td>下游协议ID</td></tr>
+                <tr><td>month</td><td>String</td><td>否</td><td>月份</td></tr>
+                <tr><td>buyerName</td><td>String</td><td>否</td><td>采购方名称</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载，文件名：下游流向当前生效_YYYYMMDD.xlsx</p>
+
+            <!-- 8.8 导出已作废 -->
+            <h3>8.8 导出已作废流向</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/downstream-flow?op=exportInvalid</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>agreementId</td><td>Long</td><td>否</td><td>下游协议ID</td></tr>
+                <tr><td>month</td><td>String</td><td>否</td><td>月份</td></tr>
+                <tr><td>buyerName</td><td>String</td><td>否</td><td>采购方名称</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载，文件名：下游流向已作废_YYYYMMDD.xlsx</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 9. 费用投入 ==================== -->
+        <div class="card" id="expense">
+            <h2>9. 费用投入 /api/cost</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>expense:view</code> - 查看费用列表、导出</li>
+                    <li><code>expense:edit</code> - 新增、编辑、删除费用</li>
+                    <li><code>expense:import</code> - 导入费用Excel</li>
+                </ul>
+            </div>
+            <p>管理项目费用投入数据，包括费用报销记录的新增、导入、分摊等功能。</p>
+
+            <!-- 9.1 费用列表 -->
+            <h3>9.1 费用列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/cost?op=listExpense</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>否</td><td>项目ID</td></tr>
+                <tr><td>workNo</td><td>String</td><td>否</td><td>报销人工号</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "expenseType": "差旅费",
+      "amount": 1500.00,
+      "allocatedAmount": 750.00,
+      "reimburseDate": "2024-01-15",
+      "workNo": "A001",
+      "userName": "张三",
+      "docNo": "FP202401001",
+      "remark": "客户拜访差旅"
+    }
+  ]
+}</pre>
+
+            <!-- 9.2 新增费用 -->
+            <h3>9.2 新增费用</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/cost?op=addExpense</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>expenseType</td><td>String</td><td>是</td><td>费用类型</td></tr>
+                <tr><td>amount</td><td>BigDecimal</td><td>是</td><td>发票金额</td></tr>
+                <tr><td>reimburseDate</td><td>String</td><td>否</td><td>报销日期(yyyy-MM-dd)</td></tr>
+                <tr><td>occurDate</td><td>String</td><td>否</td><td>发生日期</td></tr>
+                <tr><td>workNo</td><td>String</td><td>否</td><td>报销人工号</td></tr>
+                <tr><td>name</td><td>String</td><td>否</td><td>报销人姓名</td></tr>
+                <tr><td>docNo</td><td>String</td><td>否</td><td>发票号</td></tr>
+                <tr><td>remark</td><td>String</td><td>否</td><td>备注</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "projectId": 1,
+  "expenseType": "差旅费",
+  "amount": 1500.00,
+  "reimburseDate": "2024-01-15",
+  "workNo": "A001",
+  "name": "张三",
+  "docNo": "FP202401001",
+  "remark": "客户拜访差旅"
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"ids": [1]}
+}</pre>
+            <div class="info-box">
+                <strong>提示：</strong> 费用会根据作业人员的分摊比例自动分摊到多个项目。
+            </div>
+
+            <!-- 9.3 导入费用Excel -->
+            <h3>9.3 导入费用Excel</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/cost?op=importExpenseExcel</strong>
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 权限要求：</strong> 需要 <code>expense:import</code> 权限
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 注意：</strong> 请求Content-Type需为<code>multipart/form-data</code>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>file</td><td>File</td><td>是</td><td>Excel文件</td></tr>
+            </table>
+            <h4>Excel模板列说明</h4>
+            <table class="param-table">
+                <tr><th>列名</th><th>说明</th></tr>
+                <tr><td>报销时间</td><td>日期格式：yyyy-MM-dd</td></tr>
+                <tr><td>费用类型</td><td>如：差旅费、交通费、招待费</td></tr>
+                <tr><td>报销人工号</td><td>员工工号</td></tr>
+                <tr><td>报销人姓名</td><td>员工姓名</td></tr>
+                <tr><td>发票号</td><td>发票号码</td></tr>
+                <tr><td>发票金额</td><td>数值</td></tr>
+                <tr><td>备注</td><td>其他说明</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "ok": 95,
+    "fail": 5,
+    "errors": ["第5行: 金额格式错误", "第10行: 缺少必填字段"]
+  }
+}</pre>
+
+            <!-- 9.4 删除费用 -->
+            <h3>9.4 删除费用</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/cost?op=delete</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>费用记录ID</td></tr>
+                <tr><td>costType</td><td>String</td><td>否</td><td>固定为"EXPENSE"</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/cost?op=delete&id=1&costType=EXPENSE</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 9.5 导出费用 -->
+            <h3>9.5 导出费用</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/cost?op=exportExpense</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>workNo</td><td>String</td><td>否</td><td>报销人工号</td></tr>
+                <tr><td>expenseType</td><td>String</td><td>否</td><td>费用类型</td></tr>
+                <tr><td>docNo</td><td>String</td><td>否</td><td>发票号</td></tr>
+                <tr><td>startDate</td><td>String</td><td>否</td><td>开始日期</td></tr>
+                <tr><td>endDate</td><td>String</td><td>否</td><td>结束日期</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载，文件名：费用投入_YYYYMMDD.xlsx</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 10. 人工投入 ==================== -->
+        <div class="card" id="labor">
+            <h2>10. 人工投入 /api/cost</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>labor:view</code> - 查看人工列表、导出</li>
+                    <li><code>labor:edit</code> - 新增、编辑、删除人工</li>
+                    <li><code>labor:import</code> - 导入人工Excel</li>
+                </ul>
+            </div>
+            <p>管理项目人工投入数据，包括人工成本记录的新增、导入、分摊等功能。</p>
+
+            <!-- 10.1 人工列表 -->
+            <h3>10.1 人工列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/cost?op=listLabor</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>否</td><td>项目ID</td></tr>
+                <tr><td>workNo</td><td>String</td><td>否</td><td>人员工号</td></tr>
+                <tr><td>month</td><td>String</td><td>否</td><td>月份，格式YYYY-MM</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "month": "202401",
+      "userCode": "A001",
+      "userName": "张三",
+      "workType": "FULL",
+      "salary": 10000.00,
+      "welfare": 2000.00,
+      "totalAmount": 12000.00,
+      "allocatedAmount": 12000.00,
+      "allocRatio": "100.00",
+      "description": "全职人员"
+    }
+  ]
+}</pre>
+
+            <!-- 10.2 新增人工 -->
+            <h3>10.2 新增人工</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/cost?op=addLabor</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>month</td><td>String</td><td>是</td><td>月份，格式YYYY-MM</td></tr>
+                <tr><td>workNo</td><td>String</td><td>是</td><td>人员工号</td></tr>
+                <tr><td>name</td><td>String</td><td>是</td><td>姓名</td></tr>
+                <tr><td>workType</td><td>String</td><td>否</td><td>用工类型：FULL(全职)、PART(兼职)、OUTSOURCE(外包)</td></tr>
+                <tr><td>salary</td><td>BigDecimal</td><td>否</td><td>应发工资</td></tr>
+                <tr><td>welfare</td><td>BigDecimal</td><td>否</td><td>福利等其它人工费用</td></tr>
+                <tr><td>totalAmount</td><td>BigDecimal</td><td>否</td><td>费用合计，默认salary+welfare</td></tr>
+                <tr><td>remark</td><td>String</td><td>否</td><td>备注</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "month": "2024-01",
+  "workNo": "A001",
+  "name": "张三",
+  "workType": "FULL",
+  "salary": 10000.00,
+  "welfare": 2000.00,
+  "totalAmount": 12000.00,
+  "remark": "项目经理"
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"ids": [1]}
+}</pre>
+            <div class="info-box">
+                <strong>分摊说明：</strong>
+                <ul>
+                    <li>全职人员(FULL)：费用100%计入本项目</li>
+                    <li>兼职人员(PART)：按分摊比例计入多个项目</li>
+                    <li>外包人员(OUTSOURCE)：按分摊比例计入多个项目</li>
+                </ul>
+            </div>
+
+            <!-- 10.3 导入人工Excel -->
+            <h3>10.3 导入人工Excel</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/cost?op=importLaborExcel</strong>
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 权限要求：</strong> 需要 <code>labor:import</code> 权限
+            </div>
+            <div class="warn-box">
+                <strong>⚠️ 注意：</strong> 请求Content-Type需为<code>multipart/form-data</code>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>file</td><td>File</td><td>是</td><td>Excel文件</td></tr>
+            </table>
+            <h4>Excel模板列说明</h4>
+            <table class="param-table">
+                <tr><th>列名</th><th>说明</th></tr>
+                <tr><td>月度</td><td>格式：YYYY-MM或YYYY/MM</td></tr>
+                <tr><td>人员工号</td><td>员工工号</td></tr>
+                <tr><td>姓名</td><td>员工姓名</td></tr>
+                <tr><td>应发工资</td><td>数值</td></tr>
+                <tr><td>福利等其它人工费用</td><td>数值，可为空</td></tr>
+                <tr><td>费用合计</td><td>数值，可为空，默认为工资+福利</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "ok": 90,
+    "fail": 3,
+    "errors": ["第5行: 工资格式错误", "第8行: 人员不存在"]
+  }
+}</pre>
+
+            <!-- 10.4 删除人工 -->
+            <h3>10.4 删除人工</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/cost?op=delete</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>人工记录ID</td></tr>
+                <tr><td>costType</td><td>String</td><td>否</td><td>固定为"LABOR"</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/cost?op=delete&id=1&costType=LABOR</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 10.5 导出人工 -->
+            <h3>10.5 导出人工</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/cost?op=exportLabor</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>workNo</td><td>String</td><td>否</td><td>人员工号</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载，文件名：人工投入_YYYYMMDD.xlsx</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 11. 应收管理 ==================== -->
+        <div class="card" id="receivable">
+            <h2>11. 应收管理 /api/receivable-payable</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>receivable:view</code> - 查看应收列表、详情、导出</li>
+                    <li><code>receivable:edit</code> - 新增、编辑、删除应收</li>
+                    <li><code>receivable:audit</code> - 审核应收</li>
+                </ul>
+            </div>
+            <p>管理项目应收返利数据，包括各阶段的规模应收、考核应收填报与审核流程。</p>
+
+            <!-- 11.1 应收列表 -->
+            <h3>11.1 应收列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/receivable-payable?op=listReceivable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/receivable-payable?op=listReceivable&projectId=1</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>[]id</td><td>Long</td><td>应收记录ID</td></tr>
+                <tr><td>[]projectId</td><td>Long</td><td>项目ID</td></tr>
+                <tr><td>[]stage</td><td>String</td><td>阶段：阶段一/阶段二/阶段三/阶段四</td></tr>
+                <tr><td>[]scaleAmount</td><td>BigDecimal</td><td>依据规模应收</td></tr>
+                <tr><td>[]assessAmount</td><td>BigDecimal</td><td>依据考核应收</td></tr>
+                <tr><td>[]totalAmount</td><td>BigDecimal</td><td>合计应收=规模应收+考核应收</td></tr>
+                <tr><td>[]estimateAmount</td><td>BigDecimal</td><td>系统估算金额</td></tr>
+                <tr><td>[]status</td><td>String</td><td>状态：DRAFT(草稿)/FINAL(审核通过)/REJECTED(已驳回)</td></tr>
+                <tr><td>[]fillUser</td><td>Long</td><td>填报人ID</td></tr>
+                <tr><td>[]fillTime</td><td>Timestamp</td><td>填报时间</td></tr>
+                <tr><td>[]auditUser</td><td>Long</td><td>审核人ID</td></tr>
+                <tr><td>[]auditTime</td><td>Timestamp</td><td>审核时间</td></tr>
+                <tr><td>[]remark</td><td>String</td><td>备注</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "stage": "阶段一",
+      "scaleAmount": 10000.00,
+      "assessAmount": 2000.00,
+      "totalAmount": 12000.00,
+      "estimateAmount": 11500.00,
+      "status": "FINAL",
+      "fillUser": 1,
+      "fillTime": "2024-04-15 10:30:00",
+      "auditUser": 2,
+      "auditTime": "2024-04-16 14:20:00",
+      "remark": ""
+    }
+  ]
+}</pre>
+
+            <!-- 11.2 应收详情 -->
+            <h3>11.2 应收详情</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/receivable-payable?op=getReceivable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>应收记录ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "id": 1,
+    "projectId": 1,
+    "stage": "阶段一",
+    "scaleAmount": 10000.00,
+    "assessAmount": 2000.00,
+    "totalAmount": 12000.00,
+    "estimateAmount": 11500.00,
+    "status": "FINAL",
+    "remark": ""
+  }
+}</pre>
+
+            <!-- 11.3 保存应收 -->
+            <h3>11.3 保存应收（新增/更新）</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/receivable-payable?op=saveReceivable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>否</td><td>应收记录ID，不传表示新增</td></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>stage</td><td>String</td><td>是</td><td>阶段：阶段一/阶段二/阶段三/阶段四</td></tr>
+                <tr><td>scaleAmount</td><td>BigDecimal</td><td>是</td><td>依据规模应收金额</td></tr>
+                <tr><td>assessAmount</td><td>BigDecimal</td><td>是</td><td>依据考核应收金额</td></tr>
+                <tr><td>estimateAmount</td><td>BigDecimal</td><td>否</td><td>系统估算金额</td></tr>
+                <tr><td>remark</td><td>String</td><td>否</td><td>备注</td></tr>
+            </table>
+            <div class="warn-box">
+                <strong>说明：</strong>
+                <ul>
+                    <li>合计应收(totalAmount) = scaleAmount + assessAmount，由系统自动计算</li>
+                    <li>新增记录状态默认为 DRAFT(草稿)</li>
+                </ul>
+            </div>
+            <h4>请求示例</h4>
+<pre>{
+  "projectId": 1,
+  "stage": "阶段一",
+  "scaleAmount": 10000.00,
+  "assessAmount": 2000.00,
+  "estimateAmount": 11500.00,
+  "remark": ""
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"id": 1}
+}</pre>
+
+            <!-- 11.4 审核应收 -->
+            <h3>11.4 审核应收</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/receivable-payable?op=auditReceivable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>应收记录ID</td></tr>
+                <tr><td>action</td><td>String</td><td>是</td><td>PASS(审核通过) / REJECT(驳回)</td></tr>
+            </table>
+            <div class="success-box">
+                <strong>业务联动：</strong>审核通过(PASS)后，系统自动将该阶段对应月份的上游流向置为终版状态。
+            </div>
+            <h4>请求示例</h4>
+<pre>POST /api/receivable-payable?op=auditReceivable&id=1&action=PASS</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 11.5 删除应收 -->
+            <h3>11.5 删除应收</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/receivable-payable?op=deleteReceivable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>应收记录ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 11.6 导出应收 -->
+            <h3>11.6 导出应收</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/receivable-payable?op=exportReceivable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载，文件名：项目应收_YYYYMMDD.xlsx，包含列：阶段、依据规模应收、依据考核应收、合计应收、系统估算、状态、填报人、填报时间、审核人、审核时间、备注</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 12. 应付管理 ==================== -->
+        <div class="card" id="payable">
+            <h2>12. 应付管理 /api/receivable-payable</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>payable:view</code> - 查看应付列表、导出</li>
+                    <li><code>payable:edit</code> - 新增、编辑应付</li>
+                    <li><code>payable:audit</code> - 审核应付、确认应付</li>
+                </ul>
+            </div>
+            <p>管理项目应付返利数据，包括各下游协议在各阶段的应付金额填报、审核与确认流程。</p>
+
+            <!-- 12.1 应付列表 -->
+            <h3>12.1 应付列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/receivable-payable?op=listPayable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>agreementId</td><td>Long</td><td>否</td><td>下游协议ID，不传则返回全部</td></tr>
+                <tr><td>stage</td><td>String</td><td>否</td><td>阶段筛选：阶段一/阶段二/阶段三/阶段四</td></tr>
+                <tr><td>status</td><td>String</td><td>否</td><td>状态筛选</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/receivable-payable?op=listPayable&projectId=1&agreementId=5&stage=阶段一</pre>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>[]id</td><td>Long</td><td>应付记录ID</td></tr>
+                <tr><td>[]projectId</td><td>Long</td><td>项目ID</td></tr>
+                <tr><td>[]agreementId</td><td>Long</td><td>下游协议ID</td></tr>
+                <tr><td>[]stage</td><td>String</td><td>阶段</td></tr>
+                <tr><td>[]scaleAmount</td><td>BigDecimal</td><td>依据规模应付</td></tr>
+                <tr><td>[]assessAmount</td><td>BigDecimal</td><td>依据考核应付</td></tr>
+                <tr><td>[]totalAmount</td><td>BigDecimal</td><td>合计应付</td></tr>
+                <tr><td>[]estimateAmount</td><td>BigDecimal</td><td>系统估算</td></tr>
+                <tr><td>[]status</td><td>String</td><td>状态：DRAFT(草稿)/AUDIT(审核中)/FINAL(已确认)/REJECTED(已驳回)</td></tr>
+                <tr><td>[]fillUser</td><td>Long</td><td>填报人</td></tr>
+                <tr><td>[]fillTime</td><td>Timestamp</td><td>填报时间</td></tr>
+                <tr><td>[]auditUser</td><td>Long</td><td>审核人</td></tr>
+                <tr><td>[]auditTime</td><td>Timestamp</td><td>审核时间</td></tr>
+                <tr><td>[]remark</td><td>String</td><td>备注</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "agreementId": 5,
+      "stage": "阶段一",
+      "scaleAmount": 8000.00,
+      "assessAmount": 1500.00,
+      "totalAmount": 9500.00,
+      "estimateAmount": 9000.00,
+      "status": "AUDIT",
+      "fillUser": 1,
+      "fillTime": "2024-04-15 10:30:00",
+      "remark": "分销商A应付"
+    }
+  ]
+}</pre>
+            <p>省略其他字段说明...（实际响应与应收类似）</p>
+
+            <!-- 12.2 保存应付 -->
+            <h3>12.2 保存应付（新增/更新）</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/receivable-payable?op=savePayable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>否</td><td>应付记录ID，不传表示新增</td></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>下游协议ID</td></tr>
+                <tr><td>stage</td><td>String</td><td>是</td><td>阶段</td></tr>
+                <tr><td>scaleAmount</td><td>BigDecimal</td><td>是</td><td>依据规模应付</td></tr>
+                <tr><td>assessAmount</td><td>BigDecimal</td><td>是</td><td>依据考核应付</td></tr>
+                <tr><td>estimateAmount</td><td>BigDecimal</td><td>否</td><td>系统估算金额</td></tr>
+                <tr><td>remark</td><td>String</td><td>否</td><td>备注</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "projectId": 1,
+  "agreementId": 5,
+  "stage": "阶段一",
+  "scaleAmount": 8000.00,
+  "assessAmount": 1500.00,
+  "estimateAmount": 9000.00,
+  "remark": "分销商A应付"
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"id": 1}
+}</pre>
+
+            <!-- 12.3 审核应付 -->
+            <h3>12.3 审核应付</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/receivable-payable?op=auditPayable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>应付记录ID</td></tr>
+                <tr><td>action</td><td>String</td><td>是</td><td>PASS(审核通过→状态AUDIT) / REJECT(驳回→状态REJECTED)</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 12.4 确认应付 -->
+            <h3>12.4 确认应付（终审）</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/receivable-payable?op=confirmPayable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>应付记录ID</td></tr>
+            </table>
+            <p>确认后状态变更为 FINAL，表示应付已完成终审，可进入实付流程。</p>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 12.5 导出应付 -->
+            <h3>12.5 导出应付</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/receivable-payable?op=exportPayable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载，文件名：项目应付_YYYYMMDD.xlsx，包含列：阶段、依据规模应付、依据考核应付、合计应付、系统估算、状态、填报人、填报时间、审核人、审核时间、备注</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 13. 实收管理 ==================== -->
+        <div class="card" id="received">
+            <h2>13. 实收管理 /api/received-paid</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>received:view</code> - 查看实收列表、导出</li>
+                    <li><code>received:edit</code> - 新增、编辑、删除实收</li>
+                    <li><code>received:confirm</code> - 多环节确认实收</li>
+                </ul>
+            </div>
+            <p>管理项目实际收到的返利资金，包括申请、采购、运营、财务多环节确认流程。</p>
+
+            <!-- 13.1 实收列表 -->
+            <h3>13.1 实收列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/received-paid?op=listReceived</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>stage</td><td>String</td><td>否</td><td>阶段筛选</td></tr>
+                <tr><td>rebateType</td><td>String</td><td>否</td><td>返利类型筛选</td></tr>
+            </table>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>[]id</td><td>Long</td><td>实收记录ID</td></tr>
+                <tr><td>[]projectId</td><td>Long</td><td>项目ID</td></tr>
+                <tr><td>[]stage</td><td>String</td><td>阶段</td></tr>
+                <tr><td>[]rebateType</td><td>String</td><td>返利类型</td></tr>
+                <tr><td>[]applicant</td><td>String</td><td>申请人</td></tr>
+                <tr><td>[]applyDept</td><td>String</td><td>申请部门</td></tr>
+                <tr><td>[]applyDate</td><td>Date</td><td>申请日期</td></tr>
+                <tr><td>[]financeCode</td><td>String</td><td>财务编码</td></tr>
+                <tr><td>[]rebateAmount</td><td>BigDecimal</td><td>返利金额（税前）</td></tr>
+                <tr><td>[]taxRate</td><td>BigDecimal</td><td>税率</td></tr>
+                <tr><td>[]totalPriceTax</td><td>BigDecimal</td><td>价税合计</td></tr>
+                <tr><td>[]deptShare</td><td>BigDecimal</td><td>部门分摊金额</td></tr>
+                <tr><td>[]invoiceNo</td><td>String</td><td>发票号码</td></tr>
+                <tr><td>[]receiveDept</td><td>String</td><td>收款部门</td></tr>
+                <tr><td>[]status</td><td>String</td><td>状态：DRAFT/PURCHASE_CONFIRMED/OP_CONFIRMED/FINANCE_CONFIRMED/FINISHED</td></tr>
+                <tr><td>[]remark</td><td>String</td><td>备注</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "stage": "阶段一",
+      "rebateType": "规模返利",
+      "applicant": "张三",
+      "applyDept": "销售部",
+      "applyDate": "2024-04-20",
+      "financeCode": "FIN-2024-001",
+      "rebateAmount": 10000.00,
+      "taxRate": 0.13,
+      "totalPriceTax": 11300.00,
+      "deptShare": 5000.00,
+      "invoiceNo": "INV-2024-01001",
+      "receiveDept": "财务中心",
+      "status": "FINISHED",
+      "remark": ""
+    }
+  ]
+}</pre>
+
+            <!-- 13.2 保存实收 -->
+            <h3>13.2 保存实收（新增/更新）</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/received-paid?op=saveReceived</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>否</td><td>实收记录ID，不传表示新增</td></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>stage</td><td>String</td><td>是</td><td>阶段</td></tr>
+                <tr><td>rebateType</td><td>String</td><td>否</td><td>返利类型</td></tr>
+                <tr><td>applicant</td><td>String</td><td>否</td><td>申请人</td></tr>
+                <tr><td>applyDept</td><td>String</td><td>否</td><td>申请部门</td></tr>
+                <tr><td>applyDate</td><td>String</td><td>否</td><td>申请日期(yyyy-MM-dd)</td></tr>
+                <tr><td>financeCode</td><td>String</td><td>否</td><td>财务编码</td></tr>
+                <tr><td>rebateAmount</td><td>BigDecimal</td><td>否</td><td>返利金额（税前）</td></tr>
+                <tr><td>taxRate</td><td>BigDecimal</td><td>否</td><td>税率</td></tr>
+                <tr><td>totalPriceTax</td><td>BigDecimal</td><td>否</td><td>价税合计</td></tr>
+                <tr><td>deptShare</td><td>BigDecimal</td><td>否</td><td>部门分摊金额</td></tr>
+                <tr><td>invoiceNo</td><td>String</td><td>否</td><td>发票号码</td></tr>
+                <tr><td>receiveDept</td><td>String</td><td>否</td><td>收款部门</td></tr>
+                <tr><td>remark</td><td>String</td><td>否</td><td>备注</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "projectId": 1,
+  "stage": "阶段一",
+  "rebateType": "规模返利",
+  "applicant": "张三",
+  "applyDept": "销售部",
+  "applyDate": "2024-04-20",
+  "financeCode": "FIN-2024-001",
+  "rebateAmount": 10000.00,
+  "taxRate": 0.13,
+  "totalPriceTax": 11300.00,
+  "deptShare": 5000.00,
+  "invoiceNo": "INV-2024-01001",
+  "receiveDept": "财务中心",
+  "remark": ""
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"id": 1}
+}</pre>
+
+            <!-- 13.3 确认实收 -->
+            <h3>13.3 确认实收（多环节）</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/received-paid?op=confirmReceived</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>实收记录ID</td></tr>
+                <tr><td>step</td><td>String</td><td>是</td><td>确认环节：PURCHASE(采购确认)/OP(运营确认)/FINANCE(财务确认)</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>POST /api/received-paid?op=confirmReceived&id=1&step=PURCHASE</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 13.4 删除实收 -->
+            <h3>13.4 删除实收</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/received-paid?op=deleteReceived</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>实收记录ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 13.5 导出实收 -->
+            <h3>13.5 导出实收</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/received-paid?op=exportReceived</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载，文件名：项目实收_YYYYMMDD.xlsx，包含列：阶段、返利类型、申请人、申请部门、申请日期、财务编码、返利金额、税率、价税合计、部门分摊、发票号、收款部门、状态、备注</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 14. 实付管理 ==================== -->
+        <div class="card" id="paid">
+            <h2>14. 实付管理 /api/received-paid</h2>
+            <div class="info-box">
+                <strong>权限说明：</strong>
+                <ul>
+                    <li><code>paid:view</code> - 查看实付列表、导出</li>
+                    <li><code>paid:edit</code> - 新增、编辑、删除实付</li>
+                    <li><code>paid:confirm</code> - 多环节确认实付</li>
+                </ul>
+            </div>
+            <p>管理项目实际支付的返利资金，包括对下游分销商的付款申请、确认流程。</p>
+
+            <!-- 14.1 实付列表 -->
+            <h3>14.1 实付列表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/received-paid?op=listPaid</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>stage</td><td>String</td><td>否</td><td>阶段筛选</td></tr>
+                <tr><td>rebateType</td><td>String</td><td>否</td><td>返利类型筛选</td></tr>
+            </table>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>[]id</td><td>Long</td><td>实付记录ID</td></tr>
+                <tr><td>[]projectId</td><td>Long</td><td>项目ID</td></tr>
+                <tr><td>[]agreementId</td><td>Long</td><td>下游协议ID</td></tr>
+                <tr><td>[]stage</td><td>String</td><td>阶段</td></tr>
+                <tr><td>[]rebateType</td><td>String</td><td>返利类型</td></tr>
+                <tr><td>[]applicant</td><td>String</td><td>申请人</td></tr>
+                <tr><td>[]applyDept</td><td>String</td><td>申请部门</td></tr>
+                <tr><td>[]applyDate</td><td>Date</td><td>申请日期</td></tr>
+                <tr><td>[]receiveDept</td><td>String</td><td>收款部门</td></tr>
+                <tr><td>[]customerName</td><td>String</td><td>客户名称（分销商）</td></tr>
+                <tr><td>[]totalRebate</td><td>BigDecimal</td><td>应付返利金额</td></tr>
+                <tr><td>[]actualRebate</td><td>BigDecimal</td><td>实付返利金额</td></tr>
+                <tr><td>[]diffAmount</td><td>BigDecimal</td><td>差异金额 = 应付 - 实付（系统自动计算）</td></tr>
+                <tr><td>[]executeStatus</td><td>String</td><td>执行状态：DRAFT/PENDING/PAID/FINISHED</td></tr>
+                <tr><td>[]remark</td><td>String</td><td>备注</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "id": 1,
+      "projectId": 1,
+      "agreementId": 5,
+      "stage": "阶段一",
+      "rebateType": "规模返利",
+      "applicant": "李四",
+      "applyDept": "运营部",
+      "applyDate": "2024-04-25",
+      "receiveDept": "分销商A财务部",
+      "customerName": "分销商A有限公司",
+      "totalRebate": 8000.00,
+      "actualRebate": 8000.00,
+      "diffAmount": 0.00,
+      "executeStatus": "PAID",
+      "remark": ""
+    }
+  ]
+}</pre>
+
+            <!-- 14.2 保存实付 -->
+            <h3>14.2 保存实付（新增/更新）</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/received-paid?op=savePaid</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>否</td><td>实付记录ID，不传表示新增</td></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>agreementId</td><td>Long</td><td>否</td><td>下游协议ID</td></tr>
+                <tr><td>stage</td><td>String</td><td>是</td><td>阶段</td></tr>
+                <tr><td>rebateType</td><td>String</td><td>否</td><td>返利类型</td></tr>
+                <tr><td>applicant</td><td>String</td><td>否</td><td>申请人</td></tr>
+                <tr><td>applyDept</td><td>String</td><td>否</td><td>申请部门</td></tr>
+                <tr><td>applyDate</td><td>String</td><td>否</td><td>申请日期(yyyy-MM-dd)</td></tr>
+                <tr><td>receiveDept</td><td>String</td><td>否</td><td>收款部门</td></tr>
+                <tr><td>customerName</td><td>String</td><td>否</td><td>客户名称</td></tr>
+                <tr><td>totalRebate</td><td>BigDecimal</td><td>否</td><td>应付返利金额</td></tr>
+                <tr><td>actualRebate</td><td>BigDecimal</td><td>否</td><td>实付返利金额</td></tr>
+                <tr><td>remark</td><td>String</td><td>否</td><td>备注</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>{
+  "projectId": 1,
+  "agreementId": 5,
+  "stage": "阶段一",
+  "rebateType": "规模返利",
+  "applicant": "李四",
+  "applyDept": "运营部",
+  "applyDate": "2024-04-25",
+  "receiveDept": "分销商A财务部",
+  "customerName": "分销商A有限公司",
+  "totalRebate": 8000.00,
+  "actualRebate": 8000.00,
+  "remark": ""
+}</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {"id": 1}
+}</pre>
+
+            <!-- 14.3 确认实付 -->
+            <h3>14.3 确认实付（多环节）</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/received-paid?op=confirmPaid</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>实付记录ID</td></tr>
+                <tr><td>step</td><td>String</td><td>是</td><td>确认环节：PURCHASE/OP/FINANCE</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 14.4 删除实付 -->
+            <h3>14.4 删除实付</h3>
+            <div class="api-endpoint">
+                <strong>POST /api/received-paid?op=deletePaid</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>id</td><td>Long</td><td>是</td><td>实付记录ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success"
+}</pre>
+
+            <!-- 14.5 导出实付 -->
+            <h3>14.5 导出实付</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/received-paid?op=exportPaid</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载，文件名：项目实付_YYYYMMDD.xlsx，包含列：阶段、下游协议、返利类型、申请人、申请部门、申请日期、收款部门、客户名称、应付返利、实付返利、差异、状态、备注</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 15. 项目概览 ==================== -->
+        <div class="card" id="overview">
+            <h2>15. 项目概览 /api/overview</h2>
+            <p>项目全维度数据聚合视图，集中展示项目基本信息、上下游协议、流向数据、费用人工投入、应收应付实收实付等全景数据。</p>
+
+            <!-- 15.1 项目概览 -->
+            <h3>15.1 项目概览（主视图）</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/overview?op=overview</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>出参（部分核心字段）</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>project</td><td>Object</td><td>项目基本信息</td></tr>
+                <tr><td>upstream</td><td>Object</td><td>上游当前协议（含附件、返利规则、考核组）</td></tr>
+                <tr><td>downstreams</td><td>Array</td><td>下游协议列表（含附件URL）</td></tr>
+                <tr><td>upstreamFlow</td><td>Object</td><td>上游流向按阶段汇总</td></tr>
+                <tr><td>downstreamFlow</td><td>Object</td><td>下游流向按阶段汇总</td></tr>
+                <tr><td>expense</td><td>Array</td><td>费用投入列表</td></tr>
+                <tr><td>labor</td><td>Array</td><td>人工投入列表</td></tr>
+                <tr><td>receivables</td><td>Array</td><td>应收列表</td></tr>
+                <tr><td>payables</td><td>Array</td><td>应付列表</td></tr>
+                <tr><td>received</td><td>Array</td><td>实收列表</td></tr>
+                <tr><td>paid</td><td>Array</td><td>实付列表</td></tr>
+                <tr><td>stageSummary</td><td>Object</td><td>按阶段汇总（目标规模、实际规模、达成率等）</td></tr>
+                <tr><td>prevYearData</td><td>Object</td><td>上一年同期对比数据（如有）</td></tr>
+                <tr><td>groupFlows</td><td>Array</td><td>按考核组汇总的流向数据</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/overview?op=overview&projectId=1</pre>
+            <h4>响应示例（简化）</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "project": {
+      "id": 1,
+      "projectName": "某品牌营销返利项目",
+      "brand": "品牌A",
+      "coYear": "2024",
+      "targetScale": 1000000.00,
+      "expectedRebate": 50000.00,
+      "status": "ACTIVE"
+    },
+    "upstream": {
+      "id": 1,
+      "agreementName": "供应商A年度协议",
+      "targetScale": 1000000.00,
+      "calcMethod": "达成率",
+      "attachFiles": [
+        {"id": 1, "fileName": "协议.pdf", "downloadUrl": "http://..."}
+      ],
+      "rebateRules": [
+        {"stage": "阶段一", "calcType": "PERSENT", "minThreshold": 0, "maxThreshold": 100, "rebateRatio": 2}
+      ]
+    },
+    "downstreams": [
+      {"id": 5, "agreementName": "分销商A协议", "targetScale": 500000.00}
+    ],
+    "stageSummary": {
+      "stage1": {"target": 250000.00, "actual": 240000.00, "rate": "96.00"},
+      "stage2": {"target": 250000.00, "actual": 260000.00, "rate": "104.00"},
+      "stage3": {"target": 250000.00, "actual": 230000.00, "rate": "92.00"},
+      "stage4": {"target": 250000.00, "actual": 270000.00, "rate": "108.00"}
+    },
+    "receivables": [...],
+    "payables": [...],
+    "received": [...],
+    "paid": [...]
+  }
+}</pre>
+
+            <!-- 15.2 协议达成概览 -->
+            <h3>15.2 下游协议达成概览</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/overview?op=agreementOverview</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>下游协议ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "agreement": {"id": 5, "agreementName": "分销商A协议", "targetScale": 500000.00},
+    "totalActual": 450000.00,
+    "totalTarget": 500000.00,
+    "totalRate": "90.00",
+    "stage1Actual": 120000.00, "stage1Target": 100000.00, "stage1Rate": "120.00",
+    "stage2Actual": 130000.00, "stage2Target": 150000.00, "stage2Rate": "86.67",
+    "stage3Actual": 200000.00, "stage3Target": 250000.00, "stage3Rate": "80.00",
+    "stage4Actual": 0.00,     "stage4Target": 300000.00, "stage4Rate": "0.00"
+  }
+}</pre>
+
+            <!-- 15.3 按考核组概览 -->
+            <h3>15.3 按考核组概览</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/overview?op=overviewByAssessGroup</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+                <tr><td>assessGroupId</td><td>Long</td><td>否</td><td>考核组ID</td></tr>
+                <tr><td>basis</td><td>String</td><td>否</td><td>汇总依据：AMT(金额)/QTY(数量)，默认AMT</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "groupId": 1,
+      "groupName": "华东组",
+      "stage1Target": 200000.00,
+      "stage1Actual": 180000.00,
+      "stage1Rate": "90.00"
+    }
+  ]
+}</pre>
+
+            <!-- 15.4 应付估算 -->
+            <h3>15.4 应付估算</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/overview?op=payableEstimate</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>agreementId</td><td>Long</td><td>是</td><td>下游协议ID</td></tr>
+            </table>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "estimatedPayable": 9500.00,
+    "details": [
+      {"stage": "阶段一", "estimated": 2500.00},
+      {"stage": "阶段二", "estimated": 2500.00}
+    ]
+  }
+}</pre>
+
+            <!-- 15.5 导出概览Excel -->
+            <h3>15.5 导出项目概览Excel</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/overview?op=exportExcel</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>projectId</td><td>Long</td><td>是</td><td>项目ID</td></tr>
+            </table>
+            <h4>响应</h4>
+            <p>返回Excel文件下载，文件名：项目名称+年度+日期.xlsx，包含项目全维度数据的结构化报表。</p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- ==================== 16. 项目平衡表 ==================== -->
+        <div class="card" id="balance">
+            <h2>16. 项目平衡表 /api/overview</h2>
+            <div class="info-box">
+                <strong>功能说明：</strong>按合作年度汇总展示多个项目的收入与成本平衡数据，用于经营分析与利润核算。
+            </div>
+
+            <!-- 16.1 平衡表 -->
+            <h3>16.1 项目平衡表</h3>
+            <div class="api-endpoint">
+                <strong>GET /api/overview?op=balanceTable</strong>
+            </div>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr>
+                <tr><td>coYear</td><td>String</td><td>否</td><td>合作年度，如 2024；不传则返回所有年度</td></tr>
+            </table>
+            <h4>出参</h4>
+            <table class="param-table">
+                <tr><th>参数名</th><th>类型</th><th>说明</th></tr>
+                <tr><td>[]projectId</td><td>Long</td><td>项目ID</td></tr>
+                <tr><td>[]projectName</td><td>String</td><td>项目名称</td></tr>
+                <tr><td>[]coYear</td><td>String</td><td>合作年度</td></tr>
+                <tr><td>[]totalScale</td><td>BigDecimal</td><td>目标规模</td></tr>
+                <tr><td>[]actualScale</td><td>BigDecimal</td><td>实际完成规模</td></tr>
+                <tr><td>[]totalReceivable</td><td>BigDecimal</td><td>应收总额（按阶段汇总）</td></tr>
+                <tr><td>[]totalPayable</td><td>BigDecimal</td><td>应付总额（按阶段汇总）</td></tr>
+                <tr><td>[]totalReceived</td><td>BigDecimal</td><td>实收总额（按阶段汇总）</td></tr>
+                <tr><td>[]totalPaid</td><td>BigDecimal</td><td>实付总额（按阶段汇总）</td></tr>
+                <tr><td>[]totalExpense</td><td>BigDecimal</td><td>费用投入总额</td></tr>
+                <tr><td>[]totalLabor</td><td>BigDecimal</td><td>人工投入总额</td></tr>
+                <tr><td>[]balance</td><td>BigDecimal</td><td>项目结余 = 实收 - 实付 - 费用 - 人工</td></tr>
+                <tr><td>[]receivableRate</td><td>String</td><td>应收达成率</td></tr>
+                <tr><td>[]payableRate</td><td>String</td><td>应付达成率</td></tr>
+            </table>
+            <h4>请求示例</h4>
+<pre>GET /api/overview?op=balanceTable&coYear=2024</pre>
+            <h4>响应示例</h4>
+<pre>{
+  "code": 0,
+  "msg": "success",
+  "data": [
+    {
+      "projectId": 1,
+      "projectName": "某品牌营销返利项目",
+      "coYear": "2024",
+      "totalScale": 1000000.00,
+      "actualScale": 950000.00,
+      "totalReceivable": 50000.00,
+      "totalPayable": 38000.00,
+      "totalReceived": 45000.00,
+      "totalPaid": 35000.00,
+      "totalExpense": 8000.00,
+      "totalLabor": 15000.00,
+      "balance": -13000.00,
+      "receivableRate": "90.00",
+      "payableRate": "92.11"
+    },
+    {
+      "projectId": 2,
+      "projectName": "新品推广返利项目",
+      "coYear": "2024",
+      "totalScale": 500000.00,
+      "actualScale": 520000.00,
+      "totalReceivable": 25000.00,
+      "totalPayable": 18000.00,
+      "totalReceived": 25000.00,
+      "totalPaid": 18000.00,
+      "totalExpense": 5000.00,
+      "totalLabor": 8000.00,
+      "balance": -6000.00,
+      "receivableRate": "100.00",
+      "payableRate": "100.00"
+    }
+  ]
+}</pre>
+            <div class="warn-box">
+                <strong>数据口径说明：</strong>
+                <ul>
+                    <li>平衡表数据基于项目年度聚合，可能存在数据延迟（以最新审核通过的数据为准）</li>
+                    <li>应收/应付口径含所有阶段（包含已审核 FINAL 状态的数据）</li>
+                    <li>结余为负表示项目整体亏损，为正表示项目产生利润</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 公共错误码说明 -->
+        <div class="card">
+            <h2>📋 公共错误码说明</h2>
+            <table>
+                <tr><th>错误码</th><th>说明</th></tr>
+                <tr><td><span class="tag tag-green">0</span></td><td>成功</td></tr>
+                <tr><td><span class="tag tag-red">401</span></td><td>未授权（未登录或token过期）</td></tr>
+                <tr><td><span class="tag tag-red">403</span></td><td>禁止访问（无权限）</td></tr>
+                <tr><td><span class="tag tag-yellow">500</span></td><td>服务器错误或业务错误</td></tr>
+            </table>
+            
+            <h3>常见业务错误提示</h3>
+            <table>
+                <tr><th>错误提示</th><th>说明</th></tr>
+                <tr><td>请填写登录名和密码</td><td>登录时用户名为空</td></tr>
+                <tr><td>用户名或密码错误</td><td>登录名或密码不匹配</td></tr>
+                <tr><td>账号已停用</td><td>用户状态为停用</td></tr>
+                <tr><td>角色不存在</td><td>查询角色ID不存在</td></tr>
+                <tr><td>协议不存在</td><td>查询协议ID不存在</td></tr>
+                <tr><td>项目不存在</td><td>查询项目ID不存在</td></tr>
+                <tr><td>原密码错误</td><td>修改密码时原密码不正确</td></tr>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>📚 营销返利项目管理系统 - API接口文档 v1.0</p>
+            <p>如有问题，请联系系统管理员</p>
+        </div>
+    </div>
+</body>
+</html>

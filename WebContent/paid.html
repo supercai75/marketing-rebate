@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>项目实付</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .status-tag { padding:2px 8px; border-radius:10px; font-size:12px; color:#fff;}
+        .st-DRAFT { background:#909399;}
+        .st-OP { background:#e6a23c;}
+        .st-FINANCE { background:#67c23a;}
+        .st-FINAL { background:#67c23a;}
+        .st-REJECTED { background:#f56c6c;}
+        .table-wrap table td, .table-wrap table th { white-space:nowrap; }
+    </style>
+</head>
+<body>
+<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:8px; padding:32px 48px; text-align:center; box-shadow:0 2px 12px rgba(0,0,0,0.2);">
+        <div style="width:40px; height:40px; border:4px solid #f3f3f3; border-top:4px solid #409eff; border-radius:50%; animation: spin 1s linear infinite; margin:0 auto 16px;"></div>
+        <div style="font-size:16px; color:#333;">正在导出，请稍候...</div>
+    </div>
+</div>
+<style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+<div class="toolbar">
+    <select id="selYear" style="width:120px;">
+    </select>
+    <select id="selProject" style="width:300px;"></select>
+    <select id="selAgreement" style="width:240px;"><option value="">全部下游协议</option></select>
+    <select id="selStage">
+        <option value="">全部阶段</option>
+        <option value="全年">全年</option>
+        <option value="阶段一">阶段一</option>
+        <option value="阶段二">阶段二</option>
+        <option value="阶段三">阶段三</option>
+        <option value="阶段四">阶段四</option>
+    </select>
+    <select id="selRebateType">
+        <option value="">全部类型</option>
+        <option value="票折">票折</option>
+        <option value="服务费">服务费</option>
+    </select>
+    <select id="selStatus">
+        <option value="">全部状态</option>
+        <option value="DRAFT">草稿</option>
+        <option value="OP">运营已审</option>
+        <option value="FINANCE">财务已确认</option>
+        <option value="REJECTED">已驳回</option>
+    </select>
+    <button class="btn btn-primary" id="btnSearch">查询</button>
+    <button class="btn btn-success" id="btnAdd">+ 新增实付</button>
+    <button class="btn" id="btnRefresh">刷新</button>
+    <button class="btn" id="btnExport">导出Excel</button>
+    <span style="flex:1;"></span>
+    <span style="color:#909399; font-size:12px;">票折：运营确认；服务费：财务确认</span>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead><tr>
+            <th>阶段</th><th>下游协议</th><th>客户/分销商</th>
+            <th>类型</th><th>申请人</th><th>申请部门</th>
+            <th>申请日期</th><th>收款部门</th>
+            <th>返利总额</th><th>实际返利</th><th>冲差价</th>
+            <th>执行状态</th><th>备注</th><th width="200">操作</th>
+        </tr></thead>
+        <tbody id="body"></tbody>
+    </table>
+</div>
+
+<!-- 新增/编辑 -->
+<div class="modal-mask" id="modalP">
+    <div class="modal" style="width:680px;">
+        <div class="modal-header" id="modalPTitle">新增实付<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalP')">×</span></div>
+        <div class="modal-body">
+            <input type="hidden" id="p_id">
+            <div class="form-row">
+                <div class="form-item col-2"><label>项目 *</label><select id="p_projectId"></select></div>
+                <div class="form-item col-2"><label>下游协议 *</label><select id="p_agreementId"></select></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item col-2"><label>阶段 *</label>
+                    <select id="p_stage">
+                        <option value="全年">全年</option>
+                        <option value="阶段一">阶段一</option>
+                        <option value="阶段二">阶段二</option>
+                        <option value="阶段三">阶段三</option>
+                        <option value="阶段四">阶段四</option>
+                    </select>
+                </div>
+                <div class="form-item col-2"><label>返利类型 *</label>
+                    <select id="p_rebateType">
+                        <option value="票折">票折</option>
+                        <option value="服务费">服务费</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-item col-2"><label>申请人</label><input id="p_applicant"></div>
+                <div class="form-item col-2"><label>申请部门</label><input id="p_applyDept"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item col-2"><label>申请日期</label><input id="p_applyDate" type="date"></div>
+                <div class="form-item col-2"><label>收款部门</label><input id="p_receiveDept"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item col-2"><label>客户/分销商</label><input id="p_customerName"></div>
+                <div class="form-item col-2"><label>备注</label><textarea id="p_remark" rows="2"></textarea></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item col-2"><label>返利总额(元) *</label><input id="p_totalRebate" type="number" step="0.01"></div>
+                <div class="form-item col-2"><label>实际返利(元) *</label><input id="p_actualRebate" type="number" step="0.01"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalP')">取消</button>
+            <button class="btn btn-primary" id="btnSaveP">保存</button>
+        </div>
+    </div>
+</div>
+
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    var editingId = null;
+
+    $(function () {
+        RB.checkLogin(function () { loadYears(); });
+        $('#btnSearch').on('click', load);
+        $('#btnRefresh').on('click', load);
+        $('#btnExport').on('click', exportPaid);
+        $('#btnAdd').on('click', function() { RB.withPerm('paid:edit', openAdd, '权限不足，无法编辑实付'); });
+        $('#btnSaveP').on('click', function() { RB.withPerm('paid:edit', saveP, '权限不足，无法编辑实付'); });
+        $('#selYear').on('change', function() { loadProjects(); });
+        $('#selProject').on('change', function () { loadAgreements(); load(); });
+        $('#p_projectId').on('change', loadAgreements);
+    });
+
+    function loadYears() {
+        RB.post('/api/project?op=listYears', {}).done(function (r) {
+            if (r.code === 0 && r.data) {
+                var html = '';
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i] + '">' + r.data[i] + '</option>';
+                }
+                $('#selYear').html(html);
+            }
+            loadProjects();
+        });
+    }
+
+    function loadProjects() {
+        var coYear = $('#selYear').val();
+        var param = coYear ? { coYear: coYear } : {};
+        RB.post('/api/project?op=listByYear', param).done(function (r) {
+            var html = '<option value="">请选择项目</option>';
+            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
+            }
+            $('#selProject').html(html);
+            $('#p_projectId').html(html);
+        });
+    }
+
+    function loadAgreements() {
+        var pid = $('#p_projectId').val() || $('#selProject').val();
+        if (!pid) { $('#selAgreement').html('<option value="">全部下游协议</option>'); $('#p_agreementId').html(''); return; }
+        RB.post('/api/downstream-agreement', { op: 'list', current: 'true', projectId: pid }).done(function (r) {
+            var html = '<option value="">全部下游协议</option>';
+            if (r.code === 0 && r.data) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + (r.data[i].agreementName || '') + ' - ' + (r.data[i].distributorName || '') + '</option>';
+            }
+            $('#selAgreement').html(html);
+            var ph = '<option value="">请选择下游协议</option>';
+            if (r.code === 0 && r.data) for (var i = 0; i < r.data.length; i++) {
+                ph += '<option value="' + r.data[i].id + '">' + (r.data[i].agreementName || '') + ' - ' + (r.data[i].distributorName || '') + '</option>';
+            }
+            $('#p_agreementId').html(ph);
+        });
+    }
+
+    var paidStatusLabel = { DRAFT:'草稿', OP:'运营已审', OP_OK:'运营已审', OP_AUDIT:'运营已审', FINANCE:'财务已确认', FIN_OK:'财务已确认', FINAL:'财务已确认', REJECTED:'已驳回' };
+
+    function load() {
+        var pid = $('#selProject').val();
+        if (!pid) { $('#body').html('<tr><td colspan="14" style="text-align:center;color:#999;padding:30px;">请选择项目查看实付</td></tr>'); return; }
+        RB.post('/api/received-paid?op=listPaid', {
+            projectId: pid,
+            stage: $('#selStage').val(),
+            rebateType: $('#selRebateType').val()
+        }).done(function (r) {
+            if (r.code !== 0) { RB.toast(r.msg, 'error'); return; }
+            var rows = r.data || [];
+            if ($('#selAgreement').val()) rows = rows.filter(function (x) { return x.agreementId == $('#selAgreement').val(); });
+            if ($('#selStatus').val()) rows = rows.filter(function (x) { return (x.executeStatus || 'DRAFT') === $('#selStatus').val(); });
+            render(rows);
+        });
+    }
+
+    function render(rows) {
+        var html = '';
+        var total = 0, actual = 0;
+        for (var i = 0; i < rows.length; i++) {
+            var x = rows[i];
+            total += Number(x.totalRebate || 0);
+            actual += Number(x.actualRebate || 0);
+            var st = x.executeStatus || 'DRAFT';
+            var stLabel = paidStatusLabel[st] || st;
+            html += '<tr>' +
+                '<td><strong>' + (x.stage || '') + '</strong></td>' +
+                '<td>' + (x.agreementName || '-') + '</td>' +
+                '<td>' + (x.customerName || '-') + '</td>' +
+                '<td>' + (x.rebateType || '-') + '</td>' +
+                '<td>' + (x.applicant || '-') + '</td>' +
+                '<td>' + (x.applyDept || '-') + '</td>' +
+                '<td>' + (x.applyDate || '-') + '</td>' +
+                '<td>' + (x.receiveDept || '-') + '</td>' +
+                '<td>' + RB.formatMoney(x.totalRebate) + '</td>' +
+                '<td><strong>' + RB.formatMoney(x.actualRebate) + '</strong></td>' +
+                '<td>' + RB.formatMoney(x.diffAmount) + '</td>' +
+                '<td><span class="status-tag st-' + st + '">' + stLabel + '</span></td>' +
+                '<td>' + (x.remark || '') + '</td>' +
+                '<td>' + actionBtns(x) + '</td>' +
+                '</tr>';
+        }
+        html += '<tr style="background:#fafafa; font-weight:600;">' +
+            '<td colspan="8" style="text-align:right;">合计：</td>' +
+            '<td>' + RB.formatMoney(total) + '</td>' +
+            '<td>' + RB.formatMoney(actual) + '</td>' +
+            '<td>' + RB.formatMoney(total - actual) + '</td>' +
+            '<td colspan="3"></td></tr>';
+        if (rows.length === 0) html = '<tr><td colspan="14" style="text-align:center;color:#999;padding:30px;">暂无实付记录</td></tr>';
+        $('#body').html(html);
+    }
+
+    function actionBtns(x) {
+        var st = x.executeStatus || 'DRAFT';
+        var html = '';
+        if (st === 'DRAFT') {
+            html += '<a class="op" data-act="edit" data-id="' + x.id + '">编辑</a> ';
+            html += '<a class="op" data-act="del" data-id="' + x.id + '">删除</a> ';
+        }
+        if (x.rebateType === '票折' && (st === 'DRAFT' || st === 'OP' || st === 'OP_AUDIT')) {
+            html += '<a class="op" data-act="op" data-id="' + x.id + '">运营确认</a> ';
+        }
+        if (x.rebateType === '服务费' && (st === 'DRAFT' || st === 'OP' || st === 'OP_AUDIT')) {
+            html += '<a class="op" data-act="finance" data-id="' + x.id + '">财务确认</a> ';
+        }
+        return html || '-';
+    }
+
+    $(document).on('click', '.op', function () {
+        var id = $(this).data('id'), act = $(this).data('act');
+        if (act === 'edit') {
+            RB.withPerm('paid:edit', function() { editP(id); }, '权限不足，无法编辑实付');
+        }
+        else if (act === 'del') {
+            RB.withPerm('paid:edit', function() { delP(id); }, '权限不足，无法删除实付');
+        }
+        else if (act === 'op') {
+            RB.withPerm('paid:confirm', function() { confirmStep(id, 'OP'); }, '权限不足，无法运营确认');
+        }
+        else if (act === 'finance') {
+            RB.withPerm('paid:confirm', function() { confirmStep(id, 'FINANCE'); }, '权限不足，无法财务确认');
+        }
+    });
+
+    function openAdd() {
+        var pid = $('#selProject').val();
+        if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+        editingId = null;
+        $('#modalPTitle').text('新增实付');
+        $('#p_id').val('');
+        $('#p_projectId').val(pid);
+        loadAgreements();
+        $('#p_stage').val('阶段一');
+        $('#p_rebateType').val('票折');
+        $('#p_applicant,#p_applyDept,#p_applyDate,#p_receiveDept,#p_customerName').val('');
+        $('#p_totalRebate,#p_actualRebate').val('');
+        $('#p_remark').val('');
+        RB.openModal('modalP');
+    }
+
+    function editP(id) {
+        editingId = id;
+        RB.post('/api/received-paid?op=listPaid', { projectId: $('#selProject').val() }).done(function (r) {
+            if (r.code !== 0) return;
+            var x = null; for (var i = 0; i < r.data.length; i++) if (r.data[i].id == id) { x = r.data[i]; break; }
+            if (!x) { RB.toast('记录不存在', 'error'); return; }
+            $('#modalPTitle').text('编辑实付');
+            $('#p_id').val(x.id);
+            $('#p_projectId').val(x.projectId);
+            loadAgreements();
+            setTimeout(function () { $('#p_agreementId').val(x.agreementId); }, 200);
+            $('#p_stage').val(x.stage);
+            $('#p_rebateType').val(x.rebateType);
+            $('#p_applicant').val(x.applicant);
+            $('#p_applyDept').val(x.applyDept);
+            $('#p_applyDate').val(x.applyDate);
+            $('#p_receiveDept').val(x.receiveDept);
+            $('#p_customerName').val(x.customerName);
+            $('#p_totalRebate').val(x.totalRebate);
+            $('#p_actualRebate').val(x.actualRebate);
+            $('#p_remark').val(x.remark);
+            RB.openModal('modalP');
+        });
+    }
+
+    function saveP() {
+        var p = {
+            id: editingId || 0,
+            projectId: $('#p_projectId').val(),
+            agreementId: $('#p_agreementId').val(),
+            stage: $('#p_stage').val(),
+            rebateType: $('#p_rebateType').val(),
+            applicant: $('#p_applicant').val(),
+            applyDept: $('#p_applyDept').val(),
+            applyDate: $('#p_applyDate').val(),
+            receiveDept: $('#p_receiveDept').val(),
+            customerName: $('#p_customerName').val(),
+            totalRebate: $('#p_totalRebate').val() || 0,
+            actualRebate: $('#p_actualRebate').val() || 0,
+            remark: $('#p_remark').val()
+        };
+        if (!p.projectId || !p.stage || !p.rebateType) { RB.toast('请选择项目、阶段、类型', 'error'); return; }
+        RB.post('/api/received-paid?op=savePaid', p).done(function (r) {
+            if (r.code === 0) { RB.toast('保存成功', 'success'); RB.closeModal('modalP'); load(); }
+            else RB.toast(r.msg, 'error');
+        });
+    }
+
+    function delP(id) {
+        RB.confirm('确认删除？', function () {
+            RB.post('/api/received-paid?op=deletePaid', { id: id }).done(function (r) {
+                if (r.code === 0) { RB.toast('已删除', 'success'); load(); }
+                else RB.toast(r.msg || '后端未实现 deletePaid', 'error');
+            });
+        });
+    }
+
+    function confirmStep(id, step) {
+        var label = step === 'OP' ? '运营确认' : '财务确认';
+        RB.confirm('确认' + label + '？', function () {
+            RB.post('/api/received-paid?op=confirmPaid', { id: id, step: step }).done(function (r) {
+                if (r.code === 0) { RB.toast(label + '成功', 'success'); load(); }
+                else RB.toast(r.msg, 'error');
+            });
+        });
+    }
+
+    function exportPaid() {
+        var pid = $('#selProject').val();
+        if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+        $('#loadingOverlay').show();
+        var url = './api/received-paid?op=exportPaid&projectId=' + pid;
+        
+        downloadWithXhr(url, '项目实付.xlsx');
+    }
+
+    function downloadWithXhr(url, defaultFileName) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader('X-Token', RB.getToken());
+        xhr.responseType = 'blob';
+        
+        xhr.onload = function() {
+            $('#loadingOverlay').hide();
+            if (xhr.status === 200) {
+                var blob = xhr.response;
+                var contentDisposition = xhr.getResponseHeader('Content-Disposition');
+                var fileName = defaultFileName;
+                if (contentDisposition && contentDisposition.indexOf('attachment') !== -1) {
+                    var match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                    if (match && match[1]) {
+                        fileName = decodeURIComponent(match[1].replace(/['"]/g, ''));
+                    }
+                }
+                
+                var downloadUrl = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            } else {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        var response = JSON.parse(e.target.result);
+                        RB.toast(response.msg || '导出失败', 'error');
+                    } catch (err) {
+                        RB.toast('导出失败', 'error');
+                    }
+                };
+                reader.readAsText(xhr.response);
+            }
+        };
+        
+        xhr.onerror = function() {
+            $('#loadingOverlay').hide();
+            RB.toast('网络错误', 'error');
+        };
+        
+        xhr.send();
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>项目管理</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="toolbar">
+    <input id="kw" placeholder="搜索项目名称/厂牌" style="width: 220px;">
+    <select id="status">
+        <option value="">全部状态</option>
+        <option value="NEW">新建</option>
+        <option value="RUNNING">进行中</option>
+        <option value="CLOSED">已关闭</option>
+    </select>
+    <select id="coYear">
+        <option value="">全部年度</option>
+    </select>
+    <button class="btn btn-primary" id="btnSearch">查询</button>
+    <button class="btn btn-success" id="btnAdd">+ 新建项目</button>
+    <button class="btn" id="btnImportBpm">从BPM引入立项</button>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead>
+        <tr>
+            <th style="width:60px;">序号</th>
+            <th>项目编号</th>
+            <th>项目名称</th>
+            <th>签约厂牌</th>
+            <th>合作年度</th>
+            <th>项目目标规模</th>
+            <th>预计收益</th>
+            <th>状态</th>
+            <th>负责人</th>
+            <th style="width:200px;">操作</th>
+        </tr>
+        </thead>
+        <tbody id="dataBody"></tbody>
+    </table>
+</div>
+<div class="pager">
+    <span class="info" id="pagerInfo"></span>
+    <button class="pg-btn" id="pgPrev">上一页</button>
+    <span id="pgNums"></span>
+    <button class="pg-btn" id="pgNext">下一页</button>
+</div>
+
+<!-- 新建/编辑项目 -->
+<div class="modal-mask" id="modalForm">
+    <div class="modal" style="width: 720px;">
+        <div class="modal-header"><span id="modalTitle">新建项目</span><span class="spacer"></span><span class="close" onclick="RB.closeModal('modalForm')">×</span></div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-item col-4"><label>项目编号</label><input id="f_projectCode"></div>
+                <div class="form-item col-4"><label>项目名称 *</label><input id="f_projectName"></div>
+                <div class="form-item col-4"><label>签约厂牌</label><input id="f_brand"></div>
+                <div class="form-item col-4"><label>合作品种(<=200字)</label><input id="f_coProduct" maxlength="200"></div>
+                <div class="form-item col-4"><label>合作模式</label><input id="f_coMode"></div>
+                <div class="form-item col-4"><label>合作年度</label><input id="f_coYear" type="number" min="2000" max="2100" placeholder="如2024" maxlength="4"></div>
+                <div class="form-item col-4"><label>起始日期</label><input id="f_periodStartDate" type="date"></div>
+                <div class="form-item col-4"><label>终止日期</label><input id="f_periodEndDate" type="date"></div>
+                <div class="form-item col-4"><label>覆盖地区(<=200字)</label><input id="f_region" maxlength="200"></div>
+                <div class="form-item col-4"><label>项目目标规模(元)</label><input id="f_targetScale" type="number" step="0.01"></div>
+                <div class="form-item col-4"><label>预计收益返利金额(元)</label><input id="f_expectedRebate" type="number" step="0.01"></div>
+                <div class="form-item col-4"><label>预计费用(元)</label><input id="f_expectedCost" type="number" step="0.01"></div>
+                <div class="form-item col-12"><label>项目信息简述</label><textarea id="f_description"></textarea></div>
+                <div class="form-item col-4"><label>状态</label>
+                    <select id="f_status"><option value="NEW">新建</option><option value="RUNNING">进行中</option><option value="CLOSED">已关闭</option></select></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalForm')">取消</button>
+            <button class="btn btn-primary" id="btnSave">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 从BPM引入立项 - 弹出窗口 -->
+<div class="modal-mask" id="modalBpmList">
+    <div class="modal" style="width:1100px;max-height:85vh;">
+        <div class="modal-header">从BPM引入立项 - 选择项目<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalBpmList')">×</span></div>
+        <div class="modal-body" style="max-height:65vh;overflow-y:auto;">
+            <div style="margin-bottom:10px;padding:8px 12px;background:#e3f2fd;color:#1565c0;border-radius:4px;font-size:13px;">
+                以下为BPM近一年内创建的立项，请选择一条引入。已在本系统存在的项目将显示"已存在"标记，选择后系统将根据项目编号判定更新或新增。
+            </div>
+            <div class="table-wrap" style="margin:0;">
+                <table>
+                    <thead><tr>
+                        <th>选择</th>
+                        <th>项目编号</th>
+                        <th>项目名称</th>
+                        <th>签约厂牌</th>
+                        <th>合作年度</th>
+                        <th>合作模式</th>
+                        <th>起始日期</th>
+                        <th>终止日期</th>
+                        <th>项目目标规模</th>
+                        <th>预计收益</th>
+                        <th>预计费用</th>
+                        <th>本地状态</th>
+                    </tr></thead>
+                    <tbody id="bpmBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalBpmList')">关闭</button>
+        </div>
+    </div>
+</div>
+<div class="modal-mask" id="modalPerson">
+    <div class="modal" style="width: 800px;">
+        <div class="modal-header">项目作业人员 - <span id="mp_projectName"></span>
+            <span class="spacer"></span>
+            <span class="close" onclick="RB.closeModal('modalPerson')">×</span></div>
+        <div class="modal-body">
+            <div class="toolbar">
+                <button class="btn btn-primary btn-sm" id="btnAddPerson">+ 添加人员</button>
+            </div>
+            <table>
+                <thead><tr><th>是否正式</th><th>工号</th><th>姓名</th><th>工作岗位</th><th>费用分配占比(%)</th><th>备注</th><th>操作</th></tr></thead>
+                <tbody id="personBody"></tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalPerson')">关闭</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-mask" id="modalPersonForm">
+    <div class="modal" style="width: 480px;">
+        <div class="modal-header">人员信息<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalPersonForm')">×</span></div>
+        <div class="modal-body">
+            <input type="hidden" id="pf_id">
+            <input type="hidden" id="pf_projectId">
+            <div class="form-item"><label>是否正式员工</label><select id="pf_isFormal"><option value="1">正式</option><option value="0">临时</option></select></div>
+            <div class="form-item"><label>人员(临时)工号</label><input id="pf_workNo"></div>
+            <div class="form-item"><label>姓名 *</label><input id="pf_name"></div>
+            <div class="form-item"><label>工作岗位</label><input id="pf_position"></div>
+            <div class="form-item"><label>费用分配占比(%)</label><input id="pf_costRatio" type="number" value="100" step="0.01"></div>
+            <div class="form-item"><label>备注</label><input id="pf_remark"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalPersonForm')">取消</button>
+            <button class="btn btn-primary" id="btnSavePerson">保存</button>
+        </div>
+    </div>
+</div>
+
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    var state = { page: 1, size: 20, total: 0 };
+    var curProject = null;
+
+    $(function () {
+        RB.checkLogin(function () {
+            loadYears();
+            load();
+        });
+
+        $('#btnSearch').on('click', function () { state.page = 1; load(); });
+        $('#pgPrev').on('click', function () { if (state.page > 1) { state.page--; load(); } });
+        $('#pgNext').on('click', function () { if (state.page * state.size < state.total) { state.page++; load(); } });
+
+        $('#btnAdd').on('click', function () { RB.withPerm('project:edit', function() { curProject = null; $('#modalTitle').text('新建项目'); clearForm(); RB.openModal('modalForm'); }, '权限不足，无法新增项目'); });
+        $('#btnImportBpm').on('click', function () {
+            RB.withPerm('project:edit', function() { loadBpmProjectList(); }, '权限不足，无法引入立项');
+        });
+
+        $('#btnSave').on('click', saveForm);
+        $('#btnSavePerson').on('click', savePerson);
+        $('#btnAddPerson').on('click', function () { RB.withPerm('project:edit', function() { clearPersonForm(); $('#pf_projectId').val(curProject.id); RB.openModal('modalPersonForm'); }, '权限不足，无法新增项目'); });
+    });
+
+    function loadYears() {
+        RB.post('/api/project?op=listYears', {}).done(function (r) {
+            if (r.code === 0 && r.data) {
+                var html = '<option value="">全部年度</option>';
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i] + '">' + r.data[i] + '</option>';
+                }
+                $('#coYear').html(html);
+            }
+        });
+    }
+
+    function load() {
+        RB.post('/api/project?op=page', { keyword: $('#kw').val(), status: $('#status').val(), coYear: $('#coYear').val(), page: state.page, size: state.size }).done(function (r) {
+            if (r.code === 0) {
+                state.total = r.data.total;
+                renderRows(r.data.rows);
+                renderPager();
+            }
+        });
+    }
+    
+    function formatStatus(status) {
+        var map = { 'NEW': '新建', 'RUNNING': '进行中', 'CLOSED': '已关闭' };
+        return map[status] || status || '';
+    }
+
+    function renderRows(rows) {
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            html += '<tr>' +
+                '<td>' + ((state.page - 1) * state.size + i + 1) + '</td>' +
+                '<td>' + (r.projectCode || '') + '</td>' +
+                '<td><a href="overview.html?projectId=' + r.id + '" target="_blank">' + (r.projectName || '') + '</a></td>' +
+                '<td>' + (r.brand || '') + '</td>' +
+                '<td>' + (r.coYear || '') + '</td>' +
+                '<td>' + RB.formatMoney(r.targetScale) + '</td>' +
+                '<td>' + RB.formatMoney(r.expectedRebate) + '</td>' +
+                '<td>' + formatStatus(r.status) + '</td>' +
+                '<td>' + (r.ownerName || '') + '</td>' +
+                '<td>' +
+                    '<button class="btn btn-sm" onclick="edit(' + r.id + ')">编辑</button> ' +
+                    '<button class="btn btn-sm btn-danger" onclick="del(' + r.id + ')">删除</button>' +
+                '</td>' +
+                '</tr>';
+        }
+        $('#dataBody').html(html || '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px;">暂无数据</td></tr>');
+    }
+
+    function renderPager() {
+        var totalPg = Math.max(1, Math.ceil(state.total / state.size));
+        $('#pagerInfo').text('共 ' + state.total + ' 条 / ' + totalPg + ' 页');
+        $('#pgPrev').toggleClass('disabled', state.page <= 1);
+        $('#pgNext').toggleClass('disabled', state.page >= totalPg);
+        var n = '';
+        for (var i = 1; i <= totalPg; i++) {
+            n += '<button class="pg-btn ' + (i === state.page ? 'active' : '') + '" onclick="goPage(' + i + ')">' + i + '</button>';
+        }
+        $('#pgNums').html(n);
+    }
+    function goPage(p) { state.page = p; load(); }
+
+    function edit(id) {
+        RB.withPerm('project:edit', function() {
+            RB.post('/api/project?op=get', { id: id }).done(function (r) {
+                if (r.code === 0) { curProject = r.data; fillForm(r.data); RB.openModal('modalForm'); }
+            });
+        }, '权限不足，无法编辑项目');
+    }
+
+    function del(id) {
+        RB.confirm('确认删除该项目？', function () {
+            RB.post('/api/project?op=delete', { id: id }).done(function (r) {
+                if (r.code === 0) { RB.toast('已删除', 'success'); load(); }
+                else { RB.toast(r.msg, 'error'); }
+            });
+        });
+    }
+
+    function clearForm() {
+        ['f_projectCode', 'f_projectName', 'f_brand', 'f_coProduct', 'f_coMode', 'f_coYear',
+         'f_region', 'f_targetScale', 'f_expectedRebate', 'f_expectedCost', 'f_description']
+        .forEach(function (id) { $('#' + id).val(''); });
+        $('#f_periodStartDate').val(''); $('#f_periodEndDate').val('');
+        $('#f_status').val('NEW');
+    }
+    function fillForm(p) {
+        $('#f_projectCode').val(p.projectCode || '');
+        $('#f_projectName').val(p.projectName || '');
+        $('#f_brand').val(p.brand || '');
+        $('#f_coProduct').val(p.coProduct || '');
+        $('#f_coMode').val(p.coMode || '');
+        $('#f_coYear').val(p.coYear || '');
+        $('#f_periodStartDate').val(p.periodStartDate || '');
+        $('#f_periodEndDate').val(p.periodEndDate || '');
+        $('#f_region').val(p.region || '');
+        $('#f_targetScale').val(p.targetScale || 0);
+        $('#f_expectedRebate').val(p.expectedRebate || 0);
+        $('#f_expectedCost').val(p.expectedCost || 0);
+        $('#f_description').val(p.description || '');
+        $('#f_status').val(p.status || 'NEW');
+    }
+
+    function saveForm() {
+        var p = {
+            id: curProject ? curProject.id : null,
+            projectCode: $('#f_projectCode').val(),
+            projectName: $('#f_projectName').val(),
+            brand: $('#f_brand').val(),
+            coProduct: $('#f_coProduct').val(),
+            coMode: $('#f_coMode').val(),
+            coYear: $('#f_coYear').val(),
+            periodStartDate: $('#f_periodStartDate').val(),
+            periodEndDate: $('#f_periodEndDate').val(),
+            region: $('#f_region').val(),
+            targetScale: $('#f_targetScale').val(),
+            expectedRebate: $('#f_expectedRebate').val(),
+            expectedCost: $('#f_expectedCost').val(),
+            description: $('#f_description').val(),
+            status: $('#f_status').val()
+        };
+        if (!p.projectName) { RB.toast('请填写项目名称', 'error'); return; }
+        var op = curProject ? 'update' : 'add';
+        RB.post('/api/project?op=' + op, p).done(function (r) {
+            if (r.code === 0) { RB.toast('保存成功', 'success'); RB.closeModal('modalForm'); load(); }
+            else { RB.toast(r.msg, 'error'); }
+        });
+    }
+
+    function managePerson(id, name) {
+        curProject = { id: id, projectName: name };
+        $('#mp_projectName').text(name);
+        loadPersons();
+        RB.openModal('modalPerson');
+    }
+
+    function loadPersons() {
+        RB.post('/api/project-person?op=list', { projectId: curProject.id }).done(function (r) {
+            if (r.code === 0) {
+                var html = '';
+                for ( var i = 0; i < r.data.length; i++) {
+                    var p = r.data[i];
+                    html += '<tr>' +
+                        '<td>' + (p.isFormal === 1 ? '正式' : '临时') + '</td>' +
+                        '<td>' + (p.workNo || '') + '</td>' +
+                        '<td>' + (p.name || '') + '</td>' +
+                        '<td>' + (p.position || '') + '</td>' +
+                        '<td>' + (p.costRatio || 0) + '</td>' +
+                        '<td>' + (p.remark || '') + '</td>' +
+                        '<td><button class="btn btn-sm" onclick="editPerson(' + p.id + ')">编辑</button> ' +
+                        '<button class="btn btn-sm btn-danger" onclick="delPerson(' + p.id + ')">删除</button></td>' +
+                        '</tr>';
+                }
+                $('#personBody').html(html || '<tr><td colspan="7" style="text-align:center;color:#999;padding:24px;">暂无人员</td></tr>');
+            }
+        });
+    }
+
+    function editPerson(id) {
+        RB.withPerm('project:edit', function() {
+            RB.post('/api/project-person?op=list', { projectId: curProject.id }).done(function (r) {
+                var p = r.data.find(function (x) { return x.id === id; });
+                if (p) {
+                    $('#pf_id').val(p.id);
+                    $('#pf_projectId').val(p.projectId);
+                    $('#pf_isFormal').val(p.isFormal);
+                    $('#pf_workNo').val(p.workNo);
+                    $('#pf_name').val(p.name);
+                    $('#pf_position').val(p.position);
+                    $('#pf_costRatio').val(p.costRatio);
+                    $('#pf_remark').val(p.remark);
+                    RB.openModal('modalPersonForm');
+                }
+            });
+        }, '权限不足，无法编辑项目');
+    }
+
+    function delPerson(id) {
+        RB.confirm('确认删除？', function () {
+            RB.post('/api/project-person?op=delete', { id: id }).done(function (r) {
+                if (r.code === 0) { RB.toast('已删除', 'success'); loadPersons(); }
+            });
+        });
+    }
+
+    function clearPersonForm() {
+        ['pf_id', 'pf_workNo', 'pf_name', 'pf_position', 'pf_remark'].forEach(function (id) { $('#' + id).val(''); });
+        $('#pf_isFormal').val('1'); $('#pf_costRatio').val('100');
+    }
+
+    function savePerson() {
+        var id = $('#pf_id').val();
+        var p = {
+            id: id || null,
+            projectId: $('#pf_projectId').val(),
+            isFormal: $('#pf_isFormal').val(),
+            workNo: $('#pf_workNo').val(),
+            name: $('#pf_name').val(),
+            position: $('#pf_position').val(),
+            costRatio: $('#pf_costRatio').val(),
+            remark: $('#pf_remark').val()
+        };
+        if (!p.name) { RB.toast('请填写姓名', 'error'); return; }
+        var op = id ? 'update' : 'add';
+        RB.post('/api/project-person?op=' + op, p).done(function (r) {
+            if (r.code === 0) { RB.toast('保存成功', 'success'); RB.closeModal('modalPersonForm'); loadPersons(); }
+            else { RB.toast(r.msg, 'error'); }
+        });
+    }
+
+    // ==================== BPM引入立项 ====================
+    var bpmRows = [];
+
+    function loadBpmProjectList() {
+        RB.post('/api/project?op=listBpmProjects', {}).done(function (r) {
+            if (r.code !== 0) { RB.toast(r.msg || '获取BPM数据失败', 'error'); return; }
+            bpmRows = r.data || [];
+            renderBpmList(bpmRows);
+            RB.openModal('modalBpmList');
+        }).fail(function () { RB.toast('网络错误，请稍后重试', 'error'); });
+    }
+
+    function renderBpmList(rows) {
+        var html = '';
+        if (!rows || rows.length === 0) {
+            html = '<tr><td colspan="12" style="text-align:center;color:#999;padding:30px;">BPM中暂无近一年的立项数据</td></tr>';
+        } else {
+            for (var i = 0; i < rows.length; i++) {
+                var x = rows[i];
+                var isExist = x.isExisting;
+                var actionBtn = isExist
+                    ? '<span style="color:#f56c6c;font-size:12px;">已存在-将更新</span>'
+                    : '<a class="op" data-act="importRow" data-idx="' + i + '">引入</a>';
+                html += '<tr' + (isExist ? ' style="background:#fff9f9;"' : '') + '>' +
+                    '<td><input type="radio" name="bpmRow" value="' + i + '"></td>' +
+                    '<td>' + esc(x.projectCode) + '</td>' +
+                    '<td>' + esc(x.projectName) + '</td>' +
+                    '<td>' + esc(x.brand) + '</td>' +
+                    '<td>' + esc(x.coYear) + '</td>' +
+                    '<td>' + esc(x.coMode) + '</td>' +
+                    '<td>' + esc(x.periodStartDate) + '</td>' +
+                    '<td>' + esc(x.periodEndDate) + '</td>' +
+                    '<td>' + RB.formatMoney(x.targetScale) + '</td>' +
+                    '<td>' + RB.formatMoney(x.expectedRebate) + '</td>' +
+                    '<td>' + RB.formatMoney(x.expectedCost) + '</td>' +
+                    '<td>' + actionBtn + '</td>' +
+                    '</tr>';
+            }
+        }
+        $('#bpmBody').html(html);
+        // 绑定行内"引入"按钮
+        $('#bpmBody').find('a.op[data-act="importRow"]').off('click').on('click', function () {
+            var idx = $(this).data('idx');
+            doBpmImport(bpmRows[idx]);
+        });
+    }
+
+    function esc(v) { return v == null ? '' : String(v); }
+
+    function doBpmImport(row) {
+        if (!row || !row.projectCode) { RB.toast('项目编号不能为空', 'error'); return; }
+        var isExist = row.isExisting;
+        RB.confirm(
+            (isExist ? '项目编号 <strong>' + esc(row.projectCode) + '</strong> 已存在，将更新该项目信息。' : '将新增项目：<strong>' + esc(row.projectName) + '</strong>（编号：' + esc(row.projectCode) + '）') + '<br>确认引入？',
+            function () {
+                var payload = {
+                    projectCode: row.projectCode,
+                    projectName: row.projectName,
+                    brand: row.brand,
+                    coProduct: row.coProduct,
+                    coMode: row.coMode,
+                    coYear: row.coYear,
+                    periodStartDate: row.periodStartDate,
+                    periodEndDate: row.periodEndDate,
+                    region: row.region,
+                    targetScale: row.targetScale || 0,
+                    expectedRebate: row.expectedRebate || 0,
+                    expectedCost: row.expectedCost || 0,
+                    description: row.description
+                };
+                RB.post('/api/project?op=importFromBpm', payload).done(function (r) {
+                    if (r.code === 0) {
+                        RB.toast(isExist ? '项目已更新' : '项目已新增', 'success');
+                        RB.closeModal('modalBpmList');
+                        state.page = 1;
+                        load();
+                    } else {
+                        RB.toast(r.msg || '引入失败', 'error');
+                    }
+                }).fail(function () { RB.toast('网络错误', 'error'); });
+            }
+        );
+    }
+</script>
+</body>
+</html>

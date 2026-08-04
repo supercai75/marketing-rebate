@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>下游流向</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .stage-card { background:#fff; border-radius:6px; padding:16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.05);}
+        .stage-card h4 { margin:0 0 12px 0; font-size:14px; color:#303133; border-left:3px solid #409eff; padding-left:8px;}
+        .stage-row { display:flex; gap:16px; flex-wrap:wrap;}
+        .stage-item { flex:1; min-width:140px;}
+        .stage-item .label { color:#909399; font-size:12px; margin-bottom:4px;}
+        .stage-item .value { font-size:16px; font-weight:600; color:#303133;}
+        .stage-item .value.target { color:#606266;}
+        .stage-item .value.actual { color:#409eff;}
+        .stage-item .value.rate { color:#67c23a;}
+        .progress-bar { background:#ebeef5; border-radius:4px; height:16px; overflow:hidden; margin-top:4px;}
+        .progress-fill { background:#409eff; height:100%; transition:width .3s;}
+        .table-nowrap td, .table-nowrap th { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .split-disabled { background:#f5f5f5; color:#909399; }
+        .selected-summary { position:absolute; bottom:0; left:0; right:0; background:#fff; border-top:1px solid #e4e7ed; padding:12px 20px; display:flex; align-items:center; gap:16px;}
+        .selected-summary .label { color:#909399; font-size:12px;}
+        .selected-summary .value { font-size:16px; font-weight:600; color:#303133;}
+        .wrapper { position:relative; padding-bottom:70px;}
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #409eff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:8px; padding:32px 48px; text-align:center; box-shadow:0 2px 12px rgba(0,0,0,0.2);">
+        <div class="loading-spinner" style="margin:0 auto 16px;"></div>
+        <div style="font-size:16px; color:#333;">正在加载数据，请稍候...</div>
+    </div>
+</div>
+<div class="toolbar">
+    <select id="selYear" style="width:120px;">
+    </select>
+    <select id="projectId" style="width:300px;"></select>
+    <select id="agreementId" style="width:350px;"></select>
+    <button class="btn btn-primary" id="btnSearch">查询</button>
+    <span style="flex:1;"></span>
+    <span style="color:#909399; font-size:12px;">提示：点击「新增下游流向」选择上游流向进行分解</span>
+</div>
+
+<div class="tabs" id="mainTabs">
+    <div class="tab active" data-tab="stage">阶段达成情况</div>
+    <div class="tab" data-tab="current">当前生效流向</div>
+    <div class="tab" data-tab="invalid">已作废流向</div>
+    <div class="tab" data-tab="add">新增下游流向</div>
+</div>
+
+<div id="tabStage" class="tab-pane">
+    <div class="stage-card">
+        <h4>阶段达成情况</h4>
+        <div class="stage-row" id="stageDetails"></div>
+    </div>
+</div>
+
+<div id="tabCurrent" class="tab-pane" style="display:none;">
+    <div class="toolbar">
+        <input id="filterMonthCurrent" placeholder="筛选月份 yyyyMM">
+        <input id="filterBuyerCurrent" placeholder="筛选采购方">
+        <input id="filterBuyerCityCurrent" placeholder="筛选采购方城市">
+        <button class="btn btn-primary" id="btnLoadCurrent">查询</button>
+        <button class="btn" id="btnExportCurrent">导出Excel</button>
+    </div>
+    <div class="table-wrap" id="currentTableWrap">
+        <table class="table-nowrap">
+            <thead><tr>
+                <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
+                <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th><th>考核组</th>
+            </tr></thead>
+            <tbody id="currentBody"></tbody>
+        </table>
+    </div>
+    <div class="pagination" id="currentPagination" style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:center;">
+        <button class="page-btn" id="btnCurrentPrev" onclick="prevCurrentPage()" style="display:inline-block;">上一页</button>
+        <div id="currentPageNumbers" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;"></div>
+        <button class="page-btn" id="btnCurrentNext" onclick="nextCurrentPage()" style="display:inline-block;">下一页</button>
+        <div class="page-jump" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;">
+            <input type="text" id="jumpCurrentPage" placeholder="页码" onkeydown="if(event.keyCode===13) jumpToCurrentPage()" style="display:inline-block;">
+            <button class="jump-btn" onclick="jumpToCurrentPage()" style="display:inline-block;">跳转</button>
+        </div>
+        <span class="page-info" id="currentPageInfo" style="display:inline-block;"></span>
+    </div>
+</div>
+
+<div id="tabInvalid" class="tab-pane" style="display:none;">
+    <div class="toolbar">
+        <input id="filterMonthInvalid" placeholder="筛选月份 yyyyMM">
+        <input id="filterBuyerInvalid" placeholder="筛选采购方">
+        <input id="filterBuyerCityInvalid" placeholder="筛选采购方城市">
+        <button class="btn btn-primary" id="btnLoadInvalid">查询</button>
+        <button class="btn" id="btnExportInvalid">导出Excel</button>
+    </div>
+    <div class="table-wrap" id="invalidTableWrap">
+        <table class="table-nowrap">
+            <thead><tr>
+                <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>采购方</th><th>采购方城市</th>
+                <th>核算价格</th><th>数量</th><th>核算金额</th>
+            </tr></thead>
+            <tbody id="invalidBody"></tbody>
+        </table>
+    </div>
+    <div class="pagination" id="invalidPagination" style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:center;">
+        <button class="page-btn" id="btnInvalidPrev" onclick="prevInvalidPage()" style="display:inline-block;">上一页</button>
+        <div id="invalidPageNumbers" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;"></div>
+        <button class="page-btn" id="btnInvalidNext" onclick="nextInvalidPage()" style="display:inline-block;">下一页</button>
+        <div class="page-jump" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;">
+            <input type="text" id="jumpInvalidPage" placeholder="页码" onkeydown="if(event.keyCode===13) jumpToInvalidPage()" style="display:inline-block;">
+            <button class="jump-btn" onclick="jumpToInvalidPage()" style="display:inline-block;">跳转</button>
+        </div>
+        <span class="page-info" id="invalidPageInfo" style="display:inline-block;"></span>
+    </div>
+</div>
+
+<div id="tabAdd" class="tab-pane" style="display:none;">
+    <div class="wrapper">
+        <div class="toolbar">
+            <input id="filterMonth" placeholder="筛选月份 yyyyMM">
+            <input id="filterProduct" placeholder="筛选产品名称">
+            <input id="filterSpec" placeholder="筛选规格">
+            <input id="filterSeller" placeholder="筛选销售方">
+            <input id="filterBuyer" placeholder="筛选采购方">
+            <input id="filterBuyerCity" placeholder="筛选采购方城市">
+            <button class="btn btn-primary" id="btnLoadSource">查询</button>
+            <button class="btn btn-success" id="btnSelectAll">全选</button>
+            <button class="btn" id="btnSelectInverse">反选</button>
+            <button class="btn" id="btnSelectAllPage">本页全选</button>
+            <span style="flex:1;"></span>
+            <span style="color:#606266; font-size:14px;">已选择：<strong id="selectedNum">0</strong>条</span>
+        </div>
+        <div class="table-wrap" id="sourceTableWrap">
+            <table class="table-nowrap">
+                <thead><tr>
+                    <th width="50">选择</th>
+                    <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
+                    <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th>
+                </tr></thead>
+                <tbody id="sourceBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="sourcePagination" style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:center;">
+            <button class="page-btn" id="btnSourcePrev" onclick="prevSourcePage()" style="display:inline-block;">上一页</button>
+            <div id="sourcePageNumbers" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;"></div>
+            <button class="page-btn" id="btnSourceNext" onclick="nextSourcePage()" style="display:inline-block;">下一页</button>
+            <div class="page-jump" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;">
+                <input type="text" id="jumpSourcePage" placeholder="页码" onkeydown="if(event.keyCode===13) jumpToSourcePage()" style="display:inline-block;">
+                <button class="jump-btn" onclick="jumpToSourcePage()" style="display:inline-block;">跳转</button>
+            </div>
+            <span class="page-info" id="sourcePageInfo" style="display:inline-block;"></span>
+        </div>
+        <div class="selected-summary">
+            <div class="label">已选择条数：</div>
+            <div class="value" id="decomposeCount">0</div>
+            <div class="label">本页数量：</div>
+            <div class="value" id="decomposeQty">0</div>
+            <div class="label">本页金额：</div>
+            <div class="value" id="decomposeAmt">0.00</div>
+            <span style="flex:1;"></span>
+            <button class="btn btn-primary" id="btnDecompose" onclick="showDecomposeModal()">新增下游流向</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-mask" id="modalDecompose">
+    <div class="modal" style="width:600px;">
+        <div class="modal-header">分解至下游协议
+            <span class="spacer"></span>
+            <span class="close" onclick="RB.closeModal('modalDecompose')">×</span>
+        </div>
+        <div class="modal-body">
+            <div id="agreementSelectDiv">
+                <div class="form-item">
+                    <label>选择下游协议 *</label>
+                    <select id="downstreamAgreement" style="width:100%;"></select>
+                </div>
+            </div>
+            <div id="agreementInfoDiv" style="display:none;">
+                <div class="form-item">
+                    <label>下游协议</label>
+                    <div id="agreementInfo" style="padding:8px 0; font-weight:600;"></div>
+                </div>
+            </div>
+            <div class="form-item">
+                <label>备注</label>
+                <input id="decomposeNote" placeholder="请输入备注">
+            </div>
+            <p style="color:#888; font-size:12px;">系统将为每个选中的上游流向记录创建对应的下游流向记录。</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalDecompose')">取消</button>
+            <button class="btn btn-primary" id="btnConfirmDecompose" onclick="doDecompose()">确认分解</button>
+        </div>
+    </div>
+</div>
+
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    var curProject = null;
+    var curAgreement = null;
+    var selectedRows = [];
+    var selectAllAcrossPages = false;
+    var sourceData = [];
+
+    var currentPage = 1, currentPageSize = 10, currentTotal = 0;
+    var invalidPage = 1, invalidPageSize = 10, invalidTotal = 0;
+    var sourcePage = 1, sourcePageSize = 10, sourceTotal = 0;
+
+    $(function () {
+        RB.checkLogin(function () { loadYears(); });
+
+        $('#selYear').on('change', function() { loadProjects(function () { loadTabData(); }); });
+
+        $('#btnSearch').on('click', function () { loadStage(); loadCurrent(); loadInvalid(); });
+        $('#projectId').on('change', function () { 
+            var id = $(this).val(); 
+            curProject = id ? {id: id} : null; 
+            loadAgreements(); 
+            curAgreement = null; 
+            clearTabTables();
+        });
+        $('#agreementId').on('change', function () { 
+            var id = $(this).val(); 
+            curAgreement = id ? {id: id} : null; 
+            clearTabTables();
+        });
+        $('#btnLoadSource').on('click', function () { sourcePage = 1; recalcSourcePageSize(); loadSource(); });
+        $('#btnLoadCurrent').on('click', function () { currentPage = 1; recalcCurrentPageSize(); loadCurrent(); });
+        $('#btnLoadInvalid').on('click', function () { invalidPage = 1; recalcInvalidPageSize(); loadInvalid(); });
+        $('#btnExportCurrent').on('click', exportCurrent);
+        $('#btnExportInvalid').on('click', exportInvalid);
+        $('#btnSelectAll').on('click', toggleSelectAll);
+        $('#btnSelectInverse').on('click', toggleSelectInverse);
+        $('#btnSelectAllPage').on('click', toggleCheckAllPage);
+
+        $('#mainTabs .tab').on('click', function () {
+            $('#mainTabs .tab').removeClass('active');
+            $(this).addClass('active');
+            var t = $(this).data('tab');
+            $('#tabStage').toggle(t === 'stage');
+            $('#tabCurrent').toggle(t === 'current');
+            $('#tabInvalid').toggle(t === 'invalid');
+            $('#tabAdd').toggle(t === 'add');
+            if (t === 'stage') loadStage();
+            if (t === 'current') { recalcCurrentPageSize(); loadCurrent(); }
+            if (t === 'invalid') { recalcInvalidPageSize(); loadInvalid(); }
+            if (t === 'add') { recalcSourcePageSize(); loadSource(); }
+        });
+        
+        $(window).on('resize', function () {
+            if ($('#tabAdd').is(':visible')) { recalcSourcePageSize(); loadSource(); }
+            if ($('#tabCurrent').is(':visible')) { recalcCurrentPageSize(); loadCurrent(); }
+            if ($('#tabInvalid').is(':visible')) { recalcInvalidPageSize(); loadInvalid(); }
+        });
+    });
+
+    function recalcSourcePageSize() {
+        var wrap = $('#sourceTableWrap');
+        if (wrap.length === 0) { sourcePageSize = 10; return; }
+        var h = $(window).height() - 250;
+        sourcePageSize = Math.max(5, Math.floor(h / 36));
+    }
+    function recalcCurrentPageSize() {
+        var wrap = $('#currentTableWrap');
+        if (wrap.length === 0) { currentPageSize = 10; return; }
+        var h = $(window).height() - 200;
+        currentPageSize = Math.max(5, Math.floor(h / 36));
+    }
+    function recalcInvalidPageSize() {
+        var wrap = $('#invalidTableWrap');
+        if (wrap.length === 0) { invalidPageSize = 10; return; }
+        var h = $(window).height() - 200;
+        invalidPageSize = Math.max(5, Math.floor(h / 36));
+    }
+
+    function loadYears() {
+        RB.post('/api/project?op=listYears', {}).done(function (r) {
+            if (r.code === 0 && r.data) {
+                var html = '';
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i] + '">' + r.data[i] + '</option>';
+                }
+                $('#selYear').html(html);
+            }
+            loadProjects(function () { loadTabData(); });
+        });
+    }
+
+    function loadProjects(cb) {
+        var coYear = $('#selYear').val();
+        var param = coYear ? { coYear: coYear } : {};
+        RB.post('/api/project?op=listByYear', param).done(function (r) {
+            var html = '<option value="">选择项目...</option>';
+            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
+            }
+            $('#projectId').html(html);
+            if (cb) cb();
+        });
+    }
+
+    function loadAgreements() {
+        var pid = $('#projectId').val();
+        if (!pid) { $('#agreementId').html('<option value="">选择项目后加载...</option>'); return; }
+        RB.post('/api/downstream-agreement?op=list', { projectId: pid }).done(function (r) {
+            var html = '<option value="">选择下游协议...</option>';
+            if (r.code === 0 && r.data) for (var i = 0; i < r.data.length; i++) {
+                var a = r.data[i];
+                html += '<option value="' + a.id + '">' + a.agreementNo + ' - ' + a.agreementName + '</option>';
+            }
+            $('#agreementId').html(html);
+        });
+    }
+
+    function loadTabData() {
+        var activeTab = $('#mainTabs .tab.active').data('tab');
+        if (activeTab === 'stage') loadStage();
+        else if (activeTab === 'current') { recalcCurrentPageSize(); loadCurrent(); }
+        else if (activeTab === 'invalid') { recalcInvalidPageSize(); loadInvalid(); }
+        else if (activeTab === 'add') { recalcSourcePageSize(); loadSource(); }
+    }
+
+    function loadStage() {
+        var aid = $('#agreementId').val();
+        if (!aid) { $('#stageDetails').html('<div style="color:#999; padding:20px;">请选择下游协议</div>'); return; }
+        RB.post('/api/downstream-flow?op=agreementOverview', { agreementId: aid }).done(function (r) {
+            if (r.code !== 0 || !r.data) return;
+            var d = r.data;
+            var html = '';
+            var stages = [
+                { key: '1', name: '第一阶段', target: d.stage1Target, actual: d.stage1Actual, rate: d.stage1Rate },
+                { key: '2', name: '第二阶段', target: d.stage2Target, actual: d.stage2Actual, rate: d.stage2Rate },
+                { key: '3', name: '第三阶段', target: d.stage3Target, actual: d.stage3Actual, rate: d.stage3Rate },
+                { key: '4', name: '第四阶段', target: d.stage4Target, actual: d.stage4Actual, rate: d.stage4Rate },
+            ];
+            for (var i = 0; i < stages.length; i++) {
+                var s = stages[i];
+                if (!s.target && !s.actual) continue;
+                var rateNum = Number(s.rate) || 0;
+                html += '<div class="stage-item">' +
+                    '<div class="label">' + s.name + '</div>' +
+                    '<div><span class="value target">指标：' + RB.formatMoney(s.target) + '</span></div>' +
+                    '<div><span class="value actual">达成：' + RB.formatMoney(s.actual) + '</span></div>' +
+                    '<div><span class="value rate">达成率：' + s.rate + '%</span></div>' +
+                    '<div class="progress-bar"><div class="progress-fill" style="width:' + Math.min(rateNum, 100) + '%;"></div></div>' +
+                    '</div>';
+            }
+            $('#stageDetails').html(html || '<div style="color:#999;">暂无数据</div>');
+        });
+    }
+
+    function loadCurrent() {
+        var pid = $('#projectId').val();
+        var aid = $('#agreementId').val();
+        if (!pid) { $('#currentBody').html('<tr><td colspan="12" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
+        $('#loadingOverlay').show();
+        RB.post('/api/downstream-flow?op=listRecords', {
+            projectId: pid,
+            month: $('#filterMonthCurrent').val(),
+            buyerName: $('#filterBuyerCurrent').val(),
+            buyerCity: $('#filterBuyerCityCurrent').val(),
+            isValid: 1,
+            agreementId: aid,
+            page: currentPage,
+            pageSize: currentPageSize
+        }).done(function (r) {
+            $('#loadingOverlay').hide();
+            if (r.code === 0) {
+                currentTotal = r.data.total || 0;
+                renderCurrent(r.data.list || []);
+            }
+        }).fail(function() {
+            $('#loadingOverlay').hide();
+        });
+    }
+
+    function renderCurrent(rows) {
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            html += '<tr>' +
+                '<td>' + r.monthYyyymm + '</td>' +
+                '<td>' + (r.businessDate || '') + '</td>' +
+                '<td>' + (r.productName || '') + '</td>' +
+                '<td>' + (r.spec || '') + '</td>' +
+                '<td>' + (r.sellerName || '') + '</td>' +
+                '<td>' + (r.sellerCity || '') + '</td>' +
+                '<td>' + r.calcPrice + '</td>' +
+                '<td>' + r.quantity + '</td>' +
+                '<td>' + r.calcAmount + '</td>' +
+                '<td>' + (r.buyerName || '') + '</td>' +
+                '<td>' + (r.buyerCity || '') + '</td>' +
+                '<td>' + (r.assessGroupName || '') + '</td>' +
+                '</tr>';
+        }
+        $('#currentBody').html(html || '<tr><td colspan="12" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        updateCurrentPagination();
+    }
+
+    function updateCurrentPagination() {
+        var totalPages = Math.max(1, Math.ceil(currentTotal / currentPageSize));
+        $('#currentPageInfo').text('共 ' + currentTotal + ' 条，每页 ' + currentPageSize + ' 条，第 ' + currentPage + '/' + totalPages + ' 页');
+        $('#btnCurrentPrev').toggleClass('disabled', currentPage <= 1);
+        $('#btnCurrentNext').toggleClass('disabled', currentPage >= totalPages);
+        renderPageNumbers('current', totalPages);
+    }
+
+    function loadInvalid() {
+        var pid = $('#projectId').val();
+        var aid = $('#agreementId').val();
+        if (!pid) { $('#invalidBody').html('<tr><td colspan="10" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
+        $('#loadingOverlay').show();
+        RB.post('/api/downstream-flow?op=listRecords', {
+            projectId: pid,
+            month: $('#filterMonthInvalid').val(),
+            buyerName: $('#filterBuyerInvalid').val(),
+            buyerCity: $('#filterBuyerCityInvalid').val(),
+            isValid: 0,
+            agreementId: aid,
+            page: invalidPage,
+            pageSize: invalidPageSize
+        }).done(function (r) {
+            $('#loadingOverlay').hide();
+            if (r.code === 0) {
+                invalidTotal = r.data.total || 0;
+                renderInvalid(r.data.list || []);
+            }
+        }).fail(function() {
+            $('#loadingOverlay').hide();
+        });
+    }
+
+    function renderInvalid(rows) {
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            html += '<tr style="background:#fef0f0; color:#f56c6c;">' +
+                '<td>' + r.monthYyyymm + '</td>' +
+                '<td>' + (r.businessDate || '') + '</td>' +
+                '<td>' + (r.productName || '') + '</td>' +
+                '<td>' + (r.spec || '') + '</td>' +
+                '<td>' + (r.sellerName || '') + '</td>' +
+                '<td>' + (r.buyerName || '') + '</td>' +
+                '<td>' + (r.buyerCity || '') + '</td>' +
+                '<td>' + r.calcPrice + '</td>' +
+                '<td>' + r.quantity + '</td>' +
+                '<td>' + r.calcAmount + '</td>' +
+                '</tr>';
+        }
+        $('#invalidBody').html(html || '<tr><td colspan="10" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        updateInvalidPagination();
+    }
+
+    function updateInvalidPagination() {
+        var totalPages = Math.max(1, Math.ceil(invalidTotal / invalidPageSize));
+        $('#invalidPageInfo').text('共 ' + invalidTotal + ' 条，每页 ' + invalidPageSize + ' 条，第 ' + invalidPage + '/' + totalPages + ' 页');
+        $('#btnInvalidPrev').toggleClass('disabled', invalidPage <= 1);
+        $('#btnInvalidNext').toggleClass('disabled', invalidPage >= totalPages);
+        renderPageNumbers('invalid', totalPages);
+    }
+
+    function loadSource() {
+        if (!curProject) return;
+        $('#loadingOverlay').show();
+        RB.post('/api/upstream-flow?op=listCanSplit', {
+            projectId: curProject.id,
+            month: $('#filterMonth').val(),
+            productName: $('#filterProduct').val(),
+            spec: $('#filterSpec').val(),
+            sellerName: $('#filterSeller').val(),
+            buyerName: $('#filterBuyer').val(),
+            buyerCity: $('#filterBuyerCity').val(),
+            page: sourcePage,
+            pageSize: sourcePageSize
+        }).done(function (r) {
+            $('#loadingOverlay').hide();
+            if (r.code === 0) {
+                sourceTotal = r.data.total || 0;
+                sourceData = r.data.list || [];
+                renderSource(sourceData);
+            }
+        }).fail(function() {
+            $('#loadingOverlay').hide();
+        });
+    }
+
+    function renderSource(rows) {
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var isSelected = selectedRows.indexOf(r.id) >= 0;
+            html += '<tr>' +
+                '<td><input type="checkbox" class="row-check" data-id="' + r.id + '" ' + (isSelected ? 'checked' : '') + '></td>' +
+                '<td>' + r.monthYyyymm + '</td>' +
+                '<td>' + (r.businessDate || '') + '</td>' +
+                '<td>' + (r.productName || '') + '</td>' +
+                '<td>' + (r.spec || '') + '</td>' +
+                '<td>' + (r.sellerName || '') + '</td>' +
+                '<td>' + (r.sellerCity || '') + '</td>' +
+                '<td>' + r.calcPrice + '</td>' +
+                '<td>' + r.quantity + '</td>' +
+                '<td>' + r.calcAmount + '</td>' +
+                '<td>' + (r.buyerName || '') + '</td>' +
+                '<td>' + (r.buyerCity || '') + '</td>' +
+                '</tr>';
+        }
+        $('#sourceBody').html(html || '<tr><td colspan="12" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        
+        $('.row-check').off('change').on('change', function () {
+            var id = $(this).data('id');
+            if ($(this).is(':checked')) {
+                if (selectedRows.indexOf(id) < 0) selectedRows.push(id);
+            } else {
+                var idx = selectedRows.indexOf(id);
+                if (idx >= 0) selectedRows.splice(idx, 1);
+            }
+            updateSelectedCount();
+        });
+        
+        updateSourcePagination();
+        updateSelectedCount();
+    }
+
+    function updateSourcePagination() {
+        var totalPages = Math.max(1, Math.ceil(sourceTotal / sourcePageSize));
+        $('#sourcePageInfo').text('共 ' + sourceTotal + ' 条，每页 ' + sourcePageSize + ' 条，第 ' + sourcePage + '/' + totalPages + ' 页');
+        $('#btnSourcePrev').toggleClass('disabled', sourcePage <= 1);
+        $('#btnSourceNext').toggleClass('disabled', sourcePage >= totalPages);
+        renderSourcePageNumbers(totalPages);
+    }
+
+    function clearTabTables() {
+        $('#currentBody').html('<tr><td colspan="11" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        $('#invalidBody').html('<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        $('#sourceBody').html('<tr><td colspan="11" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        selectedRows = [];
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        $('#selectedNum').text(selectedRows.length);
+        var summary = calculateSelectedSummary();
+        $('#decomposeCount').text(selectedRows.length);
+        $('#decomposeQty').text(summary.qty);
+        $('#decomposeAmt').text(RB.formatMoney(summary.amt));
+    }
+
+    function calculateSelectedSummary() {
+        var qty = 0, amt = 0;
+        var selectedSet = new Set(selectedRows);
+        for (var i = 0; i < sourceData.length; i++) {
+            var r = sourceData[i];
+            if (selectedSet.has(r.id)) {
+                qty += Number(r.quantity) || 0;
+                amt += Number(r.calcAmount) || 0;
+            }
+        }
+        return { qty: qty, amt: amt };
+    }
+
+    function toggleSelectAll() {
+        selectAllAcrossPages = $('#btnSelectAll').data('selected') || false;
+        selectAllAcrossPages = !selectAllAcrossPages;
+        $('#btnSelectAll').data('selected', selectAllAcrossPages);
+        if (selectAllAcrossPages) {
+            RB.post('/api/upstream-flow?op=listCanSplitIds', {
+                projectId: curProject.id,
+                month: $('#filterMonth').val(),
+                productName: $('#filterProduct').val(),
+                spec: $('#filterSpec').val(),
+                sellerName: $('#filterSeller').val(),
+                buyerName: $('#filterBuyer').val()
+            }).done(function (r) {
+                if (r.code === 0) {
+                    selectedRows = r.data || [];
+                    updateSelectedCount();
+                    $('.row-check').prop('checked', true);
+                }
+            });
+        } else {
+            selectedRows = [];
+            $('.row-check').prop('checked', false);
+            updateSelectedCount();
+        }
+    }
+
+    function toggleSelectInverse() {
+        if (!curProject) return;
+        RB.post('/api/upstream-flow?op=listCanSplitIds', {
+            projectId: curProject.id,
+            month: $('#filterMonth').val(),
+            productName: $('#filterProduct').val(),
+            spec: $('#filterSpec').val(),
+            sellerName: $('#filterSeller').val(),
+            buyerName: $('#filterBuyer').val()
+        }).done(function (r) {
+            if (r.code === 0) {
+                var allIds = r.data || [];
+                var newSelected = [];
+                var currentSet = new Set(selectedRows);
+                for (var i = 0; i < allIds.length; i++) {
+                    if (!currentSet.has(allIds[i])) newSelected.push(allIds[i]);
+                }
+                selectedRows = newSelected;
+                $('.row-check').each(function () {
+                    var id = $(this).data('id');
+                    $(this).prop('checked', selectedRows.indexOf(id) >= 0);
+                });
+                updateSelectedCount();
+            }
+        });
+    }
+
+    function toggleCheckAllPage() {
+        var isChecked = !$('#btnSelectAllPage').data('pageChecked');
+        $('#btnSelectAllPage').data('pageChecked', isChecked);
+        $('.row-check:not(:disabled)').each(function () {
+            var id = $(this).data('id');
+            if (isChecked) {
+                if (selectedRows.indexOf(id) < 0) selectedRows.push(id);
+                $(this).prop('checked', true);
+            } else {
+                var idx = selectedRows.indexOf(id);
+                if (idx >= 0) selectedRows.splice(idx, 1);
+                $(this).prop('checked', false);
+            }
+        });
+        updateSelectedCount();
+    }
+
+    function showDecomposeModal() {
+        RB.withPerm('flow:view', function() {
+        if (selectedRows.length === 0) { RB.toast('请先选择要分解的记录', 'error'); return; }
+        if (!curProject) { RB.toast('请先选择项目', 'error'); return; }
+
+        if (curAgreement) {
+            $('#agreementSelectDiv').hide();
+            $('#agreementInfoDiv').show();
+            RB.post('/api/downstream-agreement?op=get', { id: curAgreement.id }).done(function (r) {
+                if (r.code === 0) {
+                    var a = r.data;
+                    $('#agreementInfo').text(a.agreementNo + ' - ' + a.agreementName);
+                }
+            });
+        } else {
+            $('#agreementSelectDiv').show();
+            $('#agreementInfoDiv').hide();
+            RB.post('/api/downstream-agreement?op=list', { projectId: curProject.id }).done(function (r) {
+                var html = '<option value="">选择下游协议...</option>';
+                if (r.code === 0 && r.data) for (var i = 0; i < r.data.length; i++) {
+                    var a = r.data[i];
+                    html += '<option value="' + a.id + '">' + a.agreementNo + ' - ' + a.agreementName + '</option>';
+                }
+                $('#downstreamAgreement').html(html);
+            });
+        }
+        RB.openModal('modalDecompose');
+        }, '权限不足，无法新增下游流向');
+    }
+
+    function doDecompose() {
+        RB.withPerm('flow:split', function() {
+        var agreementId = curAgreement ? curAgreement.id : $('#downstreamAgreement').val();
+        if (!agreementId) { RB.toast('请选择下游协议', 'error'); return; }
+        if (selectedRows.length === 0) { RB.toast('请先选择要分解的记录', 'error'); return; }
+
+        $('#loadingOverlay').show();
+        RB.post('/api/downstream-flow?op=decompose', {
+            projectId: curProject.id,
+            agreementId: agreementId,
+            recordIds: selectedRows.join(','),
+            note: $('#decomposeNote').val()
+        }).done(function (r) {
+            $('#loadingOverlay').hide();
+            if (r.code === 0) {
+                RB.toast('分解成功，共分解 ' + (r.data && r.data.count || selectedRows.length) + ' 条记录', 'success');
+                RB.closeModal('modalDecompose');
+                selectedRows = [];
+                loadSource();
+                loadCurrent();
+            } else {
+                RB.toast(r.msg, 'error');
+            }
+        }).fail(function() {
+            $('#loadingOverlay').hide();
+        });
+        }, '权限不足，无法分解流向');
+    }
+
+    function prevSourcePage() { if (sourcePage > 1) { sourcePage--; loadSource(); } }
+    function nextSourcePage() { var totalPages = Math.max(1, Math.ceil(sourceTotal / sourcePageSize)); if (sourcePage < totalPages) { sourcePage++; loadSource(); } }
+    function goToSourcePage(p) { var totalPages = Math.max(1, Math.ceil(sourceTotal / sourcePageSize)); if (p >= 1 && p <= totalPages && p !== sourcePage) { sourcePage = p; loadSource(); } }
+    function jumpToSourcePage() { var p = parseInt($('#jumpSourcePage').val()); if (!isNaN(p)) goToSourcePage(p); $('#jumpSourcePage').val(''); }
+    function renderSourcePageNumbers(totalPages) {
+        var html = '';
+        var showPages = 5;
+        var start = Math.max(1, sourcePage - Math.floor(showPages / 2));
+        var end = Math.min(totalPages, start + showPages - 1);
+        if (start > 1) html += '<button class="page-btn" onclick="goToSourcePage(1)" style="display:inline-block;">1</button>' + (start > 2 ? '<span class="page-dots" style="display:inline-block;">...</span>' : '');
+        for (var i = start; i <= end; i++) {
+            html += '<button class="page-btn' + (i === sourcePage ? ' active' : '') + '" onclick="goToSourcePage(' + i + ')" style="display:inline-block;">' + i + '</button>';
+        }
+        if (end < totalPages) html += (end < totalPages - 1 ? '<span class="page-dots" style="display:inline-block;">...</span>' : '') + '<button class="page-btn" onclick="goToSourcePage(' + totalPages + ')" style="display:inline-block;">' + totalPages + '</button>';
+        $('#sourcePageNumbers').html(html);
+    }
+
+    function prevCurrentPage() { if (currentPage > 1) { currentPage--; loadCurrent(); } }
+    function nextCurrentPage() { var totalPages = Math.max(1, Math.ceil(currentTotal / currentPageSize)); if (currentPage < totalPages) { currentPage++; loadCurrent(); } }
+    function goToCurrentPage(p) { var totalPages = Math.max(1, Math.ceil(currentTotal / currentPageSize)); if (p >= 1 && p <= totalPages && p !== currentPage) { currentPage = p; loadCurrent(); } }
+    function jumpToCurrentPage() { var p = parseInt($('#jumpCurrentPage').val()); if (!isNaN(p)) goToCurrentPage(p); $('#jumpCurrentPage').val(''); }
+
+    function prevInvalidPage() { if (invalidPage > 1) { invalidPage--; loadInvalid(); } }
+    function nextInvalidPage() { var totalPages = Math.max(1, Math.ceil(invalidTotal / invalidPageSize)); if (invalidPage < totalPages) { invalidPage++; loadInvalid(); } }
+    function goToInvalidPage(p) { var totalPages = Math.max(1, Math.ceil(invalidTotal / invalidPageSize)); if (p >= 1 && p <= totalPages && p !== invalidPage) { invalidPage = p; loadInvalid(); } }
+    function jumpToInvalidPage() { var p = parseInt($('#jumpInvalidPage').val()); if (!isNaN(p)) goToInvalidPage(p); $('#jumpInvalidPage').val(''); }
+
+    function renderPageNumbers(prefix, totalPages) {
+        var pageVar = prefix === 'current' ? currentPage : invalidPage;
+        var goFunc = prefix === 'current' ? 'goToCurrentPage' : 'goToInvalidPage';
+        var container = prefix === 'current' ? '#currentPageNumbers' : '#invalidPageNumbers';
+        var html = '';
+        var showPages = 5;
+        var start = Math.max(1, pageVar - Math.floor(showPages / 2));
+        var end = Math.min(totalPages, start + showPages - 1);
+        if (start > 1) html += '<button class="page-btn" onclick="' + goFunc + '(1)" style="display:inline-block;">1</button>' + (start > 2 ? '<span class="page-dots" style="display:inline-block;">...</span>' : '');
+        for (var i = start; i <= end; i++) {
+            html += '<button class="page-btn' + (i === pageVar ? ' active' : '') + '" onclick="' + goFunc + '(' + i + ')" style="display:inline-block;">' + i + '</button>';
+        }
+        if (end < totalPages) html += (end < totalPages - 1 ? '<span class="page-dots" style="display:inline-block;">...</span>' : '') + '<button class="page-btn" onclick="' + goFunc + '(' + totalPages + ')" style="display:inline-block;">' + totalPages + '</button>';
+        $(container).html(html);
+    }
+
+    function exportCurrent() {
+        if (!curProject) { RB.toast('请先选择项目', 'error'); return; }
+        $('#loadingOverlay').show();
+        var month = $('#filterMonthCurrent').val();
+        var buyerName = $('#filterBuyerCurrent').val();
+        var agreementId = $('#agreementId').val();
+        var url = './api/downstream-flow?op=exportCurrent&projectId=' + curProject.id;
+        if (month) url += '&month=' + month;
+        if (buyerName) url += '&buyerName=' + encodeURIComponent(buyerName);
+        if (agreementId) url += '&agreementId=' + agreementId;
+        
+        downloadWithXhr(url, '下游流向_当前生效.xlsx');
+    }
+
+    function exportInvalid() {
+        if (!curProject) { RB.toast('请先选择项目', 'error'); return; }
+        $('#loadingOverlay').show();
+        var month = $('#filterMonthInvalid').val();
+        var buyerName = $('#filterBuyerInvalid').val();
+        var agreementId = $('#agreementId').val();
+        var url = './api/downstream-flow?op=exportInvalid&projectId=' + curProject.id;
+        if (month) url += '&month=' + month;
+        if (buyerName) url += '&buyerName=' + encodeURIComponent(buyerName);
+        if (agreementId) url += '&agreementId=' + agreementId;
+        
+        downloadWithXhr(url, '下游流向_已作废.xlsx');
+    }
+
+    function downloadWithXhr(url, defaultFileName) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader('X-Token', RB.getToken());
+        xhr.responseType = 'blob';
+        
+        xhr.onload = function() {
+            $('#loadingOverlay').hide();
+            if (xhr.status === 200) {
+                var blob = xhr.response;
+                var contentDisposition = xhr.getResponseHeader('Content-Disposition');
+                var fileName = defaultFileName;
+                if (contentDisposition && contentDisposition.indexOf('attachment') !== -1) {
+                    var match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                    if (match && match[1]) {
+                        fileName = decodeURIComponent(match[1].replace(/['"]/g, ''));
+                    }
+                }
+                
+                var downloadUrl = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            } else {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        var response = JSON.parse(e.target.result);
+                        RB.toast(response.msg || '导出失败', 'error');
+                    } catch (err) {
+                        RB.toast('导出失败', 'error');
+                    }
+                };
+                reader.readAsText(xhr.response);
+            }
+        };
+        
+        xhr.onerror = function() {
+            $('#loadingOverlay').hide();
+            RB.toast('网络错误', 'error');
+        };
+        
+        xhr.send();
+    }
+</script>
+</body>
+</html>

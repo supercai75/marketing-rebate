@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户管理</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .status-on { color:#67c23a;}
+        .status-off { color:#f56c6c;}
+        .admin-tag { padding:1px 6px; border-radius:3px; background:#f56c6c; color:#fff; font-size:11px; margin-left:4px;}
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <input id="keyword" placeholder="按工号/姓名/登录名" style="width:240px;">
+    <button class="btn btn-primary" id="btnSearch">查询</button>
+    <button class="btn btn-success" id="btnAdd">+ 新增用户</button>
+    <button class="btn" id="btnRefresh">刷新</button>
+    <span style="flex:1;"></span>
+    <span style="color:#909399; font-size:12px;">只有管理员可访问此页面。修改密码请用顶栏"修改密码"。</span>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead><tr>
+            <th>工号</th><th>姓名</th><th>登录名</th>
+            <th>所属部门</th><th>所属公司</th>
+            <th>手机</th><th>邮箱</th>
+            <th>状态</th><th>最后登录</th>
+            <th>创建时间</th><th width="220">操作</th>
+        </tr></thead>
+        <tbody id="body"></tbody>
+    </table>
+</div>
+
+<div class="pagination" id="pager"></div>
+
+<!-- 新增/编辑 -->
+<div class="modal-mask" id="modalU">
+    <div class="modal" style="width:600px;">
+        <div class="modal-header" id="modalUTitle">新增用户<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalU')">×</span></div>
+        <div class="modal-body">
+            <input type="hidden" id="u_id">
+            <div class="form-row">
+                <div class="form-item"><label>工号 *</label><input id="u_workNo"></div>
+                <div class="form-item"><label>姓名 *</label><input id="u_name"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item"><label>登录名 *</label><input id="u_loginName"></div>
+                <div class="form-item" id="pwdItem"><label>密码</label><input id="u_password" type="password" placeholder="留空则使用默认123456"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item"><label>所属部门</label><select id="u_deptId"></select></div>
+                <div class="form-item"><label>所属公司</label><select id="u_companyId"></select></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item"><label>手机</label><input id="u_phone"></div>
+                <div class="form-item"><label>邮箱</label><input id="u_email"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-item"><label>状态</label>
+                    <select id="u_status">
+                        <option value="1">启用</option>
+                        <option value="0">禁用</option>
+                    </select>
+                </div>
+                <div class="form-item"><label>角色</label>
+                    <select id="u_roleId"></select>
+                </div>
+            </div>
+            <p style="color:#888; font-size:12px;">注：功能权限列表（按角色/部门控制）需结合后端 UserContext 的 perm 列表使用。详细的功能-角色映射可在 sys_role_perm 表维护。</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalU')">取消</button>
+            <button class="btn btn-primary" id="btnSaveU">保存</button>
+        </div>
+    </div>
+</div>
+
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    var page = 1, size = 20, total = 0, editingId = null;
+
+    $(function () {
+        RB.checkLogin(function (u) {
+            if (u.isAdmin !== 1 && !u.perms || (u.perms || []).indexOf('user:view') < 0) {
+                RB.toast('无访问权限', 'error');
+            }
+            loadDept();
+            loadCompany();
+            loadRoles();
+            load();
+        });
+
+        $('#btnSearch').on('click', function () { page = 1; load(); });
+        $('#keyword').on('keypress', function (e) { if (e.which === 13) { page = 1; load(); } });
+        $('#btnRefresh').on('click', load);
+        $('#btnAdd').on('click', openAdd);
+        $('#btnSaveU').on('click', saveU);
+    });
+
+    function loadDept() {
+        RB.post('/api/auth?op=departments', {}).done(function (r) {
+            var html = '<option value="">请选择</option>';
+            if (r.code === 0 && r.data) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + r.data[i].name + '</option>';
+            }
+            $('#u_deptId').html(html);
+        });
+    }
+
+    function loadCompany() {
+        RB.post('/api/auth?op=companies', {}).done(function (r) {
+            var html = '<option value="">请选择</option>';
+            if (r.code === 0 && r.data) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + r.data[i].name + '</option>';
+            }
+            $('#u_companyId').html(html);
+        });
+    }
+
+    function loadRoles() {
+        RB.post('/api/role?op=list', {}).done(function (r) {
+            var html = '<option value="">请选择角色</option>';
+            if (r.code === 0 && r.data) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + r.data[i].roleName + '</option>';
+            }
+            $('#u_roleId').html(html);
+        });
+    }
+
+    function load() {
+        RB.post('/api/user?op=page', { keyword: $('#keyword').val(), page: page, size: size }).done(function (r) {
+            if (r.code !== 0) { RB.toast(r.msg, 'error'); return; }
+            render(r.data.rows || []);
+            total = r.data.total || 0;
+            renderPager();
+        });
+    }
+
+    function render(rows) {
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var x = rows[i];
+            html += '<tr>' +
+                '<td>' + (x.workNo || '-') + '</td>' +
+                '<td>' + (x.name || '-') + (x.isAdmin === 1 ? '<span class="admin-tag">管理员</span>' : '') + '</td>' +
+                '<td>' + (x.loginName || '-') + '</td>' +
+                '<td>' + (x.deptName || '-') + '</td>' +
+                '<td>' + (x.companyName || '-') + '</td>' +
+                '<td>' + (x.phone || '-') + '</td>' +
+                '<td>' + (x.email || '-') + '</td>' +
+                '<td>' + (x.status === 1 ? '<span class="status-on">●启用</span>' : '<span class="status-off">●禁用</span>') + '</td>' +
+                '<td>' + (x.lastLoginTime || '-') + '</td>' +
+                '<td>' + (x.createdAt || '-') + '</td>' +
+                '<td>' + actionBtns(x) + '</td>' +
+                '</tr>';
+        }
+        if (rows.length === 0) html = '<tr><td colspan="11" style="text-align:center;color:#999;padding:30px;">暂无用户</td></tr>';
+        $('#body').html(html);
+    }
+
+    function actionBtns(x) {
+        return '<a class="op" data-act="edit" data-id="' + x.id + '">编辑</a> ' +
+            '<a class="op" data-act="toggle" data-id="' + x.id + '" data-cur="' + x.status + '">' + (x.status === 1 ? '禁用' : '启用') + '</a> ' +
+            '<a class="op" data-act="reset" data-id="' + x.id + '">重置密码</a> ' +
+            '<a class="op" data-act="del" data-id="' + x.id + '">删除</a>';
+    }
+
+    $(document).on('click', '.op', function () {
+        var id = $(this).data('id'), act = $(this).data('act');
+        if (act === 'edit') editU(id);
+        else if (act === 'toggle') toggleU(id, $(this).data('cur'));
+        else if (act === 'reset') resetPwd(id);
+        else if (act === 'del') delU(id);
+    });
+
+    function openAdd() {
+        editingId = null;
+        $('#modalUTitle').text('新增用户');
+        $('#u_id').val('');
+        $('#u_workNo,#u_name,#u_loginName,#u_password,#u_phone,#u_email').val('');
+        $('#u_deptId,#u_companyId').val('');
+        $('#u_status').val('1');
+            $('#u_roleId').val('');
+            $('#pwdItem').show();
+            RB.openModal('modalU');
+    }
+
+    function editU(id) {
+        editingId = id;
+        RB.post('/api/user?op=get', { id: id }).done(function (r) {
+            if (r.code !== 0) { RB.toast(r.msg, 'error'); return; }
+            var x = r.data; if (!x) return;
+            $('#modalUTitle').text('编辑用户');
+            $('#u_id').val(x.id);
+            $('#u_workNo').val(x.workNo);
+            $('#u_name').val(x.name);
+            $('#u_loginName').val(x.loginName);
+            $('#u_password').val('');
+            $('#u_deptId').val(x.deptId);
+            $('#u_companyId').val(x.companyId);
+            $('#u_phone').val(x.phone);
+            $('#u_email').val(x.email);
+            $('#u_status').val(x.status);
+            $('#u_roleId').val(x.roleId || '');
+            $('#pwdItem').hide();
+            RB.openModal('modalU');
+        });
+    }
+
+    function saveU() {
+        var p = {
+            workNo: $('#u_workNo').val(),
+            name: $('#u_name').val(),
+            loginName: $('#u_loginName').val(),
+            deptId: $('#u_deptId').val(),
+            companyId: $('#u_companyId').val(),
+            phone: $('#u_phone').val(),
+            email: $('#u_email').val(),
+            status: $('#u_status').val(),
+            roleId: $('#u_roleId').val()
+        };
+        if (!p.workNo || !p.name || !p.loginName) { RB.toast('请填写工号/姓名/登录名', 'error'); return; }
+        if (editingId) {
+            p.id = editingId;
+            RB.post('/api/user?op=update', p).done(function (r) {
+                if (r.code === 0) { RB.toast('已更新', 'success'); RB.closeModal('modalU'); load(); }
+                else RB.toast(r.msg, 'error');
+            });
+        } else {
+            p.password = $('#u_password').val() || '123456';
+            RB.post('/api/user?op=add', p).done(function (r) {
+                if (r.code === 0) { RB.toast('已新增', 'success'); RB.closeModal('modalU'); load(); }
+                else RB.toast(r.msg, 'error');
+            });
+        }
+    }
+
+    function toggleU(id, cur) {
+        var ns = cur === 1 ? 0 : 1;
+        RB.confirm('确认' + (ns === 1 ? '启用' : '禁用') + '该用户？', function () {
+            RB.post('/api/user?op=toggle', { id: id, status: ns }).done(function (r) {
+                if (r.code === 0) { RB.toast('已操作', 'success'); load(); }
+                else RB.toast(r.msg || '后端未实现 toggle，可使用 update', 'error');
+            });
+        });
+    }
+
+    function resetPwd(id) {
+        RB.confirm('确认将密码重置为 123456？', function () {
+            RB.post('/api/user?op=resetPassword', { id: id, newPassword: '123456' }).done(function (r) {
+                if (r.code === 0) RB.toast('密码已重置为 123456', 'success');
+                else RB.toast(r.msg || '后端未实现 resetPassword', 'error');
+            });
+        });
+    }
+
+    function delU(id) {
+        RB.confirm('确认删除该用户？该操作不可恢复。', function () {
+            RB.post('/api/user?op=delete', { id: id }).done(function (r) {
+                if (r.code === 0) { RB.toast('已删除', 'success'); load(); }
+                else RB.toast(r.msg, 'error');
+            });
+        });
+    }
+
+    function renderPager() {
+        var pages = Math.ceil(total / size);
+        if (pages <= 1) { $('#pager').html(''); return; }
+        var html = '<button class="btn" ' + (page <= 1 ? 'disabled' : '') + ' onclick="gotoPage(' + (page - 1) + ')">上一页</button>';
+        html += '<span style="margin:0 10px;">第 ' + page + ' / ' + pages + ' 页  共 ' + total + ' 条</span>';
+        html += '<button class="btn" ' + (page >= pages ? 'disabled' : '') + ' onclick="gotoPage(' + (page + 1) + ')">下一页</button>';
+        $('#pager').html(html);
+    }
+
+    function gotoPage(p) { page = p; load(); }
+</script>
+</body>
+</html>

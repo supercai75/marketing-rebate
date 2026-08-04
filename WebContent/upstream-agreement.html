@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>上游协议</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .tab-section { margin-bottom:16px; border:1px solid #ebeef5; border-radius:6px; overflow:hidden;}
+        .tab-section .tabs { display:flex; border-bottom:1px solid #ebeef5;}
+        .tab-section .tabs .tab { padding:10px 20px; cursor:pointer; font-size:13px; background:#fafafa; color:#606266;}
+        .tab-section .tabs .tab.active { background:#fff; color:#409eff; border-bottom:2px solid #409eff;}
+        .tab-section .content { padding:16px;}
+        .rule-table { width:100%; border-collapse:collapse;}
+        .rule-table th, .rule-table td { border:1px solid #ebeef5; padding:8px; text-align:center; font-size:12px;}
+        .rule-table th { background:#f5f7fa; color:#606266;}
+        .rule-table input { width:90%; padding:4px; text-align:center;}
+        .add-row-btn { margin-top:8px; padding:4px 12px; font-size:12px;}
+        .delete-row-btn { color:#f56c6c; cursor:pointer;}
+        .settle-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:8px; background:#fafafa; border-radius:4px;}
+        .settle-row input { width:120px;}
+        .settle-row select { width:100px;}
+        .assess-group-select { width:200px;}
+        .attach-box { border:1px solid #ebeef5; border-radius:4px; padding:8px; background:#fafafa;}
+        .attach-list { margin-bottom:8px; min-height:24px;}
+        .attach-item { display:inline-flex; align-items:center; gap:4px; padding:4px 8px; background:#fff; border:1px solid #e4e7ed; border-radius:4px; margin:0 4px 4px 0; font-size:12px;}
+        .attach-item .name { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+        .attach-item a.name { color:#409eff; text-decoration:none; cursor:pointer;}
+        .attach-item a.name:hover { text-decoration:underline;}
+        .attach-item .del { color:#f56c6c; cursor:pointer;}
+        .attach-upload { margin-top:4px;}
+    </style>
+</head>
+<body>
+<div class="toolbar">
+    <select id="selYear" style="width:120px;">
+    </select>
+    <select id="projectId" style="width: 280px;"></select>
+    <label style="margin-left:8px;"><input type="checkbox" id="showHistory">显示历史版本</label>
+    <button class="btn btn-primary" id="btnSearch">查询</button>
+    <button class="btn btn-success" id="btnAdd">+ 新建上游协议</button>
+    <button class="btn" id="btnImportBpm">从BPM引入上游协议</button>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead>
+        <tr>
+            <th>版本</th>
+            <th>协议名称</th>
+            <th>协议编号</th>
+            <th>合作上游企业</th>
+            <th>协议起始</th>
+            <th>协议终止</th>
+            <th>指标计算依据</th>
+            <th>协议指标规模数</th>
+            <th>当前</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody id="dataBody"></tbody>
+    </table>
+</div>
+
+<!-- 新建/编辑上游协议 -->
+<div class="modal-mask" id="modalForm">
+    <div class="modal" style="width: 900px; max-height: 92vh;">
+        <div class="modal-header">上游协议 - <span id="modalTitle">新建</span>
+            <span class="spacer"></span>
+            <button class="btn btn-sm" onclick="showCloneModal()" style="margin-right:8px;">克隆协议</button>
+            <span class="close" onclick="RB.closeModal('modalForm')">×</span></div>
+        <div class="modal-body" style="overflow-y:auto;">
+            <input type="hidden" id="f_id">
+            <input type="hidden" id="f_version">
+            
+            <h4 style="margin:0 0 12px 0; padding-bottom:8px; border-bottom:1px solid #ebeef5;">基础信息</h4>
+            <div class="form-row">
+                <div class="form-item col-4"><label>项目 *</label><select id="f_projectId"></select></div>
+                <div class="form-item col-4"><label>协议名称 *</label><input id="f_agreementName"></div>
+                <div class="form-item col-4"><label>协议编号 *</label><input id="f_agreementNo"></div>
+                <div class="form-item col-4"><label>协议起始时间</label><input id="f_periodStartDate" type="date"></div>
+                <div class="form-item col-4"><label>协议终止时间</label><input id="f_periodEndDate" type="date"></div>
+                <div class="form-item col-4"><label>协议指定区域</label><input id="f_region"></div>
+                <div class="form-item col-4"><label>协议目标终端</label><input id="f_targetTerminal"></div>
+                <div class="form-item col-4"><label>指标计算依据</label>
+                    <select id="f_calcBasis"><option value="QTY">数量</option><option value="AMT">金额</option></select></div>
+                <div class="form-item col-4"><label>协议指标规模数</label><input id="f_targetScale" type="number" step="0.01"></div>
+            </div>
+
+            <h4 style="margin:16px 0 12px 0; padding-bottom:8px; border-bottom:1px solid #ebeef5;">合作信息</h4>
+            <div class="form-row">
+                <div class="form-item col-4"><label>合作上游企业</label><input id="f_supplier"></div>
+                <div class="form-item col-4"><label>指标承接部门</label><input id="f_targetDept"></div>
+                <div class="form-item col-4"><label>流向联系人</label><input id="f_flowContact"></div>
+                <div class="form-item col-4"><label>联系人电话</label><input id="f_flowPhone"></div>
+                <div class="form-item col-4"><label>流向计算渠道</label><input id="f_flowChannel"></div>
+                <div class="form-item col-4"><label>流向提供方式</label><input id="f_flowProvideMethod"></div>
+            </div>
+
+            <h4 style="margin:16px 0 12px 0; padding-bottom:8px; border-bottom:1px solid #ebeef5;">阶段指标</h4>
+            <div class="form-row">
+                <div class="form-item col-3"><label>第一阶段指标</label><input id="f_stage1" type="number" step="0.01"></div>
+                <div class="form-item col-3"><label>第二阶段指标</label><input id="f_stage2" type="number" step="0.01"></div>
+                <div class="form-item col-3"><label>第三阶段指标</label><input id="f_stage3" type="number" step="0.01"></div>
+                <div class="form-item col-3"><label>第四阶段指标</label><input id="f_stage4" type="number" step="0.01"></div>
+            </div>
+            <div class="form-item col-12"><label>协议指标计算方式</label><textarea id="f_calcMethod"></textarea></div>
+
+            <h4 style="margin:16px 0 12px 0; padding-bottom:8px; border-bottom:1px solid #ebeef5;">返利计算规则</h4>
+            <div style="margin-bottom:12px;">
+                <button class="btn btn-sm" onclick="showAssessGroupModal()">管理考核组</button>
+            </div>
+            <div id="rebateRuleTabs" style="margin-bottom:12px;">
+                <!-- Tab按钮将由JS生成 -->
+            </div>
+            <div id="rebateRuleContent">
+                <!-- Tab内容将由JS生成 -->
+            </div>
+
+            <h4 style="margin:16px 0 12px 0; padding-bottom:8px; border-bottom:1px solid #ebeef5;">营销政策</h4>
+            <div class="form-item col-12"><label>具体营销政策明细</label><textarea id="f_policyDetail"></textarea></div>
+
+            <h4 style="margin:16px 0 12px 0; padding-bottom:8px; border-bottom:1px solid #ebeef5;">结算方式</h4>
+            <div class="form-row">
+                <div class="form-item col-4"><label>支付依据</label>
+                    <select id="f_settleBasis"><option value="预付">预付</option><option value="按阶段">按阶段</option><option value="全年">全年</option></select></div>
+                <div class="form-item col-4"><label>返利支付方式</label>
+                    <select id="f_rebatePayType"><option value="票折">票折</option><option value="服务费">服务费</option></select></div>
+                <div class="form-item col-4"><label>返利支付时间</label><input id="f_rebatePayTime"></div>
+            </div>
+            <div style="margin-top:8px;">
+                <label>支付比例设置：</label>
+                <div id="settleRatioList">
+                    <div class="settle-row">
+                        <select class="settle-point">
+                            <option value="期初">期初</option>
+                            <option value="第一阶段后">第一阶段后</option>
+                            <option value="第二阶段后">第二阶段后</option>
+                            <option value="第三阶段后">第三阶段后</option>
+                            <option value="第四阶段后">第四阶段后</option>
+                            <option value="期末">期末</option>
+                        </select>
+                        <input type="number" class="settle-ratio" placeholder="比例(0-1)" step="0.01" value="0">
+                        <span class="delete-row-btn" onclick="deleteSettleRow(this)">删除</span>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-success add-row-btn" onclick="addSettleRow()">+ 添加支付时点</button>
+            </div>
+
+            <h4 style="margin:16px 0 12px 0; padding-bottom:8px; border-bottom:1px solid #ebeef5;">专职团队考核</h4>
+            <div class="form-item col-12"><label>专职团队考核结算方式</label><textarea id="f_teamAssessSettle"></textarea></div>
+
+            <h4 style="margin:16px 0 12px 0; padding-bottom:8px; border-bottom:1px solid #ebeef5;">项目人员配置</h4>
+            <div class="form-row">
+                <div class="form-item col-4"><label>协议要求人数</label><input id="f_requiredStaffNum" type="number"></div>
+                <div class="form-item col-4"><label>正式员工人数</label><input id="f_formalCount" type="number"></div>
+                <div class="form-item col-4"><label>非正式员工人数</label><input id="f_informalCount" type="number"></div>
+                <div class="form-item col-6"><label>正式员工姓名(逗号分隔)</label><input id="f_formalNames"></div>
+                <div class="form-item col-6"><label>非正式员工姓名(逗号分隔)</label><input id="f_informalNames"></div>
+            </div>
+
+            <h4 style="margin:16px 0 12px 0; padding-bottom:8px; border-bottom:1px solid #ebeef5;">协议附件</h4>
+            <div class="form-row">
+                <div class="form-item col-6">
+                    <label>合作协议</label>
+                    <div class="attach-box" id="mainAttachBox">
+                        <div class="attach-list" id="mainAttachList"></div>
+                        <div class="attach-upload">
+                            <input type="file" id="mainAttachInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png">
+                            <button class="btn btn-sm" type="button" onclick="$('#mainAttachInput').click()">+ 上传文件</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-item col-6">
+                    <label>补充协议</label>
+                    <div class="attach-box" id="suppAttachBox">
+                        <div class="attach-list" id="suppAttachList"></div>
+                        <div class="attach-upload">
+                            <input type="file" id="suppAttachInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png">
+                            <button class="btn btn-sm" type="button" onclick="$('#suppAttachInput').click()">+ 上传文件</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalForm')">取消</button>
+            <button class="btn btn-primary" id="btnSave">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 考核组管理弹窗 -->
+<div class="modal-mask" id="modalAssessGroup">
+    <div class="modal" style="width:800px;">
+        <div class="modal-header">考核组管理<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalAssessGroup')">×</span></div>
+        <div class="modal-body">
+            <div class="toolbar" style="margin-bottom:12px;">
+                <input id="agKeyword" placeholder="搜索考核组">
+                <button class="btn btn-sm btn-primary" onclick="loadAssessGroups()">查询</button>
+                <button class="btn btn-sm btn-success" onclick="showAddAssessGroupModal()">+ 新增</button>
+            </div>
+            <table style="width:100%;">
+                <thead><tr><th>编码</th><th>名称</th><th>总体目标</th><th>阶段1</th><th>阶段2</th><th>阶段3</th><th>阶段4</th><th>描述</th><th>操作</th></tr></thead>
+                <tbody id="agBody"></tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalAssessGroup')">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 考核组编辑弹窗 -->
+<div class="modal-mask" id="modalAssessGroupEdit">
+    <div class="modal" style="width:500px;">
+        <div class="modal-header">编辑考核组<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalAssessGroupEdit')">×</span></div>
+        <div class="modal-body">
+            <input type="hidden" id="ag_id">
+            <div class="form-item"><label>编码 *</label><input id="ag_code" style="width:100%;"></div>
+            <div class="form-item"><label>名称 *</label><input id="ag_name" style="width:100%;"></div>
+            <div class="form-item"><label>总体目标规模</label><input id="ag_targetScale" type="number" step="0.01" style="width:100%;"></div>
+            <div class="form-row">
+                <div class="form-item col-6"><label>阶段一目标</label><input id="ag_stage1" type="number" step="0.01"></div>
+                <div class="form-item col-6"><label>阶段二目标</label><input id="ag_stage2" type="number" step="0.01"></div>
+                <div class="form-item col-6"><label>阶段三目标</label><input id="ag_stage3" type="number" step="0.01"></div>
+                <div class="form-item col-6"><label>阶段四目标</label><input id="ag_stage4" type="number" step="0.01"></div>
+            </div>
+            <div class="form-item"><label>描述</label><textarea id="ag_desc" rows="2" style="width:100%;"></textarea></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalAssessGroupEdit')">取消</button>
+            <button class="btn btn-primary" onclick="saveAssessGroup()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 克隆协议弹窗 -->
+<div class="modal-mask" id="modalClone">
+    <div class="modal" style="width: 400px;">
+        <div class="modal-header">克隆协议<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalClone')">×</span></div>
+        <div class="modal-body">
+            <div class="form-item"><label>选择年度 *</label>
+                <select id="cloneYear"><option value="">请选择年度</option></select>
+            </div>
+            <div class="form-item"><label>选择项目 *</label>
+                <select id="cloneProject"><option value="">请选择项目</option></select>
+            </div>
+            <div class="form-item"><label>选择协议 *</label>
+                <select id="cloneAgreement"><option value="">请选择协议</option></select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalClone')">取消</button>
+            <button class="btn btn-primary" onclick="doCloneAgreement()">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- BPM引入上游协议 - 弹出窗口 -->
+<div class="modal-mask" id="modalBpmList">
+    <div class="modal" style="width:1100px;max-height:85vh;">
+        <div class="modal-header">从BPM引入上游协议 - 选择协议<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalBpmList')">×</span></div>
+        <div class="modal-body" style="max-height:65vh;overflow-y:auto;">
+            <div style="margin-bottom:10px;padding:8px 12px;background:#e3f2fd;color:#1565c0;border-radius:4px;font-size:13px;">
+                以下为BPM中当前项目的上游协议，请选择一条引入。引入后将创建新版本，并把相同协议编号的旧版本作废。
+            </div>
+            <div class="table-wrap" style="margin:0;">
+                <table>
+                    <thead><tr>
+                        <th>选择</th>
+                        <th>协议名称</th>
+                        <th>协议编号</th>
+                        <th>起始时间</th>
+                        <th>终止时间</th>
+                        <th>指定区域</th>
+                        <th>目标终端</th>
+                        <th>合作上游企业</th>
+                        <th>本地状态</th>
+                    </tr></thead>
+                    <tbody id="bpmBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalBpmList')">关闭</button>
+        </div>
+    </div>
+</div>
+
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    var cur = null;
+    var ruleRowIndex = 0;
+    var currentAssessGroupId = null;
+    var assessGroups = [];
+    var rebateRulesMap = {}; // 存储每个考核组的规则
+    var mainAttachs = [];
+    var suppAttachs = [];
+
+    $(function () {
+        RB.checkLogin(function () {
+            loadYears();
+            loadAssessGroups();
+            load();
+        });
+
+        $('#btnSearch').on('click', load);
+        $('#selYear').on('change', function() {
+            loadProjects();
+        });
+        $('#btnAdd').on('click', function () {
+            RB.withPerm('agreement:edit', function() {
+                cur = null;
+                $('#modalTitle').text('新建');
+                clearForm();
+                disableAttachUpload(true);
+                RB.openModal('modalForm');
+            }, '权限不足，无法新增上游协议');
+        });
+        $('#btnImportBpm').on('click', function () {
+            var pid = $('#projectId').val();
+            if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+            RB.withPerm('agreement:edit', function() { loadBpmAgreementList(); }, '权限不足，无法引入上游协议');
+        });
+        $('#btnSave').on('click', save);
+
+        $('#mainAttachInput').on('change', function () { uploadAttach('MAIN', this.files); });
+        $('#suppAttachInput').on('change', function () { uploadAttach('SUPP', this.files); });
+    });
+
+    function loadYears() {
+        RB.post('/api/project?op=listYears', {}).done(function (r) {
+            if (r.code === 0 && r.data) {
+                var html = '';
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i] + '">' + r.data[i] + '</option>';
+                }
+                $('#selYear').html(html);
+            }
+            loadProjects();
+        });
+    }
+    
+    function showCloneModal() {
+        RB.withPerm('agreement:edit', function() {
+            $('#cloneYear').val('');
+            $('#cloneProject').html('<option value="">请选择项目</option>');
+            $('#cloneAgreement').html('<option value="">请选择协议</option>');
+            RB.post('/api/project?op=listYears', {}).done(function (r) {
+                if (r.code === 0 && r.data) {
+                    var html = '<option value="">请选择年度</option>';
+                    for (var i = 0; i < r.data.length; i++) {
+                        html += '<option value="' + r.data[i] + '">' + r.data[i] + '</option>';
+                    }
+                    $('#cloneYear').html(html);
+                }
+            });
+            RB.openModal('modalClone');
+        }, '权限不足，无法新增上游协议');
+    }
+    
+    $('#cloneYear').on('change', function() {
+        var coYear = $(this).val();
+        if (!coYear) {
+            $('#cloneProject').html('<option value="">请选择项目</option>');
+            $('#cloneAgreement').html('<option value="">请选择协议</option>');
+            return;
+        }
+        RB.post('/api/project?op=listByYear', { coYear: coYear }).done(function (r) {
+            var html = '<option value="">请选择项目</option>';
+            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
+            }
+            $('#cloneProject').html(html);
+            $('#cloneAgreement').html('<option value="">请选择协议</option>');
+        });
+    });
+    
+    $('#cloneProject').on('change', function() {
+        var projectId = $(this).val();
+        if (!projectId) {
+            $('#cloneAgreement').html('<option value="">请选择协议</option>');
+            return;
+        }
+        RB.post('/api/upstream-agreement?op=list', { projectId: projectId, showHistory: '0', page: 1, pageSize: 1000 }).done(function (r) {
+            var html = '<option value="">请选择协议</option>';
+            if (r.code === 0) {
+                var list = r.data.list || r.data;
+                if (list && list.length > 0) {
+                    for (var i = 0; i < list.length; i++) {
+                        var d = list[i];
+                        html += '<option value="' + d.id + '">' + (d.agreementName || '') + ' (v' + d.version + ')' + '</option>';
+                    }
+                }
+            }
+            $('#cloneAgreement').html(html);
+        }).fail(function() {
+            $('#cloneAgreement').html('<option value="">请选择协议</option>');
+        });
+    });
+    
+    function doCloneAgreement() {
+        RB.withPerm('agreement:edit', function() {
+            var agreementId = $('#cloneAgreement').val();
+            if (!agreementId) { RB.toast('请选择要克隆的协议', 'error'); return; }
+            
+            RB.post('/api/upstream-agreement?op=get', { id: agreementId }).done(function (r) {
+                if (r.code !== 0) { RB.toast(r.msg, 'error'); return; }
+                var d = r.data;
+                
+                cur = null;
+                $('#modalTitle').text('新建(克隆)');
+                clearForm();
+                
+                // 填充表单（除了项目ID、协议编号、起止时间、附件）
+                $('#f_id').val('');
+                $('#f_version').val('');
+                $('#f_agreementName').val(d.agreementName || '');
+                $('#f_agreementNo').val(''); // 协议编号不复制
+                $('#f_region').val(d.region || '');
+                $('#f_targetTerminal').val(d.targetTerminal || '');
+                $('#f_calcBasis').val(d.calcBasis || 'AMT');
+                $('#f_targetScale').val(d.targetScale || '');
+                $('#f_supplier').val(d.supplier || '');
+                $('#f_targetDept').val(d.targetDept || '');
+                $('#f_flowContact').val(d.flowContact || '');
+                $('#f_flowPhone').val(d.flowPhone || '');
+                $('#f_flowChannel').val(d.flowChannel || '');
+                $('#f_flowProvideMethod').val(d.flowProvideMethod || '');
+                $('#f_stage1').val(d.stage1Target || '');
+                $('#f_stage2').val(d.stage2Target || '');
+                $('#f_stage3').val(d.stage3Target || '');
+                $('#f_stage4').val(d.stage4Target || '');
+                $('#f_calcMethod').val(d.calcMethod || '');
+                $('#f_policyDetail').val(d.policyDetail || '');
+                $('#f_settleBasis').val(d.settleBasis || '预付');
+                $('#f_rebatePayType').val(d.rebatePayType || '票折');
+                $('#f_rebatePayTime').val(d.rebatePayTime || '');
+                $('#f_teamAssessSettle').val(d.teamAssessSettle || '');
+                $('#f_requiredStaffNum').val(d.requiredStaffNum || '');
+                $('#f_formalCount').val(d.formalCount || '');
+                $('#f_informalCount').val(d.informalCount || '');
+                $('#f_formalNames').val(d.formalNames || '');
+                $('#f_informalNames').val(d.informalNames || '');
+                
+                // 支付比例
+                $('#settleRatioList').html('');
+                if (d.settleRatioList && d.settleRatioList.length > 0) {
+                    for (var i = 0; i < d.settleRatioList.length; i++) {
+                        var sr = d.settleRatioList[i];
+                        addSettleRowWithValue(sr.settlePoint || '期初', sr.ratio || 0);
+                    }
+                } else {
+                    addSettleRow();
+                }
+                
+                // 附件相关保持清空
+                mainAttachs = [];
+                suppAttachs = [];
+                renderAttachs('MAIN');
+                renderAttachs('SUPP');
+                disableAttachUpload(false);
+                
+                RB.closeModal('modalClone');
+                RB.openModal('modalForm');
+                
+                // 先加载原协议项目的考核组，再加载返利规则
+                RB.post('/api/upstream-agreement?op=listAssessGroups', { projectId: d.projectId }).done(function (r2) {
+                    assessGroups = r2.data || [];
+                    renderRebateRuleTabs();
+                    // 加载返利规则
+                    loadRebateRules(agreementId);
+                });
+            });
+        }, '权限不足，无法新增上游协议');
+    }
+    
+    function addSettleRowWithValue(point, ratio) {
+        var html = '<div class="settle-row">' +
+            '<select class="settle-point">' +
+            '<option value="期初"' + (point === '期初' ? ' selected' : '') + '>期初</option>' +
+            '<option value="第一阶段后"' + (point === '第一阶段后' ? ' selected' : '') + '>第一阶段后</option>' +
+            '<option value="第二阶段后"' + (point === '第二阶段后' ? ' selected' : '') + '>第二阶段后</option>' +
+            '<option value="第三阶段后"' + (point === '第三阶段后' ? ' selected' : '') + '>第三阶段后</option>' +
+            '<option value="第四阶段后"' + (point === '第四阶段后' ? ' selected' : '') + '>第四阶段后</option>' +
+            '<option value="期末"' + (point === '期末' ? ' selected' : '') + '>期末</option>' +
+            '</select>' +
+            '<input type="number" class="settle-ratio" placeholder="比例(0-1)" step="0.01" value="' + ratio + '">' +
+            '<span class="delete-row-btn" onclick="deleteSettleRow(this)">删除</span></div>';
+        $('#settleRatioList').append(html);
+    }
+
+    function disableAttachUpload(disabled) {
+        $('#mainAttachInput').prop('disabled', disabled);
+        $('#suppAttachInput').prop('disabled', disabled);
+        $('#mainAttachBox .btn').css('opacity', disabled ? 0.5 : 1);
+        $('#suppAttachBox .btn').css('opacity', disabled ? 0.5 : 1);
+        if (disabled) {
+            mainAttachs = [];
+            suppAttachs = [];
+            renderAttachs('MAIN');
+            renderAttachs('SUPP');
+        }
+    }
+
+    function loadProjects() {
+        var coYear = $('#selYear').val();
+        var param = coYear ? { coYear: coYear } : {};
+        RB.post('/api/project?op=listByYear', param).done(function (r) {
+            var html = '<option value="">选择项目...</option>';
+            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
+            }
+            $('#projectId').html(html);
+            $('#f_projectId').html(html);
+        });
+    }
+
+    function loadAssessGroups() {
+        RB.post('/api/upstream-agreement?op=listAssessGroups', { projectId: $('#projectId').val() }).done(function (r) {
+            assessGroups = r.data || [];
+            
+            var agHtml = '';
+            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
+                var g = r.data[i];
+                agHtml += '<tr><td>' + (g.groupCode || '') + '</td><td>' + (g.groupName || '') + '</td>' +
+                    '<td>' + (g.targetScale || 0) + '</td>' +
+                    '<td>' + (g.stage1Target || 0) + '</td>' +
+                    '<td>' + (g.stage2Target || 0) + '</td>' +
+                    '<td>' + (g.stage3Target || 0) + '</td>' +
+                    '<td>' + (g.stage4Target || 0) + '</td>' +
+                    '<td>' + (g.description || '') + '</td>' +
+                    '<td><button class="btn btn-sm" onclick="editAssessGroup(' + g.id + ')">编辑</button> ' +
+                    '<button class="btn btn-sm btn-danger" onclick="deleteAssessGroup(' + g.id + ')">删除</button></td></tr>';
+            }
+            $('#agBody').html(agHtml || '<tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">暂无考核组</td></tr>');
+            
+            // 更新返利规则的tab
+            renderRebateRuleTabs();
+        });
+    }
+
+    function load(page) {
+        var pid = $('#projectId').val();
+        if (!pid) { $('#dataBody').html('<tr><td colspan="10" style="text-align:center;color:#999;padding:24px;">请先选择项目</td></tr>'); $('#agreementPager').html(''); return; }
+        if (!page) page = 1;
+        RB.post('/api/upstream-agreement?op=list', { projectId: pid, showHistory: $('#showHistory').is(':checked') ? '0' : '1', page: page, pageSize: 20 }).done(function (r) {
+            if (r.code === 0) render(r.data.list, r.data.total, r.data.page, r.data.pageSize);
+        });
+    }
+
+    function render(rows, total, page, pageSize) {
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            html += '<tr>' +
+                '<td>v' + r.version + '</td>' +
+                '<td>' + (r.agreementName || '') + '</td>' +
+                '<td>' + (r.agreementNo || '') + '</td>' +
+                '<td>' + (r.supplier || '') + '</td>' +
+                '<td>' + (r.periodStartDate || '') + '</td>' +
+                '<td>' + (r.periodEndDate || '') + '</td>' +
+                '<td>' + (r.calcBasis || '') + '</td>' +
+                '<td>' + RB.formatMoney(r.targetScale) + '</td>' +
+                '<td>' + (r.isCurrent === 1 ? '✓' : '') + '</td>' +
+                '<td>' +
+                    '<button class="btn btn-sm" onclick="view(' + r.id + ')">查看</button> ' +
+                    '<button class="btn btn-sm btn-danger" onclick="del(' + r.id + ')">删除</button>' +
+                '</td>' +
+                '</tr>';
+        }
+        $('#dataBody').html(html || '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px;">暂无数据</td></tr>');
+        renderAgreementPager(total, page, pageSize);
+    }
+    
+    function renderAgreementPager(total, page, pageSize) {
+        var pages = Math.ceil(total / pageSize);
+        if (pages <= 1) { $('#agreementPager').html(''); return; }
+        var html = '<button class="btn" ' + (page <= 1 ? 'disabled' : '') + ' onclick="load(' + (page - 1) + ')">上一页</button>';
+        html += '<span style="margin:0 10px;">第 ' + page + ' / ' + pages + ' 页  共 ' + total + ' 条</span>';
+        html += '<button class="btn" ' + (page >= pages ? 'disabled' : '') + ' onclick="load(' + (page + 1) + ')">下一页</button>';
+        $('#agreementPager').html(html);
+    }
+
+    function view(id) {
+        RB.withPerm('agreement:edit', function() {
+            RB.post('/api/upstream-agreement?op=get', { id: id }).done(function (r) {
+                if (r.code === 0) {
+                    cur = r.data;
+                    $('#modalTitle').text('编辑 (v' + r.data.version + ')');
+                    fillForm(r.data);
+                    loadAttachs(r.data.id);
+                    disableAttachUpload(false);
+                    RB.openModal('modalForm');
+                    // 先加载考核组，加载完成后再加载规则
+                    loadAssessGroupsForEdit(r.data.id);
+                }
+            });
+        }, '权限不足，无法编辑上游协议');
+    }
+    
+    function loadAssessGroupsForEdit(agreementId) {
+        RB.post('/api/upstream-agreement?op=listAssessGroups', { projectId: $('#f_projectId').val() || $('#projectId').val() }).done(function (r) {
+            assessGroups = r.data || [];
+            loadRebateRules(agreementId);
+        });
+    }
+
+    function loadAttachs(agreementId) {
+        RB.post('/api/upstream-agreement?op=listAttachs', { agreementId: agreementId }).done(function (r) {
+            mainAttachs = [];
+            suppAttachs = [];
+            if (r.code === 0 && r.data) {
+                for (var i = 0; i < r.data.length; i++) {
+                    if (r.data[i].attachType === 'MAIN') mainAttachs.push(r.data[i]);
+                    else if (r.data[i].attachType === 'SUPP') suppAttachs.push(r.data[i]);
+                }
+            }
+            renderAttachs('MAIN');
+            renderAttachs('SUPP');
+        });
+    }
+
+    function del(id) {
+        RB.withPerm('agreement:edit', function() {
+            RB.confirm('确认删除？', function () {
+                RB.post('/api/upstream-agreement?op=delete', { id: id }).done(function (r) {
+                    if (r.code === 0) { RB.toast('已删除', 'success'); load(); }
+                });
+            });
+        }, '权限不足，无法删除上游协议');
+    }
+
+    function clearForm() {
+        $('#f_id').val(''); $('#f_version').val('');
+        ['f_agreementName','f_agreementNo','f_region','f_targetTerminal','f_targetScale','f_supplier',
+         'f_targetDept','f_flowContact','f_flowPhone','f_flowChannel','f_flowProvideMethod',
+         'f_calcMethod','f_policyDetail','f_rebatePayTime','f_teamAssessSettle',
+         'f_formalNames','f_informalNames'].forEach(function (id) { $('#' + id).val(''); });
+        $('#f_periodStartDate').val(''); $('#f_periodEndDate').val('');
+        $('#f_calcBasis').val('QTY'); $('#f_settleBasis').val('预付'); $('#f_rebatePayType').val('票折');
+        $('#f_requiredStaffNum').val(0); $('#f_formalCount').val(0); $('#f_informalCount').val(0);
+        $('#f_stage1').val(0); $('#f_stage2').val(0); $('#f_stage3').val(0); $('#f_stage4').val(0);
+        currentAssessGroupId = null;
+        rebateRulesMap = {};
+        renderRebateRuleTabs();
+        $('#settleRatioList').html('<div class="settle-row"><select class="settle-point"><option value="期初">期初</option><option value="第一阶段后">第一阶段后</option><option value="第二阶段后">第二阶段后</option><option value="第三阶段后">第三阶段后</option><option value="第四阶段后">第四阶段后</option><option value="期末">期末</option></select><input type="number" class="settle-ratio" placeholder="比例(0-1)" step="0.01" value="0"><span class="delete-row-btn" onclick="deleteSettleRow(this)">删除</span></div>');
+        clearAttachs();
+    }
+
+    function fillForm(a) {
+        $('#f_id').val(a.id); $('#f_version').val(a.version);
+        $('#f_projectId').val(a.projectId);
+        $('#f_agreementName').val(a.agreementName);
+        $('#f_agreementNo').val(a.agreementNo);
+        $('#f_periodStartDate').val(a.periodStartDate);
+        $('#f_periodEndDate').val(a.periodEndDate);
+        $('#f_region').val(a.region);
+        $('#f_targetTerminal').val(a.targetTerminal);
+        $('#f_calcBasis').val(a.calcBasis || 'QTY');
+        $('#f_targetScale').val(a.targetScale);
+        $('#f_supplier').val(a.supplier);
+        $('#f_targetDept').val(a.targetDept);
+        $('#f_flowContact').val(a.flowContact);
+        $('#f_flowPhone').val(a.flowPhone);
+        $('#f_flowChannel').val(a.flowChannel);
+        $('#f_flowProvideMethod').val(a.flowProvideMethod);
+        $('#f_stage1').val(a.stage1Target); $('#f_stage2').val(a.stage2Target);
+        $('#f_stage3').val(a.stage3Target); $('#f_stage4').val(a.stage4Target);
+        $('#f_calcMethod').val(a.calcMethod);
+        $('#f_policyDetail').val(a.policyDetail);
+        $('#f_settleBasis').val(a.settleBasis || '预付');
+        $('#f_rebatePayType').val(a.rebatePayType || '票折');
+        $('#f_rebatePayTime').val(a.rebatePayTime);
+        $('#f_teamAssessSettle').val(a.teamAssessSettle);
+        $('#f_requiredStaffNum').val(a.requiredStaffNum);
+        $('#f_formalCount').val(a.formalCount);
+        $('#f_formalNames').val(a.formalNames);
+        $('#f_informalCount').val(a.informalCount);
+        $('#f_informalNames').val(a.informalNames);
+        
+        if (a.settleRatio) {
+            try {
+                var ratios = JSON.parse(a.settleRatio);
+                $('#settleRatioList').html('');
+                for (var i = 0; i < ratios.length; i++) {
+                    $('#settleRatioList').append('<div class="settle-row"><select class="settle-point"><option value="期初"' + (ratios[i].point === '期初' ? ' selected' : '') + '>期初</option><option value="第一阶段后"' + (ratios[i].point === '第一阶段后' ? ' selected' : '') + '>第一阶段后</option><option value="第二阶段后"' + (ratios[i].point === '第二阶段后' ? ' selected' : '') + '>第二阶段后</option><option value="第三阶段后"' + (ratios[i].point === '第三阶段后' ? ' selected' : '') + '>第三阶段后</option><option value="第四阶段后"' + (ratios[i].point === '第四阶段后' ? ' selected' : '') + '>第四阶段后</option><option value="期末"' + (ratios[i].point === '期末' ? ' selected' : '') + '>期末</option></select><input type="number" class="settle-ratio" placeholder="比例(0-1)" step="0.01" value="' + ratios[i].ratio + '"><span class="delete-row-btn" onclick="deleteSettleRow(this)">删除</span></div>');
+                }
+            } catch (e) {}
+        }
+    }
+
+    function loadRebateRules(agreementId) {
+        if (!agreementId) return;
+        RB.post('/api/upstream-agreement?op=listRebateRules', { agreementId: agreementId }).done(function (r) {
+            // 按考核组整理规则
+            rebateRulesMap = {};
+            if (r.code === 0 && r.data) {
+                for (var i = 0; i < r.data.length; i++) {
+                    var rule = r.data[i];
+                    // assessGroupId 为 null 时使用 0（默认组）
+                    var groupId = rule.assessGroupId || 0;
+                    if (!rebateRulesMap[groupId]) {
+                        rebateRulesMap[groupId] = [];
+                    }
+                    rebateRulesMap[groupId].push(rule);
+                }
+            }
+            renderRebateRuleTabs();
+        });
+    }
+    
+    function renderRebateRuleTabs() {
+        var tabs = $('#rebateRuleTabs');
+        var content = $('#rebateRuleContent');
+        
+        var html = '';
+        var groupCount = assessGroups.length;
+        
+        // 如果没有考核组，使用默认组（无需管理考核组）
+        if (groupCount === 0) {
+            // 创建一个虚拟的默认组
+            assessGroups = [{ id: 0, groupName: '默认组', groupCode: 'DEFAULT' }];
+            currentAssessGroupId = 0;
+            // 不显示标签页，直接显示规则内容
+            tabs.html('');
+            renderRebateRuleContent();
+            return;
+        }
+        
+        // 只有1个考核组时，不显示标签页
+        if (groupCount === 1) {
+            currentAssessGroupId = assessGroups[0].id;
+            tabs.html('');
+            renderRebateRuleContent();
+            return;
+        }
+        
+        // 2个以上考核组时，显示标签页和管理按钮
+        html = '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
+        for (var i = 0; i < assessGroups.length; i++) {
+            var g = assessGroups[i];
+            var isActive = (currentAssessGroupId == g.id) || (currentAssessGroupId === null && i === 0);
+            html += '<button class="btn btn-sm' + (isActive ? ' btn-primary' : '') + '" onclick="switchAssessGroupTab(' + g.id + ')">' + g.groupName + '</button>';
+        }
+        html += '</div>';
+        tabs.html(html);
+        
+        // 确定当前选中的考核组
+        if (currentAssessGroupId === null && assessGroups.length > 0) {
+            currentAssessGroupId = assessGroups[0].id;
+        }
+        
+        renderRebateRuleContent();
+    }
+    
+    function switchAssessGroupTab(groupId) {
+        // 切换前先保存当前 tab 的数据到 rebateRulesMap
+        saveCurrentTabRules();
+        
+        // 确保所有 tab 的数据都被保存（如果 DOM 中存在）
+        for (var i = 0; i < assessGroups.length; i++) {
+            var gid = assessGroups[i].id;
+            var tbody = $('#rebateRuleBody_' + gid);
+            if (tbody.length > 0 && gid != currentAssessGroupId) {
+                // 如果 DOM 中有数据，保存到 rebateRulesMap
+                var groupRules = [];
+                tbody.find('tr').each(function () {
+                    var row = $(this);
+                    groupRules.push({
+                        id: row.attr('data-rule-id') || null,
+                        assessGroupId: gid,
+                        stageCode: row.find('.rule-stage').val(),
+                        thresholdLow: parseFloat(row.find('.rule-threshold-low').val()) || 0,
+                        thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
+                        rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
+                        rewardType: row.find('.rule-type').val()
+                    });
+                });
+                rebateRulesMap[gid] = groupRules;
+            }
+        }
+        
+        currentAssessGroupId = groupId;
+        renderRebateRuleTabs();
+    }
+    
+    function saveCurrentTabRules() {
+        if (currentAssessGroupId === null || currentAssessGroupId === undefined) return;
+        var groupRules = [];
+        var tbody = $('#rebateRuleBody_' + currentAssessGroupId);
+        if (tbody.length > 0) {
+            tbody.find('tr').each(function () {
+                var row = $(this);
+                var ruleId = row.attr('data-rule-id') || null;
+                groupRules.push({
+                    id: ruleId,
+                    assessGroupId: currentAssessGroupId,
+                    stageCode: row.find('.rule-stage').val(),
+                    thresholdLow: parseFloat(row.find('.rule-threshold-low').val()) || 0,
+                    thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
+                    rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
+                    rewardType: row.find('.rule-type').val()
+                });
+            });
+        }
+        rebateRulesMap[currentAssessGroupId] = groupRules;
+    }
+    
+    function renderRebateRuleContent() {
+        var content = $('#rebateRuleContent');
+        if (currentAssessGroupId === null || currentAssessGroupId === undefined) {
+            content.html('');
+            return;
+        }
+        
+        var groupName = '';
+        for (var i = 0; i < assessGroups.length; i++) {
+            if (assessGroups[i].id == currentAssessGroupId) {
+                groupName = assessGroups[i].groupName;
+                break;
+            }
+        }
+        
+        var rules = rebateRulesMap[currentAssessGroupId] || [];
+        
+        var html = '';
+        // 只有1个考核组（默认组）时，不显示考核组标题
+        if (assessGroups.length > 1 || (assessGroups.length === 1 && assessGroups[0].id !== 0)) {
+            html += '<div style="margin-bottom:8px;font-weight:600;color:#409eff;">考核组: ' + groupName + '</div>';
+        }
+        html += '<div style="margin-bottom:8px;font-size:11px;color:#909399;">提示：按达成额时阈值为金额，按达成率时阈值为百分比(%)</div>';
+        html += '<table class="rule-table" id="rebateRuleTable_' + currentAssessGroupId + '">';
+        html += '<thead><tr>';
+        html += '<th>阶段</th>';
+        html += '<th>阈值下限</th>';
+        html += '<th>阈值上限<br>(0表示无上限)</th>';
+        html += '<th>返利比例(%)</th>';
+        html += '<th>计算类型</th>';
+        html += '<th>操作</th>';
+        html += '</tr></thead>';
+        html += '<tbody id="rebateRuleBody_' + currentAssessGroupId + '">';
+        
+        for (var i = 0; i < rules.length; i++) {
+            html += generateRuleRowHtml(rules[i]);
+        }
+        
+        html += '</tbody></table>';
+        html += '<button class="btn btn-sm btn-success add-row-btn" onclick="addRebateRuleRowForGroup(' + currentAssessGroupId + ')">+ 添加规则行</button>';
+        
+        content.html(html);
+    }
+    
+    function generateRuleRowHtml(data) {
+        var rowId = 'rule_' + currentAssessGroupId + '_' + (++ruleRowIndex);
+        var ruleId = data && data.id ? data.id : '';
+        var stageOptions = '<option value="ALL"' + (data && data.stageCode === 'ALL' ? ' selected' : '') + '>全阶段</option>' +
+            '<option value="S1"' + (data && data.stageCode === 'S1' ? ' selected' : '') + '>第一阶段</option>' +
+            '<option value="S2"' + (data && data.stageCode === 'S2' ? ' selected' : '') + '>第二阶段</option>' +
+            '<option value="S3"' + (data && data.stageCode === 'S3' ? ' selected' : '') + '>第三阶段</option>' +
+            '<option value="S4"' + (data && data.stageCode === 'S4' ? ' selected' : '') + '>第四阶段</option>';
+        var typeOptions = '<option value="PERSENT"' + (data && data.rewardType === 'PERSENT' ? ' selected' : '') + '>按达成率</option>' +
+            '<option value="GROWTH"' + (data && data.rewardType === 'GROWTH' ? ' selected' : '') + '>按销售增长</option>' +
+            '<option value="SCALE"' + (data && data.rewardType === 'SCALE' ? ' selected' : '') + '>按达成额</option>';
+        var ratio = data ? (data.rebateRatio * 100 || 0) : 0;
+        var html = '<tr id="' + rowId + '" data-rule-id="' + ruleId + '">' +
+            '<td><select class="rule-stage">' + stageOptions + '</select></td>' +
+            '<td><input type="number" class="rule-threshold-low" step="0.01" value="' + (data ? data.thresholdLow || 0 : 0) + '"></td>' +
+            '<td><input type="number" class="rule-threshold-high" step="0.01" value="' + (data ? data.thresholdHigh || 0 : 0) + '"></td>' +
+            '<td><input type="number" class="rule-ratio" step="0.01" value="' + ratio + '"></td>' +
+            '<td><select class="rule-type">' + typeOptions + '</select></td>' +
+            '<td><span class="delete-row-btn" onclick="deleteRebateRuleRowForGroup(\'' + rowId + '\')">删除</span></td>' +
+            '</tr>';
+        return html;
+    }
+    
+    function addRebateRuleRowForGroup(groupId) {
+        var tbody = $('#rebateRuleBody_' + groupId);
+        if (tbody.length === 0) return;
+        
+        var rowId = 'rule_' + groupId + '_' + (++ruleRowIndex);
+        var stageOptions = '<option value="ALL">全阶段</option>' +
+            '<option value="S1">第一阶段</option>' +
+            '<option value="S2">第二阶段</option>' +
+            '<option value="S3">第三阶段</option>' +
+            '<option value="S4">第四阶段</option>';
+        var typeOptions = '<option value="PERSENT">按达成率</option>' +
+            '<option value="GROWTH">按销售增长</option>' +
+            '<option value="SCALE">按达成额</option>';
+        var html = '<tr id="' + rowId + '">' +
+            '<td><select class="rule-stage">' + stageOptions + '</select></td>' +
+            '<td><input type="number" class="rule-threshold-low" step="0.01" value="0"></td>' +
+            '<td><input type="number" class="rule-threshold-high" step="0.01" value="0"></td>' +
+            '<td><input type="number" class="rule-ratio" step="0.01" value="0"></td>' +
+            '<td><select class="rule-type">' + typeOptions + '</select></td>' +
+            '<td><span class="delete-row-btn" onclick="deleteRebateRuleRowForGroup(\'' + rowId + '\')">删除</span></td>' +
+            '</tr>';
+        tbody.append(html);
+    }
+    
+    function deleteRebateRuleRowForGroup(rowId) {
+        var tbody = $('#' + rowId).parent();
+        if (tbody.children().length <= 1) {
+            RB.toast('至少保留一行规则', 'error');
+            return;
+        }
+        $('#' + rowId).remove();
+    }
+
+    function addSettleRow() {
+        $('#settleRatioList').append('<div class="settle-row"><select class="settle-point"><option value="期初">期初</option><option value="第一阶段后">第一阶段后</option><option value="第二阶段后">第二阶段后</option><option value="第三阶段后">第三阶段后</option><option value="第四阶段后">第四阶段后</option><option value="期末">期末</option></select><input type="number" class="settle-ratio" placeholder="比例(0-1)" step="0.01" value="0"><span class="delete-row-btn" onclick="deleteSettleRow(this)">删除</span></div>');
+    }
+
+    function deleteSettleRow(el) {
+        if ($('.settle-row').length <= 1) {
+            RB.toast('至少保留一行', 'error');
+            return;
+        }
+        $(el).parent().remove();
+    }
+
+    function save() {
+        RB.withPerm('agreement:edit', function() {
+            // 先保存当前 tab 的数据到 rebateRulesMap
+            saveCurrentTabRules();
+
+            // 确保所有在 DOM 中可见的 tab 数据也被保存（多考核组场景）
+            for (var i = 0; i < assessGroups.length; i++) {
+                var gid = assessGroups[i].id;
+                // 跳过当前 tab（已由 saveCurrentTabRules 处理）
+                if (gid == currentAssessGroupId) continue;
+                var tbody = $('#rebateRuleBody_' + gid);
+                if (tbody.length > 0) {
+                    var groupRules = [];
+                    tbody.find('tr').each(function () {
+                        var row = $(this);
+                        groupRules.push({
+                            id: row.attr('data-rule-id') || null,
+                            assessGroupId: gid,
+                            stageCode: row.find('.rule-stage').val(),
+                            thresholdLow: parseFloat(row.find('.rule-threshold-low').val()) || 0,
+                            thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
+                            rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
+                            rewardType: row.find('.rule-type').val()
+                        });
+                    });
+                    rebateRulesMap[gid] = groupRules;
+                }
+            }
+
+            // 收集每个考核组的规则（从 rebateRulesMap 中获取）
+            var allRules = {};
+            var hasGrowthRule = false;
+            for (var i = 0; i < assessGroups.length; i++) {
+                var groupId = assessGroups[i].id;
+                var groupRules = rebateRulesMap[groupId] || [];
+                // 清理空规则
+                groupRules = groupRules.filter(function(r) {
+                    if (r.rewardType === 'GROWTH') hasGrowthRule = true;
+                    return r.thresholdLow > 0 || r.thresholdHigh > 0 || r.rebateRatio > 0;
+                });
+                allRules[groupId] = groupRules;
+            }
+            // 没有考核组时：如果虚拟默认组(id=0)有规则，也一并加入
+            if (assessGroups.length === 0 && rebateRulesMap[0]) {
+                var defaultRules = rebateRulesMap[0].filter(function(r) {
+                    if (r.rewardType === 'GROWTH') hasGrowthRule = true;
+                    return r.thresholdLow > 0 || r.thresholdHigh > 0 || r.rebateRatio > 0;
+                });
+                if (defaultRules.length > 0) {
+                    allRules[0] = defaultRules;
+                }
+            }
+
+            // 如果有按销售增长规则，检查上一年项目是否存在
+            if (hasGrowthRule) {
+                var projectName = $('#f_projectName').val();
+                var coYear = $('#f_coYear').val();
+                if (projectName && coYear) {
+                    var prevYear = parseInt(coYear) - 1;
+                    RB.post('/api/project?op=checkPrevYear', { projectName: projectName, coYear: prevYear }).done(function (r) {
+                        if (r.code === 0) {
+                            if (!r.data || r.data.length === 0) {
+                                RB.toast('按销售增长规则需要上一年度(' + prevYear + ')的同名项目存在才能保存', 'error');
+                                return;
+                            }
+                            doSaveProtocol(allRules);
+                        } else {
+                            RB.toast(r.msg, 'error');
+                        }
+                    });
+                    return;
+                }
+            }
+
+            doSaveProtocol(allRules);
+        }, '权限不足，无法编辑上游协议');
+    }
+    
+    function doSaveProtocol(allRules) {
+        var settleRatios = [];
+        $('.settle-row').each(function () {
+            var row = $(this);
+            settleRatios.push({
+                point: row.find('.settle-point').val(),
+                ratio: row.find('.settle-ratio').val()
+            });
+        });
+
+        var p = {
+            id: $('#f_id').val() || null,
+            projectId: $('#f_projectId').val(),
+            agreementName: $('#f_agreementName').val(),
+            agreementNo: $('#f_agreementNo').val(),
+            periodStartDate: $('#f_periodStartDate').val(),
+            periodEndDate: $('#f_periodEndDate').val(),
+            region: $('#f_region').val(),
+            targetTerminal: $('#f_targetTerminal').val(),
+            calcBasis: $('#f_calcBasis').val(),
+            targetScale: $('#f_targetScale').val(),
+            supplier: $('#f_supplier').val(),
+            targetDept: $('#f_targetDept').val(),
+            flowContact: $('#f_flowContact').val(),
+            flowPhone: $('#f_flowPhone').val(),
+            flowChannel: $('#f_flowChannel').val(),
+            flowProvideMethod: $('#f_flowProvideMethod').val(),
+            stage1Target: $('#f_stage1').val(),
+            stage2Target: $('#f_stage2').val(),
+            stage3Target: $('#f_stage3').val(),
+            stage4Target: $('#f_stage4').val(),
+            calcMethod: $('#f_calcMethod').val(),
+            policyDetail: $('#f_policyDetail').val(),
+            rebateRules: allRules,
+            settleBasis: $('#f_settleBasis').val(),
+            settleRatio: settleRatios,
+            rebatePayType: $('#f_rebatePayType').val(),
+            rebatePayTime: $('#f_rebatePayTime').val(),
+            teamAssessSettle: $('#f_teamAssessSettle').val(),
+            requiredStaffNum: $('#f_requiredStaffNum').val(),
+            formalCount: $('#f_formalCount').val(),
+            formalNames: $('#f_formalNames').val(),
+            informalCount: $('#f_informalCount').val(),
+            informalNames: $('#f_informalNames').val()
+        };
+        if (!p.projectId || !p.agreementName || !p.agreementNo) { RB.toast('请填写项目/协议名称/编号', 'error'); return; }
+        var op = cur ? 'update' : 'add';
+        RB.post('/api/upstream-agreement?op=' + op, p).done(function (r) {
+            if (r.code === 0) {
+                RB.toast('保存成功', 'success');
+                if (!cur && r.data && r.data.id) {
+                    cur = { id: r.data.id };
+                    $('#f_id').val(r.data.id);
+                    disableAttachUpload(false);
+                }
+                RB.closeModal('modalForm');
+                load();
+            } else {
+                RB.toast(r.msg, 'error');
+            }
+        });
+    }
+
+    function showAssessGroupModal() {
+        RB.withPerm('agreement:edit', function() {
+            loadAssessGroups();
+            RB.openModal('modalAssessGroup');
+        }, '权限不足，无法编辑上游协议');
+    }
+
+    function showAddAssessGroupModal() {
+        RB.withPerm('agreement:edit', function() {
+            var projectId = $('#f_projectId').val() || $('#projectId').val();
+            if (!projectId) { RB.toast('请先选择项目', 'error'); return; }
+            $('#ag_id').val('');
+            $('#ag_code').val('');
+            $('#ag_name').val('');
+            $('#ag_targetScale').val(0);
+            $('#ag_stage1').val(0);
+            $('#ag_stage2').val(0);
+            $('#ag_stage3').val(0);
+            $('#ag_stage4').val(0);
+            $('#ag_desc').val('');
+            RB.openModal('modalAssessGroupEdit');
+        }, '权限不足，无法新增上游协议');
+    }
+
+    function editAssessGroup(id) {
+        RB.withPerm('agreement:edit', function() {
+            RB.post('/api/upstream-agreement?op=getAssessGroup', { id: id }).done(function (r) {
+                if (r.code === 0) {
+                    $('#ag_id').val(r.data.id);
+                    $('#ag_code').val(r.data.groupCode || '');
+                    $('#ag_name').val(r.data.groupName || '');
+                    $('#ag_targetScale').val(r.data.targetScale || 0);
+                    $('#ag_stage1').val(r.data.stage1Target || 0);
+                    $('#ag_stage2').val(r.data.stage2Target || 0);
+                    $('#ag_stage3').val(r.data.stage3Target || 0);
+                    $('#ag_stage4').val(r.data.stage4Target || 0);
+                    $('#ag_desc').val(r.data.description || '');
+                    RB.openModal('modalAssessGroupEdit');
+                }
+            });
+        }, '权限不足，无法编辑上游协议');
+    }
+
+    function saveAssessGroup() {
+        RB.withPerm('agreement:edit', function() {
+            var projectId = $('#f_projectId').val() || $('#projectId').val();
+            var id = $('#ag_id').val();
+            var code = $('#ag_code').val();
+            var name = $('#ag_name').val();
+            if (!code) { RB.toast('请输入考核组编码', 'error'); return; }
+            if (!name) { RB.toast('请输入考核组名称', 'error'); return; }
+            
+            var p = {
+                projectId: projectId,
+                groupCode: code,
+                groupName: name,
+                targetScale: $('#ag_targetScale').val() || 0,
+                stage1Target: $('#ag_stage1').val() || 0,
+                stage2Target: $('#ag_stage2').val() || 0,
+                stage3Target: $('#ag_stage3').val() || 0,
+                stage4Target: $('#ag_stage4').val() || 0,
+                description: $('#ag_desc').val()
+            };
+            
+            var op = id ? 'updateAssessGroup' : 'addAssessGroup';
+            if (id) p.id = id;
+            
+            RB.post('/api/upstream-agreement?op=' + op, p).done(function (r) {
+                if (r.code === 0) {
+                    RB.toast('保存成功', 'success');
+                    RB.closeModal('modalAssessGroupEdit');
+                    loadAssessGroups();
+                } else {
+                    RB.toast(r.msg, 'error');
+                }
+            });
+        }, '权限不足，无法编辑上游协议');
+    }
+
+    function deleteAssessGroup(id) {
+        RB.withPerm('agreement:edit', function() {
+            RB.confirm('确认删除该考核组？', function () {
+                RB.post('/api/upstream-agreement?op=deleteAssessGroup', { id: id }).done(function (r) {
+                    if (r.code === 0) { RB.toast('已删除', 'success'); loadAssessGroups(); }
+                    else RB.toast(r.msg, 'error');
+                });
+            });
+        }, '权限不足，无法删除上游协议');
+    }
+
+    function uploadAttach(type, files) {
+        if (!files || files.length === 0) return;
+        var aid = $('#f_id').val();
+        if (!aid || aid === '0') {
+            RB.toast('请先保存协议后再上传附件', 'error');
+            return;
+        }
+        var attachs = type === 'MAIN' ? mainAttachs : suppAttachs;
+        for (var i = 0; i < files.length; i++) {
+            var fd = new FormData();
+            fd.append('file', files[i]);
+            fd.append('agreementId', aid);
+            fd.append('attachType', type);
+            (function (idx, arr) {
+                RB.post('/api/upstream-agreement?op=uploadAttach', fd, true).done(function (r) {
+                    if (r.code === 0) {
+                        arr.push(r.data);
+                        renderAttachs(type);
+                        RB.toast('上传成功', 'success');
+                    } else {
+                        RB.toast(r.msg, 'error');
+                    }
+                }).fail(function () { RB.toast('上传失败', 'error'); });
+            })(i, attachs);
+        }
+        if (type === 'MAIN') $('#mainAttachInput').val('');
+        else $('#suppAttachInput').val('');
+    }
+
+    function deleteAttach(type, id) {
+        var attachs = type === 'MAIN' ? mainAttachs : suppAttachs;
+        for (var i = 0; i < attachs.length; i++) {
+            if (attachs[i].id === id) {
+                RB.post('/api/upstream-agreement?op=deleteAttach', { id: id }).done(function (r) {
+                    if (r.code === 0) {
+                        attachs.splice(i, 1);
+                        renderAttachs(type);
+                        RB.toast('已删除', 'success');
+                    }
+                });
+                break;
+            }
+        }
+    }
+
+    function renderAttachs(type) {
+        var attachs = type === 'MAIN' ? mainAttachs : suppAttachs;
+        var listId = type === 'MAIN' ? 'mainAttachList' : 'suppAttachList';
+        var token = RB.getToken ? RB.getToken() : '';
+        var html = '';
+        for (var i = 0; i < attachs.length; i++) {
+            var a = attachs[i];
+            var nameHtml;
+            if (a.downloadUrl) {
+                var url = a.downloadUrl + (a.downloadUrl.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(token);
+                nameHtml = '<a class="name" href="' + url + '" target="_blank" title="点击下载：' + a.fileName + '">' + a.fileName + '</a>';
+            } else {
+                nameHtml = '<span class="name" title="' + a.fileName + '">' + a.fileName + '</span>';
+            }
+            html += '<div class="attach-item">' + nameHtml +
+                '<span class="del" onclick="deleteAttach(\'' + type + '\', ' + a.id + ')">×</span></div>';
+        }
+        $('#' + listId).html(html);
+    }
+
+    function clearAttachs() {
+        mainAttachs = [];
+        suppAttachs = [];
+        renderAttachs('MAIN');
+        renderAttachs('SUPP');
+    }
+
+    // ==================== BPM引入上游协议 ====================
+    var bpmRows = [];
+
+    function loadBpmAgreementList() {
+        var pid = $('#projectId').val();
+        if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+        RB.post('/api/upstream-agreement?op=listBpmAgreements', { projectId: pid }).done(function (r) {
+            if (r.code !== 0) { RB.toast(r.msg || '获取BPM数据失败', 'error'); return; }
+            bpmRows = r.data || [];
+            renderBpmList(bpmRows);
+            RB.openModal('modalBpmList');
+        }).fail(function () { RB.toast('网络错误，请稍后重试', 'error'); });
+    }
+
+    function renderBpmList(rows) {
+        var html = '';
+        if (!rows || rows.length === 0) {
+            html = '<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">BPM中暂无该项目的上游协议</td></tr>';
+        } else {
+            for (var i = 0; i < rows.length; i++) {
+                var x = rows[i];
+                var localCnt = x.localVersionCount || 0;
+                var hasCurrent = x.hasCurrent;
+                var statusHtml;
+                if (localCnt === 0) {
+                    statusHtml = '<span style="color:#67c23a;font-size:12px;">未引入</span>';
+                } else if (hasCurrent) {
+                    statusHtml = '<span style="color:#e6a23c;font-size:12px;">本地有当前版本(v' + localCnt + ')，将作废旧版新增</span>';
+                } else {
+                    statusHtml = '<span style="color:#909399;font-size:12px;">本地有历史版本(v' + localCnt + ')，新增为新版</span>';
+                }
+                html += '<tr>' +
+                    '<td><input type="radio" name="bpmRow" value="' + i + '"></td>' +
+                    '<td>' + esc(x.agreementName) + '</td>' +
+                    '<td>' + esc(x.agreementNo) + '</td>' +
+                    '<td>' + esc(x.periodStartDate) + '</td>' +
+                    '<td>' + esc(x.periodEndDate) + '</td>' +
+                    '<td>' + esc(x.region) + '</td>' +
+                    '<td>' + esc(x.targetTerminal) + '</td>' +
+                    '<td>' + esc(x.supplier) + '</td>' +
+                    '<td>' + statusHtml + '</td>' +
+                    '</tr>';
+            }
+        }
+        $('#bpmBody').html(html);
+    }
+
+    function esc(v) { return v == null ? '' : String(v); }
+
+    // 在BPM弹窗中点击"引入"时，绑定行内单选 + 二次确认
+    $(document).on('click', '#bpmBody input[name="bpmRow"]', function () {
+        var idx = $(this).val();
+        var row = bpmRows[parseInt(idx)];
+        if (!row) return;
+        var pid = $('#projectId').val();
+        var msg = '确认引入：<strong>' + esc(row.agreementName) + '</strong>（协议编号：' + esc(row.agreementNo) + '）<br>';
+        if (row.hasCurrent) {
+            msg += '本地有当前版本，将被<strong style="color:#e6a23c;">作废</strong>，新版本号：v' + ((row.localVersionCount || 0) + 1);
+        } else if ((row.localVersionCount || 0) > 0) {
+            msg += '本地已有历史版本，将新增为 v' + ((row.localVersionCount || 0) + 1);
+        } else {
+            msg += '本地无此协议，将新增为 v1';
+        }
+        RB.confirm(msg, function () {
+            RB.post('/api/upstream-agreement?op=importFromBpm', {
+                projectId: pid,
+                agreementName: row.agreementName,
+                agreementNo: row.agreementNo,
+                periodStartDate: row.periodStartDate,
+                periodEndDate: row.periodEndDate,
+                region: row.region,
+                targetTerminal: row.targetTerminal,
+                supplier: row.supplier
+            }).done(function (r) {
+                if (r.code === 0) {
+                    RB.toast('已新增协议版本', 'success');
+                    RB.closeModal('modalBpmList');
+                    load();
+                } else {
+                    RB.toast(r.msg || '引入失败', 'error');
+                }
+            }).fail(function () { RB.toast('网络错误', 'error'); });
+        });
+    });
+</script>
+</body>
+</html>

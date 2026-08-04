@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>角色管理</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="toolbar">
+    <button class="btn btn-success" id="btnAdd">+ 新增角色</button>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>角色编码</th><th>角色名称</th><th>描述</th><th>创建时间</th><th>操作</th></tr></thead>
+        <tbody id="roleBody"></tbody>
+    </table>
+</div>
+
+<div class="modal-mask" id="modalRole">
+    <div class="modal" style="width: 500px;">
+        <div class="modal-header" id="modalTitle">新增角色<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalRole')">×</span></div>
+        <div class="modal-body">
+            <input type="hidden" id="roleId">
+            <div class="form-item"><label>角色编码</label><input id="roleCode"></div>
+            <div class="form-item"><label>角色名称</label><input id="roleName"></div>
+            <div class="form-item"><label>描述</label><textarea id="roleDesc" rows="3"></textarea></div>
+            <div class="form-item">
+                <label>权限列表</label>
+                <div id="permList" style="max-height:200px; overflow:auto; border:1px solid #e4e7ed; border-radius:4px; padding:8px;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalRole')">取消</button>
+            <button class="btn btn-primary" id="btnSave">保存</button>
+        </div>
+    </div>
+</div>
+
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    $(function () {
+        RB.checkLogin(function () { load(); });
+        $('#btnAdd').on('click', showAddModal);
+        $('#btnSave').on('click', saveRole);
+    });
+
+    function load() {
+        RB.post('/api/role?op=list', {}).done(function (r) {
+            if (r.code === 0) renderRoles(r.data);
+        });
+    }
+
+    function renderRoles(rows) {
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            html += '<tr><td>' + (r.roleCode || '') + '</td>' +
+                '<td>' + (r.roleName || '') + '</td>' +
+                '<td>' + (r.description || '') + '</td>' +
+                '<td>' + (r.createdAt || '') + '</td>' +
+                '<td>' +
+                '<a href="javascript:;" onclick="showEditModal(' + r.id + ')">编辑</a> | ' +
+                '<a href="javascript:;" onclick="showPermModal(' + r.id + ')">权限</a> | ' +
+                '<a href="javascript:;" onclick="deleteRole(' + r.id + ')">删除</a>' +
+                '</td></tr>';
+        }
+        $('#roleBody').html(html || '<tr><td colspan="5" style="text-align:center;color:#999;padding:24px;">暂无角色</td></tr>');
+    }
+
+    function showAddModal() {
+        $('#modalTitle').text('新增角色');
+        $('#roleId').val('');
+        $('#roleCode').val('').prop('disabled', false);
+        $('#roleName').val('').prop('disabled', false);
+        $('#roleDesc').val('').prop('disabled', false);
+        loadPermissionsForModal();
+        RB.openModal('modalRole');
+    }
+
+    function showEditModal(id) {
+        RB.post('/api/role?op=get', { id: id }).done(function (r) {
+            if (r.code === 0) {
+                var data = r.data;
+                $('#modalTitle').text('编辑角色');
+                $('#roleId').val(data.id);
+                $('#roleCode').val(data.roleCode).prop('disabled', false);
+                $('#roleName').val(data.roleName).prop('disabled', false);
+                $('#roleDesc').val(data.description || '').prop('disabled', false);
+                loadPermissionsForModal(id);
+                RB.openModal('modalRole');
+            }
+        });
+    }
+
+    function loadPermissionsForModal(roleId) {
+        RB.post('/api/role?op=getPermissions', { roleId: roleId || 0 }).done(function (r) {
+            if (r.code === 0) {
+                var perms = r.data.allPerms || [];
+                var rolePerms = r.data.rolePerms || [];
+                var html = '';
+                for (var i = 0; i < perms.length; i++) {
+                    var p = perms[i];
+                    var checked = rolePerms.indexOf(p.id) >= 0 ? 'checked' : '';
+                    html += '<label style="display:inline-block; margin-right:16px; margin-bottom:4px;"><input type="checkbox" style="width:20px" ' + checked + ' data-id="' + p.id + '"> ' + p.permName + ' (' + p.permCode + ')</label>';
+                }
+                $('#permList').html(html || '<span style="color:#999;">暂无权限数据</span>');
+            }
+        });
+    }
+
+    function showPermModal(id) {
+        RB.post('/api/role?op=get', { id: id }).done(function (roleResp) {
+            if (roleResp.code !== 0) return;
+            
+            RB.post('/api/role?op=getPermissions', { roleId: id }).done(function (permResp) {
+                if (permResp.code === 0) {
+                    var perms = permResp.data.allPerms || [];
+                    var rolePerms = permResp.data.rolePerms || [];
+                    var html = '';
+                    for (var i = 0; i < perms.length; i++) {
+                        var p = perms[i];
+                        var checked = rolePerms.indexOf(p.id) >= 0 ? 'checked' : '';
+                        html += '<label style="display:inline-block; margin-right:16px; margin-bottom:4px;"><input type="checkbox" style="width:20px"' + checked + ' data-id="' + p.id + '"> ' + p.permName + ' (' + p.permCode + ')</label>';
+                    }
+                    $('#modalTitle').text('设置权限');
+                    $('#roleId').val(id);
+                    $('#roleCode').prop('disabled', true).val(roleResp.data.roleCode);
+                    $('#roleName').prop('disabled', true).val(roleResp.data.roleName);
+                    $('#roleDesc').prop('disabled', true).val(roleResp.data.description || '');
+                    $('#permList').html(html);
+                    RB.openModal('modalRole');
+                }
+            });
+        });
+    }
+
+    function saveRole() {
+        var id = $('#roleId').val();
+        if (!$('#roleCode').val()) { RB.toast('请输入角色编码', 'error'); return; }
+        if (!$('#roleName').val()) { RB.toast('请输入角色名称', 'error'); return; }
+
+        var permIds = [];
+        $('#permList input:checked').each(function () { permIds.push($(this).data('id')); });
+
+        RB.post('/api/role?op=' + (id ? 'update' : 'add'), {
+            id: id,
+            roleCode: $('#roleCode').val(),
+            roleName: $('#roleName').val(),
+            description: $('#roleDesc').val(),
+            permIds: permIds.join(',')
+        }).done(function (r) {
+            if (r.code === 0) {
+                RB.toast(id ? '更新成功' : '添加成功', 'success');
+                RB.closeModal('modalRole');
+                load();
+            } else {
+                RB.toast(r.msg, 'error');
+            }
+        });
+    }
+
+    function deleteRole(id) {
+        if (!confirm('确定删除该角色吗？')) return;
+        RB.post('/api/role?op=delete', { id: id }).done(function (r) {
+            if (r.code === 0) {
+                RB.toast('删除成功', 'success');
+                load();
+            } else {
+                RB.toast(r.msg, 'error');
+            }
+        });
+    }
+</script>
+</body>
+</html>

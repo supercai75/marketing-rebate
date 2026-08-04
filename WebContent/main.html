@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>营销返利项目管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .menu-group { margin-bottom: 8px; }
+        .menu-group-title { 
+            font-size: 12px; color: #909399; padding: 8px 16px; background: #f5f7fa; border-left: 3px solid #dcdfe6;
+            cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center;
+        }
+        .menu-group-title:hover { background: #ecf5ff; }
+        .menu-group-title .arrow { 
+            transition: transform 0.2s; font-size: 12px;
+        }
+        .menu-group.collapsed .menu-group-title .arrow { transform: rotate(-90deg); }
+        .menu-group ul { margin: 0; padding: 0; list-style: none; transition: max-height 0.3s ease; overflow: hidden; max-height: 500px; }
+        .menu-group.collapsed ul { max-height: 0; }
+        .menu-group li { padding: 0; }
+        .menu-group li a { display: block; padding: 10px 16px 10px 24px; color: #606266; text-decoration: none; transition: all 0.2s; }
+        .menu-group li a:hover { background: #ecf5ff; color: #409eff; }
+        .menu-group li.active a { 
+            background: linear-gradient(90deg, #409eff 0%, #66b1ff 100%); 
+            color: #fff; 
+            font-weight: 600;
+            border-left: 3px solid #fff;
+            box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <div class="logo">营销返利项目管理系统</div>
+    <div class="spacer"></div>
+    <div class="user">
+        <span id="userName"></span>
+        <a href="javascript:;" id="btnChangePwd">修改密码</a>
+        <a href="javascript:;" id="btnLogout">退出登录</a>
+    </div>
+</div>
+<div class="layout">
+    <div class="sidebar">
+        <div class="menu-group collapsed">
+            <div class="menu-group-title">系统管理<span class="arrow">▼</span></div>
+            <ul>
+                <li><a href="role.html" target="content">角色管理</a></li>
+                <li><a href="user.html" target="content">用户管理</a></li>
+                <li><a href="op-log.html" target="content">操作日志</a></li>
+                <li><a href="user_manual.html" target="content">使用手册</a></li>
+                <li><a href="api-doc.html" target="content">API接口文档</a></li>
+            </ul>
+        </div>
+        
+        <div class="menu-group collapsed">
+            <div class="menu-group-title">项目管理<span class="arrow">▼</span></div>
+            <ul>
+                <li><a href="project.html" target="content">项目立项</a></li>
+                <li><a href="upstream-agreement.html" target="content">上游协议</a></li>
+                <li><a href="downstream-agreement.html" target="content">下游协议</a></li>
+                <li><a href="project-staff.html" target="content">作业人员</a></li>
+            </ul>
+        </div>
+        
+        <div class="menu-group">
+            <div class="menu-group-title">流向管理<span class="arrow">▼</span></div>
+            <ul>
+                <li><a href="upstream-flow.html" target="content">上游流向</a></li>
+                <li><a href="downstream-flow.html" target="content">下游流向</a></li>
+                <li><a href="cost.html" target="content">费用投入</a></li>
+                <li><a href="labor.html" target="content">人工投入</a></li>
+            </ul>
+        </div>
+        
+        <div class="menu-group">
+            <div class="menu-group-title">财务结算<span class="arrow">▼</span></div>
+            <ul>
+                <li><a href="receivable.html" target="content">项目应收</a></li>
+                <li><a href="payable.html" target="content">项目应付</a></li>
+                <li><a href="received.html" target="content">项目实收</a></li>
+                <li><a href="paid.html" target="content">项目实付</a></li>
+            </ul>
+        </div>
+        
+        <div class="menu-group">
+            <div class="menu-group-title">数据概览<span class="arrow">▼</span></div>
+            <ul>
+                <li><a href="overview.html" target="content">项目概览</a></li>
+                <li><a href="balance.html" target="content">项目平衡表</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="content">
+        <iframe name="content" src="about:blank" style="width: 100%; height: 99.5%; border: 0; background: #f5f7fa;"></iframe>
+    </div>
+</div>
+
+<div class="modal-mask" id="modalPwd">
+    <div class="modal" style="width: 400px;">
+        <div class="modal-header">修改密码 <span class="spacer"></span><span class="close" onclick="RB.closeModal('modalPwd')">×</span></div>
+        <div class="modal-body">
+            <div class="form-item"><label>原密码</label><input type="password" id="oldPwd"></div>
+            <div class="form-item"><label>新密码</label><input type="password" id="newPwd"></div>
+            <div class="form-item"><label>确认密码</label><input type="password" id="cfmPwd"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalPwd')">取消</button>
+            <button class="btn btn-primary" id="btnSavePwd">保存</button>
+        </div>
+    </div>
+</div>
+
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    RB.checkLogin(function (u) {
+        $('#userName').text(u.name + ' / ' + (u.deptName || ''));
+    });
+
+    // 菜单折叠/展开
+    $('.menu-group-title').on('click', function () {
+        var $group = $(this).closest('.menu-group');
+        $group.toggleClass('collapsed');
+    });
+    
+    // 菜单点击高亮
+    $('.menu-group li a').on('click', function() {
+        // 移除所有菜单的active类
+        $('.menu-group li').removeClass('active');
+        // 给当前点击的菜单添加active类
+        $(this).closest('li').addClass('active');
+        // 展开当前菜单所属的菜单组
+        $(this).closest('.menu-group').removeClass('collapsed');
+    });
+    
+    // 根据iframe当前加载的页面设置菜单高亮
+    $('iframe[name="content"]').on('load', function() {
+        try {
+            var iframeDoc = this.contentDocument || this.contentWindow.document;
+            var currentPage = iframeDoc.location.pathname.split('/').pop() || '';
+            
+            // 移除所有active
+            $('.menu-group li').removeClass('active');
+            
+            // 查找并高亮对应的菜单
+            $('.menu-group li a').each(function() {
+                var href = $(this).attr('href');
+                if (href === currentPage) {
+                    $(this).closest('li').addClass('active');
+                    // 确保菜单组展开
+                    $(this).closest('.menu-group').removeClass('collapsed');
+                }
+            });
+        } catch (e) {
+            // 跨域访问会出错，忽略
+        }
+    });
+    
+    // 初始化：根据当前URL设置高亮
+    (function() {
+        var currentPage = window.location.pathname.split('/').pop();
+        $('.menu-group li a').each(function() {
+            var href = $(this).attr('href');
+            if (href === currentPage) {
+                $(this).closest('li').addClass('active');
+                $(this).closest('.menu-group').removeClass('collapsed');
+            }
+        });
+    })();
+
+    $('#btnLogout').on('click', function () {
+        RB.post('/api/auth?op=logout').done(function () {
+            RB.clearToken();
+            location.href = 'index.html';
+        });
+    });
+
+    $('#btnChangePwd').on('click', function () { RB.openModal('modalPwd'); });
+
+    $('#btnSavePwd').on('click', function () {
+        var op = $('#oldPwd').val(), np = $('#newPwd').val(), cp = $('#cfmPwd').val();
+        if (!op || !np) { RB.toast('请填写完整', 'error'); return; }
+        if (np !== cp) { RB.toast('两次密码不一致', 'error'); return; }
+        RB.post('/api/auth?op=changePassword', { oldPassword: op, newPassword: np }).done(function (r) {
+            if (r.code === 0) { RB.toast('修改成功', 'success'); RB.closeModal('modalPwd'); }
+            else { RB.toast(r.msg, 'error'); }
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>项目作业人员管理</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="toolbar">
+    <select id="selYear" style="width:120px;">
+    </select>
+    <select id="projectId" style="width: 280px;"></select>
+    <button class="btn btn-primary" id="btnSearch">查询</button>
+    <button class="btn btn-success" id="btnAdd">+ 添加人员</button>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead><tr>
+            <th>姓名</th><th>工号</th><th>部门</th><th>岗位</th><th>投入类型</th><th>人工费用比例(%)</th><th>报销费用比例(%)</th><th>操作</th>
+        </tr></thead>
+        <tbody id="body"></tbody>
+    </table>
+</div>
+
+<div class="pagination" id="pagination" style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:center;">
+    <button class="page-btn" id="btnPrev" onclick="prevPage()" style="display:inline-block;">上一页</button>
+    <div id="pageNumbers" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;"></div>
+    <button class="page-btn" id="btnNext" onclick="nextPage()" style="display:inline-block;">下一页</button>
+    <div class="page-jump" style="display:inline-flex;flex-direction:row;flex-wrap:nowrap;align-items:center;">
+        <input type="text" id="jumpPage" placeholder="页码" onkeydown="if(event.keyCode===13) jumpToPage()" style="display:inline-block;">
+        <button class="jump-btn" onclick="jumpToPage()" style="display:inline-block;">跳转</button>
+    </div>
+    <span class="page-info" id="pageInfo" style="display:inline-block;"></span>
+</div>
+
+<div class="modal-mask" id="modal">
+    <div class="modal" style="width: 500px;">
+        <div class="modal-header" id="modalTitle">添加作业人员<span class="spacer"></span><span class="close" onclick="RB.closeModal('modal')">×</span></div>
+        <div class="modal-body">
+            <input type="hidden" id="id">
+            <div class="form-item"><label>人员姓名 *</label><input id="userName" style="width:100%;"></div>
+            <div class="form-item"><label>工号</label><input id="userCode" style="width:100%;"></div>
+            <div class="form-item"><label>部门</label><input id="deptName" style="width:100%;"></div>
+            <div class="form-item"><label>岗位</label><input id="position" style="width:100%;"></div>
+            <div class="form-item"><label>投入类型 *</label>
+                <select id="workType" style="width:100%;" onchange="togglePartTimeFields()">
+                    <option value="FULL">全职</option>
+                    <option value="PART">兼职</option>
+                    <option value="OUTSOURCE">外包</option>
+                </select>
+            </div>
+            <div class="form-item" id="partTimeFields" style="display:none;">
+                <div style="display:flex; gap:12px;">
+                    <div style="flex:1;">
+                        <label>人工费用比例(%)</label>
+                        <input type="number" id="laborCostRatio" step="0.01" min="0" max="100" placeholder="0-100">
+                    </div>
+                    <div style="flex:1;">
+                        <label>报销费用比例(%)</label>
+                        <input type="number" id="expenseRatio" step="0.01" min="0" max="100" placeholder="0-100">
+                    </div>
+                </div>
+                <p style="font-size:12px; color:#909399; margin-top:4px;">说明：兼职人员的费用按比例权重分摊到多个项目</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modal')">取消</button>
+            <button class="btn btn-primary" id="btnSave">保存</button>
+        </div>
+    </div>
+</div>
+
+<script src="lib/jquery-3.7.1.min.js"></script>
+<script src="js/utils.js"></script>
+<script>
+    var curProject = null;
+    var page = 1, pageSize = 10, total = 0;
+
+    $(function () {
+        RB.checkLogin(function () { 
+            loadYears(); 
+        });
+        $('#btnSearch').on('click', function () { page = 1; recalculatePageSize(); load(); });
+        $('#selYear').on('change', function() { loadProjects(); });
+        $('#btnAdd').on('click', showAddModal);
+        $('#btnSave').on('click', save);
+        $(window).on('resize', function () { recalculatePageSize(); load(); });
+    });
+
+    function loadYears() {
+        RB.post('/api/project?op=listYears', {}).done(function (r) {
+            if (r.code === 0 && r.data) {
+                var html = '';
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i] + '">' + r.data[i] + '</option>';
+                }
+                $('#selYear').html(html);
+            }
+            loadProjects();
+        });
+    }
+
+    function loadProjects() {
+        var coYear = $('#selYear').val();
+        var param = coYear ? { coYear: coYear } : {};
+        RB.post('/api/project?op=listByYear', param).done(function (r) {
+            var html = '<option value="">选择项目...</option>';
+            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
+                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
+            }
+            $('#projectId').html(html);
+        });
+    }
+
+    function recalculatePageSize() {
+        var tableWrap = $('.table-wrap');
+        var pagination = $('#pagination');
+        var toolbar = $('.toolbar');
+        
+        if (tableWrap.length === 0) {
+            pageSize = 10;
+            return;
+        }
+        
+        var windowHeight = $(window).height();
+        var toolbarHeight = toolbar.length > 0 ? toolbar.outerHeight(true) : 50;
+        var paginationHeight = pagination.length > 0 ? pagination.outerHeight(true) : 60;
+        var topMargin = 20;
+        var bottomMargin = 20;
+        
+        var availableHeight = windowHeight - toolbarHeight - paginationHeight - topMargin - bottomMargin;
+        
+        var headerHeight = tableWrap.find('thead tr').height() || 36;
+        var rowHeight = 36;
+        var tableAvailableHeight = availableHeight - headerHeight - 16;
+        
+        var calculatedSize = Math.max(5, Math.floor(tableAvailableHeight / rowHeight));
+        pageSize = calculatedSize;
+    }
+
+    function load() {
+        var pid = $('#projectId').val();
+        if (!pid) return;
+        curProject = { id: pid };
+        RB.post('/api/project-staff?op=list', { projectId: pid, page: page, pageSize: pageSize }).done(function (r) {
+            if (r.code === 0) {
+                total = r.data.total || 0;
+                render(r.data.list);
+                updatePagination();
+            }
+        });
+    }
+
+    function updatePagination() {
+        var totalPages = Math.max(1, Math.ceil(total / pageSize));
+        $('#pageInfo').text('共 ' + total + ' 条，每页 ' + pageSize + ' 条，第 ' + page + '/' + totalPages + ' 页');
+        
+        $('#btnPrev').toggleClass('disabled', page <= 1);
+        $('#btnNext').toggleClass('disabled', page >= totalPages);
+        
+        renderPageNumbers(totalPages);
+    }
+
+    function renderPageNumbers(totalPages) {
+        var html = '';
+        var showPages = 5;
+        var startPage = Math.max(1, page - Math.floor(showPages / 2));
+        var endPage = Math.min(totalPages, startPage + showPages - 1);
+        
+        if (startPage > 1) {
+            html += '<button class="page-btn" onclick="goToPage(1)" style="display:inline-block;">1</button>';
+            if (startPage > 2) {
+                html += '<span class="page-dots" style="display:inline-block;">...</span>';
+            }
+        }
+        
+        for (var i = startPage; i <= endPage; i++) {
+            html += '<button class="page-btn' + (i === page ? ' active' : '') + '" onclick="goToPage(' + i + ')" style="display:inline-block;">' + i + '</button>';
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                html += '<span class="page-dots" style="display:inline-block;">...</span>';
+            }
+            html += '<button class="page-btn" onclick="goToPage(' + totalPages + ')" style="display:inline-block;">' + totalPages + '</button>';
+        }
+        
+        $('#pageNumbers').html(html);
+    }
+
+    function prevPage() {
+        if (page > 1) { page--; load(); }
+    }
+
+    function nextPage() {
+        var totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page < totalPages) { page++; load(); }
+    }
+
+    function goToPage(p) {
+        var totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (p >= 1 && p <= totalPages && p !== page) {
+            page = p;
+            load();
+        }
+    }
+
+    function jumpToPage() {
+        var targetPage = parseInt($('#jumpPage').val());
+        if (!isNaN(targetPage)) {
+            goToPage(targetPage);
+            $('#jumpPage').val('');
+        }
+    }
+
+    function render(rows) {
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var workType = { 'FULL': '全职', 'PART': '兼职', 'OUTSOURCE': '外包' }[r.workType] || r.workType;
+            html += '<tr><td>' + (r.userName || '') + '</td>' +
+                '<td>' + (r.userCode || '') + '</td>' +
+                '<td>' + (r.deptName || '') + '</td>' +
+                '<td>' + (r.position || '') + '</td>' +
+                '<td>' + workType + '</td>' +
+                '<td>' + (r.laborCostRatio || 0) + '</td>' +
+                '<td>' + (r.expenseRatio || 0) + '</td>' +
+                '<td>' +
+                '<a href="javascript:;" onclick="showEditModal(' + r.id + ')">编辑</a> | ' +
+                '<a href="javascript:;" onclick="del(' + r.id + ')">删除</a>' +
+                '</td></tr>';
+        }
+        $('#body').html(html || '<tr><td colspan="8" style="text-align:center;color:#999;padding:24px;">暂无作业人员</td></tr>');
+    }
+
+    function togglePartTimeFields() {
+        var workType = $('#workType').val();
+        if (workType === 'PART') {
+            $('#partTimeFields').show();
+            if (!$('#laborCostRatio').val()) $('#laborCostRatio').val(100);
+            if (!$('#expenseRatio').val()) $('#expenseRatio').val(100);
+        } else {
+            $('#partTimeFields').hide();
+            $('#laborCostRatio').val(100);
+            $('#expenseRatio').val(100);
+        }
+    }
+
+    function showAddModal() {
+        RB.withPerm('project:edit', function() {
+            var pid = $('#projectId').val();
+            if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+            curProject = { id: pid };
+
+            $('#modalTitle').text('添加作业人员');
+            $('#id').val('');
+            $('#userName').val('');
+            $('#userCode').val('');
+            $('#deptName').val('');
+            $('#position').val('');
+            $('#workType').val('FULL');
+            $('#laborCostRatio').val(100);
+            $('#expenseRatio').val(100);
+            togglePartTimeFields();
+            RB.openModal('modal');
+        }, '权限不足，无法新增作业人员');
+    }
+
+    function showEditModal(id) {
+        RB.withPerm('project:edit', function() {
+            RB.post('/api/project-staff?op=get', { id: id }).done(function (r) {
+                if (r.code === 0) {
+                    var d = r.data;
+                    $('#modalTitle').text('编辑作业人员');
+                    $('#id').val(d.id);
+                    $('#userName').val(d.userName);
+                    $('#userCode').val(d.userCode);
+                    $('#deptName').val(d.deptName);
+                    $('#position').val(d.position);
+                    $('#workType').val(d.workType || 'FULL');
+                    $('#laborCostRatio').val(d.laborCostRatio || '');
+                    $('#expenseRatio').val(d.expenseRatio || '');
+                    togglePartTimeFields();
+                    RB.openModal('modal');
+                }
+            });
+        }, '权限不足，无法编辑作业人员');
+    }
+
+    function save() {
+        RB.withPerm('project:edit', function() {
+            if (!curProject) { RB.toast('请先选择项目', 'error'); return; }
+            if (!$('#userName').val()) { RB.toast('请输入姓名', 'error'); return; }
+
+            var workType = $('#workType').val();
+            if ((workType === 'PART' || workType === 'OUTSOURCE') && (!$('#laborCostRatio').val() || !$('#expenseRatio').val())) {
+                RB.toast('兼职/外包人员请填写费用比例', 'error');
+                return;
+            }
+
+            RB.post('/api/project-staff?op=' + ($('#id').val() ? 'update' : 'add'), {
+                id: $('#id').val(),
+                projectId: curProject.id,
+                userName: $('#userName').val(),
+                userCode: $('#userCode').val(),
+                deptName: $('#deptName').val(),
+                position: $('#position').val(),
+                workType: workType,
+                laborCostRatio: $('#laborCostRatio').val(),
+                expenseRatio: $('#expenseRatio').val()
+            }).done(function (r) {
+                if (r.code === 0) {
+                    RB.toast('保存成功', 'success');
+                    RB.closeModal('modal');
+                    load();
+                } else {
+                    RB.toast(r.msg, 'error');
+                }
+            });
+        }, '权限不足，无法编辑作业人员');
+    }
+
+    function del(id) {
+        RB.withPerm('project:edit', function() {
+            if (!confirm('确定删除该人员吗？')) return;
+            RB.post('/api/project-staff?op=delete', { id: id }).done(function (r) {
+                if (r.code === 0) {
+                    RB.toast('删除成功', 'success');
+                    load();
+                } else {
+                    RB.toast(r.msg, 'error');
+                }
+            });
+        }, '权限不足，无法编辑作业人员');
+    }
+</script>
+</body>
+</html>
