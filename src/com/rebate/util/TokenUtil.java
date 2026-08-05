@@ -4,7 +4,6 @@ import com.rebate.model.UserContext;
 
 import javax.servlet.http.HttpServletRequest;
 import java.security.MessageDigest;
-import java.util.UUID;
 
 /**
  * Token工具类
@@ -36,6 +35,8 @@ public class TokenUtil {
 
     /**
      * 从请求中获取token
+     * 注意：禁止调用 req.getParameter()，否则会触发 Tomcat 的 POST body 解析，
+     * 导致后续 Servlet 调用 req.getReader()/getInputStream() 阻塞或读不到数据。
      */
     public static String getTokenFromRequest(HttpServletRequest req) {
         // 优先从Header获取
@@ -43,10 +44,22 @@ public class TokenUtil {
         if (token != null && !token.isEmpty()) {
             return token;
         }
-        // 其次从请求参数获取
-        token = req.getParameter("token");
-        if (token != null && !token.isEmpty()) {
-            return token;
+        // 其次从 URL 查询参数中手动解析（不触发 body 解析）
+        String qs = req.getQueryString();
+        if (qs != null && !qs.isEmpty()) {
+            for (String pair : qs.split("&")) {
+                int idx = pair.indexOf('=');
+                if (idx >= 0) {
+                    String key = pair.substring(0, idx);
+                    if ("token".equals(key)) {
+                        try {
+                            return java.net.URLDecoder.decode(pair.substring(idx + 1), "UTF-8");
+                        } catch (Exception e) {
+                            return pair.substring(idx + 1);
+                        }
+                    }
+                }
+            }
         }
         // 最后从Session获取（兼容旧方式）
         var session = req.getSession(false);
@@ -92,6 +105,6 @@ public class TokenUtil {
     }
 
     public static String randomToken() {
-        return UUID.randomUUID().toString().replace("-", "");
+        return java.util.UUID.randomUUID().toString().replace("-", "");
     }
 }

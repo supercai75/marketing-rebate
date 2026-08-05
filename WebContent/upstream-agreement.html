@@ -774,6 +774,7 @@
                         thresholdLow: parseFloat(row.find('.rule-threshold-low').val()) || 0,
                         thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
                         rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
+                        expression: (row.find('.rule-expression').val() || '').trim() || null,
                         rewardType: row.find('.rule-type').val()
                     });
                 });
@@ -800,6 +801,7 @@
                     thresholdLow: parseFloat(row.find('.rule-threshold-low').val()) || 0,
                     thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
                     rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
+                    expression: (row.find('.rule-expression').val() || '').trim() || null,
                     rewardType: row.find('.rule-type').val()
                 });
             });
@@ -829,13 +831,14 @@
         if (assessGroups.length > 1 || (assessGroups.length === 1 && assessGroups[0].id !== 0)) {
             html += '<div style="margin-bottom:8px;font-weight:600;color:#409eff;">考核组: ' + groupName + '</div>';
         }
-        html += '<div style="margin-bottom:8px;font-size:11px;color:#909399;">提示：按达成额时阈值为金额，按达成率时阈值为百分比(%)</div>';
+        html += '<div style="margin-bottom:8px;font-size:11px;color:#909399;">提示：按达成额时阈值为金额，按达成率时阈值为百分比(%)。表达式以 X 代表 达成率/增长率/达成额，X 若大于区间上限则取上限；表达式为空或纯数字时使用「返利比例」列。例：0.125*(X-60)+2</div>';
         html += '<table class="rule-table" id="rebateRuleTable_' + currentAssessGroupId + '">';
         html += '<thead><tr>';
         html += '<th>阶段</th>';
         html += '<th>阈值下限</th>';
         html += '<th>阈值上限<br>(0表示无上限)</th>';
         html += '<th>返利比例(%)</th>';
+        html += '<th style="min-width:170px;">表达式<br><span style="font-weight:normal;color:#909399;font-size:11px;">例: 0.125*(X-60)+2</span></th>';
         html += '<th>计算类型</th>';
         html += '<th>操作</th>';
         html += '</tr></thead>';
@@ -863,11 +866,13 @@
             '<option value="GROWTH"' + (data && data.rewardType === 'GROWTH' ? ' selected' : '') + '>按销售增长</option>' +
             '<option value="SCALE"' + (data && data.rewardType === 'SCALE' ? ' selected' : '') + '>按达成额</option>';
         var ratio = data ? (data.rebateRatio * 100 || 0) : 0;
+        var exprVal = (data && data.expression != null && data.expression !== '') ? data.expression : '';
         var html = '<tr id="' + rowId + '" data-rule-id="' + ruleId + '">' +
             '<td><select class="rule-stage">' + stageOptions + '</select></td>' +
             '<td><input type="number" class="rule-threshold-low" step="0.01" value="' + (data ? data.thresholdLow || 0 : 0) + '"></td>' +
             '<td><input type="number" class="rule-threshold-high" step="0.01" value="' + (data ? data.thresholdHigh || 0 : 0) + '"></td>' +
             '<td><input type="number" class="rule-ratio" step="0.01" value="' + ratio + '"></td>' +
+            '<td><input type="text" class="rule-expression" placeholder="如 0.125*(X-60)+2" value="' + exprVal + '"></td>' +
             '<td><select class="rule-type">' + typeOptions + '</select></td>' +
             '<td><span class="delete-row-btn" onclick="deleteRebateRuleRowForGroup(\'' + rowId + '\')">删除</span></td>' +
             '</tr>';
@@ -892,6 +897,7 @@
             '<td><input type="number" class="rule-threshold-low" step="0.01" value="0"></td>' +
             '<td><input type="number" class="rule-threshold-high" step="0.01" value="0"></td>' +
             '<td><input type="number" class="rule-ratio" step="0.01" value="0"></td>' +
+            '<td><input type="text" class="rule-expression" placeholder="如 0.125*(X-60)+2" value=""></td>' +
             '<td><select class="rule-type">' + typeOptions + '</select></td>' +
             '<td><span class="delete-row-btn" onclick="deleteRebateRuleRowForGroup(\'' + rowId + '\')">删除</span></td>' +
             '</tr>';
@@ -941,6 +947,7 @@
                             thresholdLow: parseFloat(row.find('.rule-threshold-low').val()) || 0,
                             thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
                             rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
+                            expression: (row.find('.rule-expression').val() || '').trim() || null,
                             rewardType: row.find('.rule-type').val()
                         });
                     });
@@ -957,7 +964,8 @@
                 // 清理空规则
                 groupRules = groupRules.filter(function(r) {
                     if (r.rewardType === 'GROWTH') hasGrowthRule = true;
-                    return r.thresholdLow > 0 || r.thresholdHigh > 0 || r.rebateRatio > 0;
+                    return r.thresholdLow > 0 || r.thresholdHigh > 0 || r.rebateRatio > 0
+                        || (r.expression != null && r.expression.trim() !== '');
                 });
                 allRules[groupId] = groupRules;
             }
@@ -965,7 +973,8 @@
             if (assessGroups.length === 0 && rebateRulesMap[0]) {
                 var defaultRules = rebateRulesMap[0].filter(function(r) {
                     if (r.rewardType === 'GROWTH') hasGrowthRule = true;
-                    return r.thresholdLow > 0 || r.thresholdHigh > 0 || r.rebateRatio > 0;
+                    return r.thresholdLow > 0 || r.thresholdHigh > 0 || r.rebateRatio > 0
+                        || (r.expression != null && r.expression.trim() !== '');
                 });
                 if (defaultRules.length > 0) {
                     allRules[0] = defaultRules;

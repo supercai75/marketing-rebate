@@ -106,6 +106,7 @@
 
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/rebate-calc.js"></script>
 <script>
     var editingId = null;
     var curProject = null;
@@ -470,57 +471,41 @@
                             var high = Number(rule.thresholdHigh || 0);
                             var rebateRatioDB = Number(rule.rebateRatio || 0); // 数据库存的是小数，如 0.05
                             var rebateRatioDisplay = rebateRatioDB * 100; // 显示用的整数，如 5
-                            var ratio = rebateRatioDB; // 用于计算的数值，直接用 0.05
-                            var inRange = false;
+                            var expression = (rule.expression || '').trim();
                             var ruleEst = 0;
                             
                             var typeName = { 'SCALE': '按达成额', 'PERSENT': '按达成率', 'GROWTH': '按销售增长' };
+                            // 根据 rewardType 算 X（达成率/增长率/达成额）
+                            var xObj = RebateCalc.computeX(rule, groupActual, groupTarget, prevGroupActual);
+                            var xActual = xObj.x;
+                            // X 区间上限封顶
+                            var xEffective = RebateCalc.capX(xActual, high);
+                            var inRange = RebateCalc.inRange(xActual, low, high);
+                            
+                            // 返利比例
+                            var ratio = RebateCalc.ratioByRule(rule, xEffective);
+                            var ratioDisplayPct = (ratio * 100).toFixed(4);
                             
                             detailHtml.push('<div class="rule-row">');
                             detailHtml.push('<strong>计算类型：</strong>' + typeName[rule.rewardType] + '<br>');
-                            detailHtml.push('<strong>阈值范围：</strong>' + low + '% ~ ' + (high === 0 ? '无上限' : high + '%') + '<br>');
-                            detailHtml.push('<strong>返利比例：</strong>' + rebateRatioDisplay + '%<br>');
-                            
                             if (rule.rewardType === 'SCALE') {
-                                var calcValue = groupActual;
-                                if (high === 0) inRange = calcValue >= low;
-                                else inRange = calcValue >= low && calcValue < high;
-                                if (inRange) {
-                                    ruleEst = calcValue * ratio;
-                                    detailHtml.push('<strong class="formula">计算：</strong>' + RB.formatMoney(calcValue) + ' × ' + rebateRatioDisplay + '% = ' + RB.formatMoney(ruleEst) + '<br>');
-                                } else {
-                                    detailHtml.push('<strong style="color:#e6a23c;">说明：</strong>达成额' + RB.formatMoney(calcValue) + '不在阈值范围内，不计入返利<br>');
-                                }
-                            } else if (rule.rewardType === 'PERSENT') {
-                                var achievementRate = groupTarget > 0 ? groupActual / groupTarget : 0;
-                                var achievementRatePct = (achievementRate * 100).toFixed(2);
-                                if (high === 0) inRange = achievementRate >= low / 100;
-                                else inRange = achievementRate >= low / 100 && achievementRate < high / 100;
-                                if (inRange) {
-                                    ruleEst = groupActual * ratio;
-                                    detailHtml.push('<strong>达成率：</strong>' + achievementRatePct + '%<br>');
-                                    detailHtml.push('<strong class="formula">计算：</strong>' + RB.formatMoney(groupActual) + ' × ' + rebateRatioDisplay + '% = ' + RB.formatMoney(ruleEst) + '<br>');
-                                } else {
-                                    detailHtml.push('<strong>达成率：</strong>' + achievementRatePct + '%<br>');
-                                    detailHtml.push('<strong style="color:#e6a23c;">说明：</strong>达成率不在阈值范围内，不计入返利<br>');
-                                }
-                            } else if (rule.rewardType === 'GROWTH') {
-                                if (prevGroupActual > 0) {
-                                    var growthRate = groupActual / prevGroupActual;
-                                    var growthRatePct = ((growthRate - 1) * 100).toFixed(2);
-                                    if (high === 0) inRange = growthRate >= low / 100;
-                                    else inRange = growthRate >= low / 100 && growthRate < high / 100;
-                                    if (inRange) {
-                                        ruleEst = groupActual * ratio;
-                                        detailHtml.push('<strong>增长率：</strong>' + growthRatePct + '%<br>');
-                                        detailHtml.push('<strong class="formula">计算：</strong>' + RB.formatMoney(groupActual) + ' × ' + rebateRatioDisplay + '% = ' + RB.formatMoney(ruleEst) + '<br>');
-                                    } else {
-                                        detailHtml.push('<strong>增长率：</strong>' + growthRatePct + '%<br>');
-                                        detailHtml.push('<strong style="color:#e6a23c;">说明：</strong>增长率不在阈值范围内，不计入返利<br>');
-                                    }
-                                } else {
-                                    detailHtml.push('<strong style="color:#e6a23c;">说明：</strong>上年同期数据为0，无法计算增长率<br>');
-                                }
+                                detailHtml.push('<strong>阈值范围：</strong>' + low + ' 元 ~ ' + (high === 0 ? '无上限' : (high + ' 元')) + '<br>');
+                            } else {
+                                detailHtml.push('<strong>阈值范围：</strong>' + low + '% ~ ' + (high === 0 ? '无上限' : (high + '%')) + '<br>');
+                            }
+                            detailHtml.push('<strong>返利比例(原始)：</strong>' + rebateRatioDisplay + '%' + (expression ? '；<strong>表达式：</strong><code style="background:#f5f7fa;padding:1px 4px;border-radius:3px;">' + expression + '</code>' : '') + '<br>');
+                            detailHtml.push('<strong>实际 ' + xObj.xLabel + '：</strong>' + (rule.rewardType === 'SCALE' ? RB.formatMoney(xActual) : xActual.toFixed(2) + '%')
+                                + (xEffective !== xActual ? '；<strong style="color:#409eff;">X 封顶：</strong>' + (rule.rewardType === 'SCALE' ? RB.formatMoney(xEffective) : xEffective.toFixed(2) + '%') : '')
+                                + '<br>');
+                            detailHtml.push('<strong>最终使用比例：</strong>' + ratioDisplayPct + '%<br>');
+                            
+                            if (inRange) {
+                                ruleEst = xObj.base * ratio;
+                                detailHtml.push('<strong class="formula">计算：</strong>基数 ' + RB.formatMoney(xObj.base) + ' × ' + ratioDisplayPct + '% = ' + RB.formatMoney(ruleEst) + '<br>');
+                            } else {
+                                detailHtml.push('<strong style="color:#e6a23c;">说明：</strong>' + xObj.xLabel + ' '
+                                    + (rule.rewardType === 'SCALE' ? RB.formatMoney(xActual) : xActual.toFixed(2) + '%')
+                                    + ' 不在阈值范围内，不计入返利<br>');
                             }
                             detailHtml.push('<strong>本规则返利：</strong><span class="highlight">' + RB.formatMoney(ruleEst) + '</span>');
                             detailHtml.push('</div>');
@@ -535,9 +520,9 @@
                                 var rule = rules[i];
                                 var low = Number(rule.thresholdLow || 0);
                                 var high = Number(rule.thresholdHigh || 0);
-                                var rebateRatioDB = Number(rule.rebateRatio || 0); // 数据库存的是小数，如 0.05
-                                var rebateRatioDisplay = rebateRatioDB * 100; // 显示用的整数，如 5
-                                var ratio = rebateRatioDB; // 用于计算的数值，直接用 0.05
+                                var rebateRatioDB = Number(rule.rebateRatio || 0);
+                                var rebateRatioDisplay = rebateRatioDB * 100;
+                                var expression = (rule.expression || '').trim();
                                 var ruleEst = 0;
                                 
                                 if (prevRewardType !== null && prevRewardType !== rule.rewardType) {
@@ -552,54 +537,60 @@
                                     detailHtml.push('<div style="margin:8px 0 4px;color:#67c23a;font-weight:500;">◆ ' + typeLabel + '</div>');
                                 }
                                 
+                                // 根据 rewardType 计算 X
+                                var xObj = RebateCalc.computeX(rule, groupActual, groupTarget, prevGroupActual);
+                                var xActual = xObj.x;
+                                var xEffective = RebateCalc.capX(xActual, high);
+                                var ratio = RebateCalc.ratioByRule(rule, xEffective);
+                                var ratioDisplayPct = (ratio * 100).toFixed(4);
+                                
                                 detailHtml.push('<div class="rule-row" style="border-color:#67c23a;">');
-                                detailHtml.push('<strong>阈值：</strong>' + low + '% ~ ' + (high === 0 ? '无上限' : high + '%') + '，<strong>比例：</strong>' + rebateRatioDisplay + '%');
+                                if (rule.rewardType === 'SCALE') {
+                                    detailHtml.push('<strong>阈值：</strong>' + low + ' 元 ~ ' + (high === 0 ? '无上限' : (high + ' 元'))
+                                        + '，<strong>比例：</strong>' + rebateRatioDisplay + '%'
+                                        + (expression ? '；<strong>表达式：</strong><code style="background:#f5f7fa;padding:1px 4px;border-radius:3px;">' + expression + '</code>' : '')
+                                        + '<br><strong>实际达成额：</strong>' + RB.formatMoney(xActual)
+                                        + (xEffective !== xActual ? '；<strong style="color:#409eff;">X 封顶：</strong>' + RB.formatMoney(xEffective) : ''));
+                                } else {
+                                    detailHtml.push('<strong>阈值：</strong>' + low + '% ~ ' + (high === 0 ? '无上限' : (high + '%'))
+                                        + '，<strong>比例：</strong>' + rebateRatioDisplay + '%'
+                                        + (expression ? '；<strong>表达式：</strong><code style="background:#f5f7fa;padding:1px 4px;border-radius:3px;">' + expression + '</code>' : ''));
+                                }
                                 
                                 if (rule.rewardType === 'SCALE') {
                                     var effectiveStart = Math.max(low, prevHigh);
                                     var effectiveEnd = high === 0 ? groupActual : Math.min(high, groupActual);
                                     if (effectiveEnd > effectiveStart) {
                                         ruleEst = (effectiveEnd - effectiveStart) * ratio;
-                                        detailHtml.push('<br><strong class="formula">计算：</strong>(' + RB.formatMoney(effectiveEnd) + ' - ' + RB.formatMoney(effectiveStart) + ') × ' + rebateRatioDisplay + '% = ' + RB.formatMoney(ruleEst));
+                                        detailHtml.push('<br><strong>使用比例：</strong>' + ratioDisplayPct + '%');
+                                        detailHtml.push('<br><strong class="formula">计算：</strong>(' + RB.formatMoney(effectiveEnd) + ' - ' + RB.formatMoney(effectiveStart) + ') × ' + ratioDisplayPct + '% = ' + RB.formatMoney(ruleEst));
                                         groupEst += ruleEst;
                                     } else {
                                         detailHtml.push('<br><strong style="color:#e6a23c;">说明：</strong>当前达成额不在此区间');
                                     }
                                     prevHigh = high;
-                                } else if (rule.rewardType === 'PERSENT') {
-                                    var lowPct = low / 100;
-                                    var highPct = high / 100;
-                                    var achievementRate = groupTarget > 0 ? groupActual / groupTarget : 0;
-                                    var effectiveStart = Math.max(lowPct, prevHigh);
-                                    var effectiveEnd = highPct === 0 ? achievementRate : Math.min(highPct, achievementRate);
+                                } else {
+                                    var lowNorm = (rule.rewardType === 'SCALE') ? low : low / 100;
+                                    var highNorm = (rule.rewardType === 'SCALE') ? high : high / 100;
+                                    var xNorm = xActual / 100; // PERSENT/GROWTH: X 是百分比，这里归一化为 0~1
+                                    var effectiveStart = Math.max(lowNorm, prevHigh);
+                                    var effectiveEnd = highNorm === 0 ? xNorm : Math.min(highNorm, xNorm);
+                                    // 比例（ratio）已经是基于 X 的返利比例，所以阶梯的区间差额 × 目标/基数 × ratio
                                     if (effectiveEnd > effectiveStart) {
-                                        ruleEst = groupTarget * (effectiveEnd - effectiveStart) * ratio;
-                                        detailHtml.push('<br><strong>达成率：</strong>' + ((achievementRate * 100).toFixed(2)) + '%');
-                                        detailHtml.push('<br><strong class="formula">计算：</strong>' + RB.formatMoney(groupTarget) + ' × (' + ((effectiveEnd * 100).toFixed(2)) + '% - ' + ((effectiveStart * 100).toFixed(2)) + '%) × ' + rebateRatioDisplay + '% = ' + RB.formatMoney(ruleEst));
+                                        var baseForStep = (groupTarget && groupTarget > 0) ? groupTarget : (Number(groupActual) || 0);
+                                        ruleEst = baseForStep * (effectiveEnd - effectiveStart) * ratio;
+                                        var pctBefore = (xActual).toFixed(2);
+                                        detailHtml.push('<br><strong>' + xObj.xLabel + '：</strong>' + pctBefore + '%'
+                                            + (xEffective !== xActual ? '；<strong style="color:#409eff;">X 封顶：</strong>' + xEffective.toFixed(2) + '%' : ''));
+                                        detailHtml.push('<br><strong>使用比例：</strong>' + ratioDisplayPct + '%');
+                                        detailHtml.push('<br><strong class="formula">计算：</strong>' + RB.formatMoney(baseForStep) + ' × ('
+                                            + ((effectiveEnd * 100).toFixed(2)) + '% - ' + ((effectiveStart * 100).toFixed(2)) + '%) × ' + ratioDisplayPct + '% = ' + RB.formatMoney(ruleEst));
                                         groupEst += ruleEst;
                                     } else {
-                                        detailHtml.push('<br><strong style="color:#e6a23c;">说明：</strong>当前达成率不在此区间');
+                                        detailHtml.push('<br><strong>' + xObj.xLabel + '：</strong>' + (xActual).toFixed(2) + '%');
+                                        detailHtml.push('<br><strong style="color:#e6a23c;">说明：</strong>当前' + xObj.xLabel + '不在此区间');
                                     }
-                                    prevHigh = highPct;
-                                } else if (rule.rewardType === 'GROWTH') {
-                                    var lowPct = low / 100;
-                                    var highPct = high / 100;
-                                    if (prevGroupActual > 0) {
-                                        var growthRate = groupActual / prevGroupActual;
-                                        var effectiveStart = Math.max(lowPct, prevHigh);
-                                        var effectiveEnd = highPct === 0 ? growthRate : Math.min(highPct, growthRate);
-                                        if (effectiveEnd > effectiveStart) {
-                                            ruleEst = groupTarget * (effectiveEnd - effectiveStart) * ratio;
-                                            detailHtml.push('<br><strong>增长率：</strong>' + (((growthRate - 1) * 100).toFixed(2)) + '%');
-                                            detailHtml.push('<br><strong class="formula">计算：</strong>' + RB.formatMoney(groupTarget) + ' × (' + ((effectiveEnd * 100).toFixed(2)) + '% - ' + ((effectiveStart * 100).toFixed(2)) + '%) × ' + rebateRatioDisplay + '% = ' + RB.formatMoney(ruleEst));
-                                            groupEst += ruleEst;
-                                        } else {
-                                            detailHtml.push('<br><strong style="color:#e6a23c;">说明：</strong>当前增长率不在此区间');
-                                        }
-                                    } else {
-                                        detailHtml.push('<br><strong style="color:#e6a23c;">说明：</strong>上年同期数据为0');
-                                    }
-                                    prevHigh = highPct;
+                                    prevHigh = highNorm;
                                 }
                                 detailHtml.push('</div>');
                             }

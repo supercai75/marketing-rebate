@@ -55,7 +55,9 @@ public class OpLogFilter implements Filter {
         }
 
         // 检查是否是需要排除的操作
-        String op = req.getParameter("op");
+        // 注意：不能用 req.getParameter("op")，否则会触发 Tomcat 的 POST body 解析，
+        // 导致后续 getReader() 阻塞超时。改为从 queryString 手动解析。
+        String op = parseQueryParam(req.getQueryString(), "op");
         if (op != null) {
             for (String excluded : EXCLUDED_OPS) {
                 if (excluded.equalsIgnoreCase(op)) {
@@ -183,32 +185,54 @@ public class OpLogFilter implements Filter {
 
     private String parseContent(HttpServletRequest req, String op) {
         StringBuilder sb = new StringBuilder();
+        // 注意：不能用 req.getParameter()，否则会触发 Tomcat 的 POST body 解析
+        String qs = req.getQueryString();
         // 添加关键参数到日志内容中
-        String id = req.getParameter("id");
+        String id = parseQueryParam(qs, "id");
         if (id != null && !id.isEmpty()) {
             sb.append("ID=").append(id).append("; ");
         }
-        String projectId = req.getParameter("projectId");
+        String projectId = parseQueryParam(qs, "projectId");
         if (projectId != null && !projectId.isEmpty()) {
             sb.append("项目ID=").append(projectId).append("; ");
         }
-        String agreementId = req.getParameter("agreementId");
+        String agreementId = parseQueryParam(qs, "agreementId");
         if (agreementId != null && !agreementId.isEmpty()) {
             sb.append("协议ID=").append(agreementId).append("; ");
         }
-        String month = req.getParameter("month");
+        String month = parseQueryParam(qs, "month");
         if (month != null && !month.isEmpty()) {
             sb.append("月份=").append(month).append("; ");
         }
-        String year = req.getParameter("year");
+        String year = parseQueryParam(qs, "year");
         if (year != null && !year.isEmpty()) {
             sb.append("年度=").append(year).append("; ");
         }
-        String batchId = req.getParameter("batchId");
+        String batchId = parseQueryParam(qs, "batchId");
         if (batchId != null && !batchId.isEmpty()) {
             sb.append("批次ID=").append(batchId).append("; ");
         }
         return sb.toString();
+    }
+
+    /**
+     * 从 query string 中解析指定参数（不触发 Tomcat body 解析）
+     */
+    private String parseQueryParam(String qs, String name) {
+        if (qs == null || qs.isEmpty()) return null;
+        for (String pair : qs.split("&")) {
+            int idx = pair.indexOf('=');
+            if (idx < 0) continue;
+            String key = pair.substring(0, idx);
+            if (name.equals(key)) {
+                try {
+                    return java.net.URLDecoder.decode(pair.substring(idx + 1), "UTF-8");
+                } catch (Exception e) {
+                    return pair.substring(idx + 1);
+                }
+            }
+        }
+        return null;
     }
 
     @Override

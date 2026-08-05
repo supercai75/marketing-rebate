@@ -26,6 +26,7 @@ public class RebateRuleDao {
         Object agIdObj = rs.getObject("assess_group_id");
         r.setAssessGroupId(agIdObj == null ? null : ((Number) agIdObj).longValue());
         r.setSortNo(rs.getInt("sort_no"));
+        r.setExpression(rs.getString("expression"));
         return r;
     }
 
@@ -66,9 +67,9 @@ public class RebateRuleDao {
     }
 
     public Long insertRule(RebateRule rule) {
-        String sql = "INSERT INTO prj_upstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO prj_upstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no, expression) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql, rule.getAgreementId(), rule.getStageCode(), rule.getThresholdLow(),
-                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo());
+                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo(), rule.getExpression());
     }
 
     public List<RebateRule> listDownstreamRebateRules(Long agreementId) {
@@ -80,9 +81,9 @@ public class RebateRuleDao {
     }
 
     public Long insertDownstreamRebateRule(RebateRule rule) {
-        String sql = "INSERT INTO prj_downstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO prj_downstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no, expression) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql, rule.getAgreementId(), rule.getStageCode(), rule.getThresholdLow(),
-                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo());
+                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo(), rule.getExpression());
     }
 
     public List<AssessGroup> listAssessGroups(Long projectId) {

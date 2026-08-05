@@ -15,6 +15,7 @@ public class RebateRule {
     private String rewardType;
     private Long assessGroupId;
     private Integer sortNo;
+    private String expression;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -34,4 +35,6 @@ public class RebateRule {
     public void setAssessGroupId(Long assessGroupId) { this.assessGroupId = assessGroupId; }
     public Integer getSortNo() { return sortNo; }
     public void setSortNo(Integer sortNo) { this.sortNo = sortNo; }
+    public String getExpression() { return expression; }
+    public void setExpression(String expression) { this.expression = expression; }
 }
