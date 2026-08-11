@@ -224,6 +224,24 @@ public class DownstreamFlowDao {
         String sql = "SELECT DISTINCT upstream_flow_record_id FROM flow_downstream_record WHERE project_id = ?";
         return BaseDao.query(sql, (ResultSet rs) -> rs.getLong("upstream_flow_record_id"), projectId);
     }
+
+    /**
+     * 删除单条下游流向记录（剔除后对应上游记录可被重新选择）
+     */
+    public int deleteRecord(long recordId) {
+        return BaseDao.update("DELETE FROM flow_downstream_record WHERE id = ?", recordId);
+    }
+
+    /**
+     * 删除指定项目 + 协议下的所有有效下游流向记录（全部剔除）
+     * 如果 agreementId 为 null，则删除该项目下所有有效下游流向记录
+     */
+    public int deleteAllValidRecords(long projectId, Long agreementId) {
+        if (agreementId == null || agreementId == 0) {
+            return BaseDao.update("DELETE FROM flow_downstream_record WHERE project_id = ? AND is_valid = 1", projectId);
+        }
+        return BaseDao.update("DELETE FROM flow_downstream_record WHERE project_id = ? AND agreement_id = ? AND is_valid = 1", projectId, agreementId);
+    }
     
     /**
      * 分解上游流向到下游协议

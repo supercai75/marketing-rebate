@@ -207,22 +207,26 @@ public class UpstreamFlowServlet extends BaseServlet {
         String sellerName = WebUtil.getSafeParam(p, "sellerName");
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
+        java.util.List<String> productNameIn = WebUtil.getStringList(p, "productNameIn");
+        java.util.List<String> sellerNameIn = WebUtil.getStringList(p, "sellerNameIn");
+        java.util.List<String> buyerNameIn = WebUtil.getStringList(p, "buyerNameIn");
+        java.util.List<String> buyerCityIn = WebUtil.getStringList(p, "buyerCityIn");
         Integer page = WebUtil.getInt(p, "page", 1);
         Integer pageSize = WebUtil.getInt(p, "pageSize", 20);
-        
-        List<com.rebate.model.UpstreamFlowRecord> records = dao.listCanSplitRecords(pid, month, productName, spec, sellerName, buyerName, buyerCity, page, pageSize);
-        int total = dao.countCanSplitRecords(pid, month, productName, spec, sellerName, buyerName, buyerCity);
-        
+
+        List<com.rebate.model.UpstreamFlowRecord> records = dao.listCanSplitRecords(pid, month, productName, productNameIn, spec, sellerName, sellerNameIn, buyerName, buyerNameIn, buyerCity, buyerCityIn, page, pageSize);
+        int total = dao.countCanSplitRecords(pid, month, productName, productNameIn, spec, sellerName, sellerNameIn, buyerName, buyerNameIn, buyerCity, buyerCityIn);
+
         Map<String, Object> result = new HashMap<>();
         result.put("list", records);
         result.put("total", total);
         result.put("totalPages", (total + pageSize - 1) / pageSize);
         result.put("page", page);
         result.put("pageSize", pageSize);
-        
+
         ResponseUtil.ok(resp, result);
     }
-    
+
     private void doListCanSplitIds(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         long pid = WebUtil.getLong(p, "projectId", 0);
         String month = WebUtil.getSafeParam(p, "month");
@@ -231,7 +235,11 @@ public class UpstreamFlowServlet extends BaseServlet {
         String sellerName = WebUtil.getSafeParam(p, "sellerName");
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
-        ResponseUtil.ok(resp, dao.listCanSplitIds(pid, month, productName, spec, sellerName, buyerName, buyerCity));
+        java.util.List<String> productNameIn = WebUtil.getStringList(p, "productNameIn");
+        java.util.List<String> sellerNameIn = WebUtil.getStringList(p, "sellerNameIn");
+        java.util.List<String> buyerNameIn = WebUtil.getStringList(p, "buyerNameIn");
+        java.util.List<String> buyerCityIn = WebUtil.getStringList(p, "buyerCityIn");
+        ResponseUtil.ok(resp, dao.listCanSplitIds(pid, month, productName, productNameIn, spec, sellerName, sellerNameIn, buyerName, buyerNameIn, buyerCity, buyerCityIn));
     }
 
     private void doImport(HttpServletRequest req, HttpServletResponse resp, com.rebate.model.UserContext u) throws Exception {

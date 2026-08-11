@@ -16,6 +16,21 @@ import java.util.Map;
  */
 public class UpstreamFlowDao {
 
+    /**
+     * 向 SQL 追加 AND column IN (?, ?, ?) 子句（如果 inList 非空）。
+     * 如果 inList 为空，不追加任何内容（不影响 SQL）。
+     */
+    private static void appendInClause(StringBuilder sb, List<Object> params, String column, List<String> inList) {
+        if (inList == null || inList.isEmpty()) return;
+        sb.append(" AND ").append(column).append(" IN (");
+        for (int i = 0; i < inList.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append('?');
+            params.add(inList.get(i));
+        }
+        sb.append(')');
+    }
+
     public Long insertBatch(UpstreamFlowBatch b) {
         return BaseDao.insertReturnId("INSERT INTO flow_upstream_batch(project_id, batch_code, file_name, file_path, " +
                 "import_user, month_summary, remark) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -211,8 +226,15 @@ public class UpstreamFlowDao {
     
     /**
      * 获取可以分解的上游流向记录（未被分解到下游协议的有效记录）
+     * 同时支持 LIKE 模糊和 IN 精确列表；IN 和 LIKE 都写时用 AND 组合。
      */
-    public List<UpstreamFlowRecord> listCanSplitRecords(long projectId, String month, String productName, String spec, String sellerName, String buyerName, String buyerCity, Integer page, Integer pageSize) {
+    public List<UpstreamFlowRecord> listCanSplitRecords(long projectId, String month,
+                                                         String productName, List<String> productNameIn,
+                                                         String spec,
+                                                         String sellerName, List<String> sellerNameIn,
+                                                         String buyerName, List<String> buyerNameIn,
+                                                         String buyerCity, List<String> buyerCityIn,
+                                                         Integer page, Integer pageSize) {
         StringBuilder sb = new StringBuilder("SELECT r.*, g.group_name as assessGroupName FROM flow_upstream_record r " +
                 "LEFT JOIN prj_assess_group g ON r.assess_group_id = g.id WHERE r.project_id=? AND r.is_valid=1 " +
                 "AND r.id NOT IN (SELECT upstream_flow_record_id FROM flow_downstream_record WHERE project_id=?)");
@@ -221,10 +243,14 @@ public class UpstreamFlowDao {
         params.add(projectId);
         if (month != null && !month.isEmpty()) { sb.append(" AND r.month_yyyymm=?"); params.add(month); }
         if (productName != null && !productName.isEmpty()) { sb.append(" AND r.product_name LIKE ?"); params.add("%" + productName + "%"); }
+        appendInClause(sb, params, "r.product_name", productNameIn);
         if (spec != null && !spec.isEmpty()) { sb.append(" AND r.spec LIKE ?"); params.add("%" + spec + "%"); }
         if (sellerName != null && !sellerName.isEmpty()) { sb.append(" AND r.seller_name LIKE ?"); params.add("%" + sellerName + "%"); }
+        appendInClause(sb, params, "r.seller_name", sellerNameIn);
         if (buyerName != null && !buyerName.isEmpty()) { sb.append(" AND r.buyer_name LIKE ?"); params.add("%" + buyerName + "%"); }
+        appendInClause(sb, params, "r.buyer_name", buyerNameIn);
         if (buyerCity != null && !buyerCity.isEmpty()) { sb.append(" AND r.buyer_city LIKE ?"); params.add("%" + buyerCity + "%"); }
+        appendInClause(sb, params, "r.buyer_city", buyerCityIn);
         sb.append(" ORDER BY r.month_yyyymm, r.id");
         if (page != null && pageSize != null) {
             sb.append(" LIMIT ").append(pageSize).append(" OFFSET ").append((page - 1) * pageSize);
@@ -233,11 +259,16 @@ public class UpstreamFlowDao {
         }
         return BaseDao.query(sb.toString(), this::mapRecordWithGroup, params.toArray());
     }
-    
+
     /**
      * 获取可以分解的上游流向记录ID总数
      */
-    public int countCanSplitRecords(long projectId, String month, String productName, String spec, String sellerName, String buyerName, String buyerCity) {
+    public int countCanSplitRecords(long projectId, String month,
+                                    String productName, List<String> productNameIn,
+                                    String spec,
+                                    String sellerName, List<String> sellerNameIn,
+                                    String buyerName, List<String> buyerNameIn,
+                                    String buyerCity, List<String> buyerCityIn) {
         StringBuilder sb = new StringBuilder("SELECT COUNT(*) FROM flow_upstream_record r WHERE r.project_id=? AND r.is_valid=1 " +
                 "AND r.id NOT IN (SELECT upstream_flow_record_id FROM flow_downstream_record WHERE project_id=?)");
         List<Object> params = new ArrayList<>();
@@ -245,18 +276,27 @@ public class UpstreamFlowDao {
         params.add(projectId);
         if (month != null && !month.isEmpty()) { sb.append(" AND r.month_yyyymm=?"); params.add(month); }
         if (productName != null && !productName.isEmpty()) { sb.append(" AND r.product_name LIKE ?"); params.add("%" + productName + "%"); }
+        appendInClause(sb, params, "r.product_name", productNameIn);
         if (spec != null && !spec.isEmpty()) { sb.append(" AND r.spec LIKE ?"); params.add("%" + spec + "%"); }
         if (sellerName != null && !sellerName.isEmpty()) { sb.append(" AND r.seller_name LIKE ?"); params.add("%" + sellerName + "%"); }
+        appendInClause(sb, params, "r.seller_name", sellerNameIn);
         if (buyerName != null && !buyerName.isEmpty()) { sb.append(" AND r.buyer_name LIKE ?"); params.add("%" + buyerName + "%"); }
+        appendInClause(sb, params, "r.buyer_name", buyerNameIn);
         if (buyerCity != null && !buyerCity.isEmpty()) { sb.append(" AND r.buyer_city LIKE ?"); params.add("%" + buyerCity + "%"); }
+        appendInClause(sb, params, "r.buyer_city", buyerCityIn);
         Long count = BaseDao.queryOne(sb.toString(), (ResultSet rs) -> rs.getLong(1), params.toArray());
         return count != null ? count.intValue() : 0;
     }
-    
+
     /**
      * 获取可以分解的上游流向记录ID列表（用于全选功能）
      */
-    public List<Long> listCanSplitIds(long projectId, String month, String productName, String spec, String sellerName, String buyerName, String buyerCity) {
+    public List<Long> listCanSplitIds(long projectId, String month,
+                                      String productName, List<String> productNameIn,
+                                      String spec,
+                                      String sellerName, List<String> sellerNameIn,
+                                      String buyerName, List<String> buyerNameIn,
+                                      String buyerCity, List<String> buyerCityIn) {
         StringBuilder sb = new StringBuilder("SELECT id FROM flow_upstream_record WHERE project_id=? AND is_valid=1 " +
                 "AND id NOT IN (SELECT upstream_flow_record_id FROM flow_downstream_record WHERE project_id=?)");
         List<Object> params = new ArrayList<>();
@@ -264,10 +304,14 @@ public class UpstreamFlowDao {
         params.add(projectId);
         if (month != null && !month.isEmpty()) { sb.append(" AND month_yyyymm=?"); params.add(month); }
         if (productName != null && !productName.isEmpty()) { sb.append(" AND product_name LIKE ?"); params.add("%" + productName + "%"); }
+        appendInClause(sb, params, "product_name", productNameIn);
         if (spec != null && !spec.isEmpty()) { sb.append(" AND spec LIKE ?"); params.add("%" + spec + "%"); }
         if (sellerName != null && !sellerName.isEmpty()) { sb.append(" AND seller_name LIKE ?"); params.add("%" + sellerName + "%"); }
+        appendInClause(sb, params, "seller_name", sellerNameIn);
         if (buyerName != null && !buyerName.isEmpty()) { sb.append(" AND buyer_name LIKE ?"); params.add("%" + buyerName + "%"); }
+        appendInClause(sb, params, "buyer_name", buyerNameIn);
         if (buyerCity != null && !buyerCity.isEmpty()) { sb.append(" AND buyer_city LIKE ?"); params.add("%" + buyerCity + "%"); }
+        appendInClause(sb, params, "buyer_city", buyerCityIn);
         return BaseDao.query(sb.toString(), (ResultSet rs) -> rs.getLong("id"), params.toArray());
     }
 

@@ -74,4 +74,35 @@ public class WebUtil {
         r.put("rows", rows);
         return r;
     }
+
+    /**
+     * 从参数中提取字符串列表。支持：
+     * - JSON 数组（List）：直接提取为非空字符串列表
+     * - 逗号/分号分隔的字符串：按分隔符拆分
+     * - 单值 String：转为 1 个元素的列表
+     * - 其他：返回空列表（不会为 null）
+     */
+    public static java.util.List<String> getStringList(Map<String, Object> m, String key) {
+        java.util.List<String> result = new java.util.ArrayList<>();
+        if (m == null) return result;
+        Object v = m.get(key);
+        if (v == null) return result;
+        if (v instanceof java.util.Collection) {
+            for (Object o : (java.util.Collection<?>) v) {
+                if (o == null) continue;
+                String s = String.valueOf(o).trim();
+                if (!s.isEmpty()) result.add(s);
+            }
+        } else {
+            String s = String.valueOf(v).trim();
+            if (s.isEmpty()) return result;
+            // 支持常见分隔符（逗号 / 分号 / 顿号 / 换行 / 制表符）
+            String[] parts = s.split("[,，;；、\\n\\r\\t]+");
+            for (String p : parts) {
+                String t = p.trim();
+                if (!t.isEmpty()) result.add(t);
+            }
+        }
+        return result;
+    }
 }

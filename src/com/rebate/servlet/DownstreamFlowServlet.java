@@ -42,13 +42,15 @@ public class DownstreamFlowServlet extends BaseServlet {
             case "updateRecordAssessGroup": doUpdateRecordAssessGroup(req, resp, p); break;
             case "listSplitUpstreamIds": doListSplitUpstreamIds(req, resp, p); break;
             case "decompose": doDecompose(req, resp, p, u); break;
+            case "removeRecord": doRemoveRecord(req, resp, p); break;
+            case "removeAllValid": doRemoveAllValid(req, resp, p); break;
             case "agreementOverview": doAgreementOverview(req, resp, p); break;
             case "exportCurrent": doExportCurrent(req, resp, p); break;
             case "exportInvalid": doExportInvalid(req, resp, p); break;
             default: ResponseUtil.fail(resp, "未知操作: " + op);
         }
     }
-    
+
     private boolean checkPerm(com.rebate.model.UserContext u, String op) {
         if (u.isAdmin()) return true;
         switch (op) {
@@ -62,6 +64,8 @@ public class DownstreamFlowServlet extends BaseServlet {
             case "updateRecordAssessGroup":
                 return u.hasPerm("flow:view");
             case "decompose":
+            case "removeRecord":
+            case "removeAllValid":
                 return u.hasPerm("flow:split");
             default:
                 return true;
@@ -243,6 +247,24 @@ public class DownstreamFlowServlet extends BaseServlet {
     private void doListSplitUpstreamIds(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         Long projectId = WebUtil.getLong(p, "projectId", 0L);
         ResponseUtil.ok(resp, dao.listSplitUpstreamIds(projectId));
+    }
+
+    /** 剔除单条下游流向记录 */
+    private void doRemoveRecord(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+        long recordId = WebUtil.getLong(p, "id", 0L);
+        if (recordId <= 0) { ResponseUtil.fail(resp, "id 必填"); return; }
+        int n = dao.deleteRecord(recordId);
+        ResponseUtil.ok(resp, java.util.Collections.singletonMap("affected", n));
+    }
+
+    /** 全部剔除：清空当前生效流向（按项目+协议） */
+    private void doRemoveAllValid(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+        long projectId = WebUtil.getLong(p, "projectId", 0L);
+        if (projectId <= 0) { ResponseUtil.fail(resp, "projectId 必填"); return; }
+        Long agreementId = WebUtil.getLong(p, "agreementId", 0L);
+        if (agreementId == 0) agreementId = null;
+        int n = dao.deleteAllValidRecords(projectId, agreementId);
+        ResponseUtil.ok(resp, java.util.Collections.singletonMap("affected", n));
     }
 
     private void doExportCurrent(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) throws Exception {

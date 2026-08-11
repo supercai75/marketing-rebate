@@ -36,6 +36,35 @@
             animation: spin 1s linear infinite;
             margin-bottom: 16px;
         }
+        .btn-in {
+            background: #f0f9eb;
+            color: #67c23a;
+            border: 1px solid #e1f3d8;
+            border-left: none;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            padding: 0 10px;
+            margin-left: -1px;
+            font-size: 12px;
+            height: 32px;
+            line-height: 1;
+        }
+        .btn-in:hover { background: #67c23a; color: #fff; }
+        .filter-with-in { display:inline-flex; align-items:center; }
+        .filter-with-in input {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .in-list-tip {
+            color: #909399;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .in-active {
+            background: #67c23a !important;
+            color: #fff !important;
+            border-color: #67c23a !important;
+        }
     </style>
 </head>
 <body>
@@ -76,12 +105,13 @@
         <input id="filterBuyerCityCurrent" placeholder="筛选采购方城市">
         <button class="btn btn-primary" id="btnLoadCurrent">查询</button>
         <button class="btn" id="btnExportCurrent">导出Excel</button>
+        <button class="btn btn-danger" id="btnRemoveAllCurrent">全部剔除</button>
     </div>
     <div class="table-wrap" id="currentTableWrap">
         <table class="table-nowrap">
             <thead><tr>
                 <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
-                <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th><th>考核组</th>
+                <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th><th>考核组</th><th width="60">操作</th>
             </tr></thead>
             <tbody id="currentBody"></tbody>
         </table>
@@ -131,11 +161,23 @@
     <div class="wrapper">
         <div class="toolbar">
             <input id="filterMonth" placeholder="筛选月份 yyyyMM">
-            <input id="filterProduct" placeholder="筛选产品名称">
+            <span class="filter-with-in">
+                <input id="filterProduct" placeholder="筛选产品名称" style="width:180px;">
+                <button class="btn btn-in" id="btnInProduct" data-field="productName" data-input="#filterProduct" data-title="批量筛选产品名称">IN</button>
+            </span>
             <input id="filterSpec" placeholder="筛选规格">
-            <input id="filterSeller" placeholder="筛选销售方">
-            <input id="filterBuyer" placeholder="筛选采购方">
-            <input id="filterBuyerCity" placeholder="筛选采购方城市">
+            <span class="filter-with-in">
+                <input id="filterSeller" placeholder="筛选销售方" style="width:180px;">
+                <button class="btn btn-in" id="btnInSeller" data-field="sellerName" data-input="#filterSeller" data-title="批量筛选销售方">IN</button>
+            </span>
+            <span class="filter-with-in">
+                <input id="filterBuyer" placeholder="筛选采购方" style="width:180px;">
+                <button class="btn btn-in" id="btnInBuyer" data-field="buyerName" data-input="#filterBuyer" data-title="批量筛选采购方">IN</button>
+            </span>
+            <span class="filter-with-in">
+                <input id="filterBuyerCity" placeholder="筛选采购方城市" style="width:180px;">
+                <button class="btn btn-in" id="btnInBuyerCity" data-field="buyerCity" data-input="#filterBuyerCity" data-title="批量筛选采购方城市">IN</button>
+            </span>
             <button class="btn btn-primary" id="btnLoadSource">查询</button>
             <button class="btn btn-success" id="btnSelectAll">全选</button>
             <button class="btn" id="btnSelectInverse">反选</button>
@@ -208,6 +250,27 @@
     </div>
 </div>
 
+<div class="modal-mask" id="modalInFilter">
+    <div class="modal" style="width:560px;">
+        <div class="modal-header" id="inFilterTitle">批量筛选
+            <span class="spacer"></span>
+            <span class="close" onclick="RB.closeModal('modalInFilter')">×</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-item">
+                <label id="inFilterLabel">输入值（每行一个，留空则表示不启用该IN筛选）</label>
+                <textarea id="inFilterTextarea" rows="12" placeholder="每行一个值，系统将使用列值 IN (这些值) 进行筛选。例如：&#10;产品A&#10;产品B&#10;产品C"></textarea>
+            </div>
+            <div class="in-list-tip">提示：输入多个值，筛选时该字段的值匹配其中任意一个就会返回。</div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="clearInFilter()">清空</button>
+            <button class="btn" onclick="RB.closeModal('modalInFilter')">取消</button>
+            <button class="btn btn-primary" onclick="confirmInFilter()">确认</button>
+        </div>
+    </div>
+</div>
+
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
 <script>
@@ -220,6 +283,10 @@
     var currentPage = 1, currentPageSize = 10, currentTotal = 0;
     var invalidPage = 1, invalidPageSize = 10, invalidTotal = 0;
     var sourcePage = 1, sourcePageSize = 10, sourceTotal = 0;
+
+    // IN 筛选缓存：key 是字段名（productName/sellerName/buyerName/buyerCity），value 是数组
+    var inFilterCache = {};
+    var curInField = null;
 
     $(function () {
         RB.checkLogin(function () { loadYears(); });
@@ -244,9 +311,30 @@
         $('#btnLoadInvalid').on('click', function () { invalidPage = 1; recalcInvalidPageSize(); loadInvalid(); });
         $('#btnExportCurrent').on('click', exportCurrent);
         $('#btnExportInvalid').on('click', exportInvalid);
+        $('#btnRemoveAllCurrent').on('click', removeAllCurrentRecords);
         $('#btnSelectAll').on('click', toggleSelectAll);
         $('#btnSelectInverse').on('click', toggleSelectInverse);
         $('#btnSelectAllPage').on('click', toggleCheckAllPage);
+
+        // IN 筛选按钮绑定
+        $('.btn-in').on('click', function () {
+            var btn = $(this);
+            curInField = btn.data('field');
+            var title = btn.data('title') || '批量筛选';
+            var inputSel = btn.data('input');
+            $('#inFilterTitle').text(title);
+            $('#inFilterLabel').text('输入值（每行一个，留空则表示不启用该IN筛选）');
+            // 如果已有缓存，回填；否则用输入框里的现有值（如果有）作为第一行？不，缓存优先
+            var cached = inFilterCache[curInField];
+            if (cached && cached.length > 0) {
+                $('#inFilterTextarea').val(cached.join('\n'));
+            } else {
+                var curVal = inputSel ? $(inputSel).val() : '';
+                $('#inFilterTextarea').val(curVal ? curVal : '');
+            }
+            RB.openModal('modalInFilter');
+            setTimeout(function () { $('#inFilterTextarea').focus(); }, 100);
+        });
 
         $('#mainTabs .tab').on('click', function () {
             $('#mainTabs .tab').removeClass('active');
@@ -286,6 +374,44 @@
         if (wrap.length === 0) { invalidPageSize = 10; return; }
         var h = $(window).height() - 200;
         invalidPageSize = Math.max(5, Math.floor(h / 36));
+    }
+
+    // ================ IN 批量筛选相关 ================
+    function confirmInFilter() {
+        if (!curInField) return;
+        var raw = $('#inFilterTextarea').val() || '';
+        var arr = raw.split(/\r?\n/).map(function (s) { return (s || '').trim(); }).filter(function (s) { return s.length > 0; });
+        inFilterCache[curInField] = arr.length > 0 ? arr : null;
+        // 按钮高亮表示 IN 筛选激活；按钮文字显示个数
+        var btn = $('.btn-in[data-field="' + curInField + '"]');
+        if (btn.length) {
+            if (arr.length > 0) {
+                btn.addClass('in-active').text('IN(' + arr.length + ')');
+            } else {
+                btn.removeClass('in-active').text('IN');
+            }
+        }
+        RB.closeModal('modalInFilter');
+    }
+    function clearInFilter() {
+        if (!curInField) return;
+        $('#inFilterTextarea').val('');
+    }
+    // 组装 source 查询参数（包含 IN 列表）
+    function buildSourceQueryParams() {
+        return {
+            projectId: curProject ? curProject.id : '',
+            month: $('#filterMonth').val(),
+            productName: $('#filterProduct').val(),
+            productNameIn: inFilterCache.productName || [],
+            spec: $('#filterSpec').val(),
+            sellerName: $('#filterSeller').val(),
+            sellerNameIn: inFilterCache.sellerName || [],
+            buyerName: $('#filterBuyer').val(),
+            buyerNameIn: inFilterCache.buyerName || [],
+            buyerCity: $('#filterBuyerCity').val(),
+            buyerCityIn: inFilterCache.buyerCity || []
+        };
     }
 
     function loadYears() {
@@ -367,7 +493,7 @@
     function loadCurrent() {
         var pid = $('#projectId').val();
         var aid = $('#agreementId').val();
-        if (!pid) { $('#currentBody').html('<tr><td colspan="12" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
+        if (!pid) { $('#currentBody').html('<tr><td colspan="13" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
         $('#loadingOverlay').show();
         RB.post('/api/downstream-flow?op=listRecords', {
             projectId: pid,
@@ -389,6 +515,38 @@
         });
     }
 
+    /** 剔除单条下游流向 */
+    function removeCurrentRecord(id) {
+        if (!id) return;
+        if (!confirm('确认剔除该下游流向记录？剔除后该记录对应的上游流向可被重新选择。')) return;
+        RB.post('/api/downstream-flow?op=removeRecord', { id: id }).done(function (r) {
+            if (r.code === 0) {
+                RB.toast('剔除成功');
+                loadCurrent();
+            } else {
+                RB.toast(r.msg || '剔除失败', 'error');
+            }
+        });
+    }
+
+    /** 全部剔除：清空当前生效流向 */
+    function removeAllCurrentRecords() {
+        var pid = $('#projectId').val();
+        if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+        if (!confirm('确认全部剔除当前生效流向？剔除后所有上游流向可被重新选择。')) return;
+        RB.post('/api/downstream-flow?op=removeAllValid', {
+            projectId: pid,
+            agreementId: $('#agreementId').val()
+        }).done(function (r) {
+            if (r.code === 0) {
+                RB.toast('已剔除 ' + (r.data.affected || 0) + ' 条');
+                loadCurrent();
+            } else {
+                RB.toast(r.msg || '剔除失败', 'error');
+            }
+        });
+    }
+
     function renderCurrent(rows) {
         var html = '';
         for (var i = 0; i < rows.length; i++) {
@@ -406,9 +564,10 @@
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
                 '<td>' + (r.assessGroupName || '') + '</td>' +
+                '<td><button class="btn btn-danger btn-sm" onclick="removeCurrentRecord(' + r.id + ')">剔除</button></td>' +
                 '</tr>';
         }
-        $('#currentBody').html(html || '<tr><td colspan="12" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        $('#currentBody').html(html || '<tr><td colspan="13" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
         updateCurrentPagination();
     }
 
@@ -477,17 +636,10 @@
     function loadSource() {
         if (!curProject) return;
         $('#loadingOverlay').show();
-        RB.post('/api/upstream-flow?op=listCanSplit', {
-            projectId: curProject.id,
-            month: $('#filterMonth').val(),
-            productName: $('#filterProduct').val(),
-            spec: $('#filterSpec').val(),
-            sellerName: $('#filterSeller').val(),
-            buyerName: $('#filterBuyer').val(),
-            buyerCity: $('#filterBuyerCity').val(),
-            page: sourcePage,
-            pageSize: sourcePageSize
-        }).done(function (r) {
+        var q = buildSourceQueryParams();
+        q.page = sourcePage;
+        q.pageSize = sourcePageSize;
+        RB.post('/api/upstream-flow?op=listCanSplit', q).done(function (r) {
             $('#loadingOverlay').hide();
             if (r.code === 0) {
                 sourceTotal = r.data.total || 0;
@@ -578,14 +730,7 @@
         selectAllAcrossPages = !selectAllAcrossPages;
         $('#btnSelectAll').data('selected', selectAllAcrossPages);
         if (selectAllAcrossPages) {
-            RB.post('/api/upstream-flow?op=listCanSplitIds', {
-                projectId: curProject.id,
-                month: $('#filterMonth').val(),
-                productName: $('#filterProduct').val(),
-                spec: $('#filterSpec').val(),
-                sellerName: $('#filterSeller').val(),
-                buyerName: $('#filterBuyer').val()
-            }).done(function (r) {
+            RB.post('/api/upstream-flow?op=listCanSplitIds', buildSourceQueryParams()).done(function (r) {
                 if (r.code === 0) {
                     selectedRows = r.data || [];
                     updateSelectedCount();
@@ -601,14 +746,7 @@
 
     function toggleSelectInverse() {
         if (!curProject) return;
-        RB.post('/api/upstream-flow?op=listCanSplitIds', {
-            projectId: curProject.id,
-            month: $('#filterMonth').val(),
-            productName: $('#filterProduct').val(),
-            spec: $('#filterSpec').val(),
-            sellerName: $('#filterSeller').val(),
-            buyerName: $('#filterBuyer').val()
-        }).done(function (r) {
+        RB.post('/api/upstream-flow?op=listCanSplitIds', buildSourceQueryParams()).done(function (r) {
             if (r.code === 0) {
                 var allIds = r.data || [];
                 var newSelected = [];
