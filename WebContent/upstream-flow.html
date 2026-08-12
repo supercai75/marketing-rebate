@@ -682,7 +682,7 @@
             if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
                 var m = r.data[i];
                 var status = m.isFinal === 1 ? '<span style="color:#388e3c;">终版</span>' : '可修改';
-                html += '<tr><td>' + m.month + '</td><td>' + m.qtyCount + '</td><td>' + RB.formatMoney(m.scale) + '</td><td>' + m.count + '</td><td>' + status + '</td></tr>';
+                html += '<tr><td>' + m.month + '</td><td>' + m.qtyCount + '</td><td>' + RB.formatMoney(m.totalAmt) + '</td><td>' + m.count + '</td><td>' + status + '</td></tr>';
             }
             $('#monthBody').html(html || '<tr><td colspan="5" style="text-align:center;color:#999;padding:24px;">暂无数据</td></tr>');
         });

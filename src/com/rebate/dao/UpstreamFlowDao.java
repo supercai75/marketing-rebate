@@ -341,6 +341,7 @@ public class UpstreamFlowDao {
             java.util.Map<String, Object> m = new java.util.HashMap<>();
             m.put("month", rs.getString("month_yyyymm"));
             m.put("qtyCount", rs.getBigDecimal("total_qty"));
+            m.put("totalAmt", rs.getBigDecimal("total_amt"));
             m.put("scale", rs.getBigDecimal("scale"));
             m.put("count", rs.getLong("cnt"));
             m.put("isFinal", rs.getInt("is_final") == 1 ? "Y" : "N");
