@@ -63,6 +63,35 @@ public class DownstreamAgreementDao {
                 projectId, agreementNo, excludeId);
     }
 
+    /**
+     * 获取当前最新版本（is_current=1）的协议ID，用于新版本创建前识别上一个生效版本。
+     * 若没有 current 版本，返回 null。
+     */
+    public Long findCurrentId(long projectId, String agreementNo) {
+        String sql = "SELECT id FROM prj_downstream_agreement WHERE project_id=? AND agreement_no=? AND is_current=1 LIMIT 1";
+        return BaseDao.queryOne(sql, (ResultSet rs) -> rs.getLong(1), projectId, agreementNo);
+    }
+
+    /**
+     * 迁移下游协议关联业务数据：从旧 agreement_id 移动到新 agreement_id。
+     * 仅迁移"业务产生的数据"（流向/批次/定案/分解/应付/实付），
+     * 不迁移协议配置类（返利规则/考核目标/团队目标/附件），因为新版本通过 saveSubTables 重新保存。
+     * @return 各表迁移条数汇总（调试信息，目前无需对外暴露）
+     */
+    public int[] migrateAssociatedData(long oldAgreementId, long newAgreementId) {
+        if (oldAgreementId <= 0 || newAgreementId <= 0 || oldAgreementId == newAgreementId) {
+            return new int[0];
+        }
+        int[] affected = new int[6];
+        affected[0] = BaseDao.update("UPDATE flow_downstream_batch    SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[1] = BaseDao.update("UPDATE flow_downstream_record   SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[2] = BaseDao.update("UPDATE flow_downstream_final    SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[3] = BaseDao.update("UPDATE flow_split_record         SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[4] = BaseDao.update("UPDATE prj_payable              SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[5] = BaseDao.update("UPDATE prj_paid                 SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        return affected;
+    }
+
     public int findMaxVersion(long projectId, String agreementNo) {
         String sql = "SELECT COALESCE(MAX(version), 0) FROM prj_downstream_agreement WHERE project_id=? AND agreement_no=?";
         return (int) BaseDao.count(sql, projectId, agreementNo);

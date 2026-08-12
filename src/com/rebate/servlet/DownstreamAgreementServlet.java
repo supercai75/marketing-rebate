@@ -122,12 +122,18 @@ public class DownstreamAgreementServlet extends BaseServlet {
     private void doAdd(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) {
         DownstreamAgreement a = parse(p);
         a.setCreatedBy(u.getId());
+        // 记录旧的生效版本ID（新版本创建前的 current 版本）—— 插入前查，因为 markNotCurrent 会把旧的设为 0
+        Long oldCurrentId = dao.findCurrentId(a.getProjectId(), a.getAgreementNo());
         int maxVersion = dao.findMaxVersion(a.getProjectId(), a.getAgreementNo());
         a.setVersion(maxVersion + 1);
         a.setIsCurrent(1);
         Long id = dao.insert(a);
         if (id != null) dao.markNotCurrent(a.getProjectId(), a.getAgreementNo(), id);
         saveSubTables(id, p);
+        // 将旧 current 版本下的业务数据（流向/应付/实付/分解/定案等）迁移到新版本
+        if (oldCurrentId != null && oldCurrentId > 0 && id != null && !oldCurrentId.equals(id)) {
+            dao.migrateAssociatedData(oldCurrentId, id);
+        }
         ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", id));
     }
 
