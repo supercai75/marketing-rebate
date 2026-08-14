@@ -141,6 +141,17 @@ public class ProjectScaleService {
 
     private static BigDecimal nz(BigDecimal v) { return v == null ? BigDecimal.ZERO : v; }
 
+    /** 汇总月度规模的所有值 */
+    public static BigDecimal sumMonthScale(Map<String, BigDecimal> monthScale) {
+        BigDecimal sum = BigDecimal.ZERO;
+        if (monthScale != null) {
+            for (BigDecimal v : monthScale.values()) {
+                if (v != null) sum = sum.add(v);
+            }
+        }
+        return sum;
+    }
+
     /**
      * 计算达成率（百分比，保留2位小数）
      */

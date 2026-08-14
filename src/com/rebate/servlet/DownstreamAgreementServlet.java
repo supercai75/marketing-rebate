@@ -531,6 +531,42 @@ public class DownstreamAgreementServlet extends BaseServlet {
         if (agreementId > 0 && groupId > 0) {
             targetDao.deleteByAgreementAndGroup(agreementId, groupId);
         }
+        // 删除前，清理同项目其他考核组对本组的共享引用，避免悬空引用
+        if (groupId > 0) {
+            AssessGroup target = ruleDao.getAssessGroup(groupId);
+            if (target != null && target.getProjectId() != null) {
+                cleanupSharedReferences(groupId, target.getProjectId());
+            }
+        }
         ResponseUtil.ok(resp);
+    }
+
+    /** 删除考核组时，从同项目其他考核组的 shared_group_ids 中移除对该组的引用 */
+    private void cleanupSharedReferences(Long deletedGroupId, Long projectId) {
+        try {
+            List<AssessGroup> all = ruleDao.listAssessGroups(projectId);
+            if (all == null) return;
+            String deletedIdStr = String.valueOf(deletedGroupId);
+            for (AssessGroup g : all) {
+                String sids = g.getSharedGroupIds();
+                if (sids == null || sids.trim().isEmpty()) continue;
+                String[] parts = sids.split("[,，;； ]+");
+                boolean changed = false;
+                StringBuilder sb = new StringBuilder();
+                for (String part : parts) {
+                    String t = part.trim();
+                    if (t.isEmpty()) continue;
+                    if (t.equals(deletedIdStr)) { changed = true; continue; }
+                    if (sb.length() > 0) sb.append(',');
+                    sb.append(t);
+                }
+                if (changed) {
+                    g.setSharedGroupIds(sb.toString());
+                    ruleDao.updateAssessGroup(g);
+                }
+            }
+        } catch (Exception e) {
+            // 清理失败不阻断删除主流程
+        }
     }
 }

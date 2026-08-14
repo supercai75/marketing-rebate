@@ -7,10 +7,12 @@ import com.rebate.dao.ProjectDao;
 import com.rebate.dao.ReceivablePayableDao;
 import com.rebate.dao.UpstreamFlowDao;
 import com.rebate.model.AssessItemDetail;
+import com.rebate.model.AttachFile;
 import com.rebate.model.Payable;
 import com.rebate.model.Project;
 import com.rebate.model.Receivable;
 import com.rebate.util.ExcelUtil;
+import com.rebate.util.FileUtil;
 import com.rebate.util.ResponseUtil;
 import com.rebate.util.TokenUtil;
 import com.rebate.util.WebUtil;
@@ -18,6 +20,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -53,11 +56,14 @@ public class ReceivablePayableServlet extends BaseServlet {
             case "auditReceivable": doAuditRecv(req, resp, p, u); break;
             case "deleteReceivable": doDeleteRecv(req, resp, p); break;
             case "listReceivableAssessItems": doListRecvAssessItems(req, resp, p); break;
+            case "uploadAssessAttach": doUploadRecvAssessAttach(req, resp, u); break;
             case "listPayable": doListPay(req, resp, p); break;
             case "savePayable": doSavePay(req, resp, p, u); break;
             case "auditPayable": doAuditPay(req, resp, p, u); break;
             case "confirmPayable": doConfirmPay(req, resp, p, u); break;
             case "listPayableAssessItems": doListPayAssessItems(req, resp, p); break;
+            case "uploadPayAssessAttach": doUploadPayAssessAttach(req, resp, u); break;
+            case "deleteAssessAttach": doDeleteAssessAttach(req, resp, p); break;
             case "exportReceivable": doExportReceivable(req, resp, p); break;
             case "exportPayable": doExportPayable(req, resp, p); break;
             default: ResponseUtil.fail(resp, "未知操作: " + op);
@@ -74,7 +80,11 @@ public class ReceivablePayableServlet extends BaseServlet {
                 return u.hasPerm("receivable:view");
             case "saveReceivable":
             case "deleteReceivable":
+            case "uploadAssessAttach":
                 return u.hasPerm("receivable:edit");
+            case "deleteAssessAttach":
+                // 具体在方法内二次检查：应收附件需要 receivable:edit，应付附件需要 payable:edit
+                return u.hasPerm("receivable:edit") || u.hasPerm("payable:edit");
             case "auditReceivable":
                 return u.hasPerm("receivable:audit");
             case "listPayable":
@@ -82,6 +92,7 @@ public class ReceivablePayableServlet extends BaseServlet {
             case "exportPayable":
                 return u.hasPerm("payable:view");
             case "savePayable":
+            case "uploadPayAssessAttach":
                 return u.hasPerm("payable:edit");
             case "auditPayable":
             case "confirmPayable":
@@ -89,6 +100,14 @@ public class ReceivablePayableServlet extends BaseServlet {
             default:
                 return true;
         }
+    }
+
+    /** 为附件填充下载URL */
+    private List<AttachFile> fillUrl(HttpServletRequest req, List<AttachFile> files) {
+        if (files == null) return null;
+        String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
+        for (AttachFile f : files) f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+        return files;
     }
 
     private void doListRecv(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
@@ -102,7 +121,13 @@ public class ReceivablePayableServlet extends BaseServlet {
 
     private void doListRecvAssessItems(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         long receivableId = WebUtil.getLong(p, "receivableId", 0);
-        ResponseUtil.ok(resp, assessItemDao.listByReceivable(receivableId));
+        List<AssessItemDetail> list = assessItemDao.listByReceivable(receivableId);
+        if (list != null) {
+            for (AssessItemDetail item : list) {
+                item.setAttachFiles(fillUrl(req, assessItemDao.listReceivableAttachsByItem(item.getId())));
+            }
+        }
+        ResponseUtil.ok(resp, list);
     }
 
     private void doGetRecv(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
@@ -127,35 +152,88 @@ public class ReceivablePayableServlet extends BaseServlet {
         r.setFillUser(u.getId());
         r.setFillTime(new Timestamp(System.currentTimeMillis()));
         r.setRemark(WebUtil.getSafeParam(p, "remark"));
-        if (r.getId() == null) {
-            // 检查是否已存在
-            // 简化：直接插入
+        boolean isNew = r.getId() == null;
+        if (isNew) {
             r.setId(dao.insertReceivable(r));
         } else {
             dao.updateReceivable(r);
+            // 编辑模式：先清掉旧附件关联（assess_item_id 会被重新建立），不删除附件文件，只清空 assess_item_id 临时关联
         }
-        saveReceivableAssessItems(r.getId(), p);
-        ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", r.getId()));
+        Map<String, Long> itemIdRowKeyMap = saveReceivableAssessItems(r.getId(), p);
+        // 处理 rowAttachMap：将附件关联到新的 assessItemId
+        handleRowAttachMap(r.getId(), p, itemIdRowKeyMap, "RECEIVABLE");
+        Map<String, Object> ret = new HashMap<>();
+        ret.put("id", r.getId());
+        ret.put("itemIdRowKeyMap", itemIdRowKeyMap);
+        ResponseUtil.ok(resp, ret);
     }
 
-    private void saveReceivableAssessItems(Long receivableId, Map<String, Object> p) {
-        if (receivableId == null) return;
+    private Map<String, Long> saveReceivableAssessItems(Long receivableId, Map<String, Object> p) {
+        Map<String, Long> rowKeyToItemId = new HashMap<>();
+        if (receivableId == null) return rowKeyToItemId;
         assessItemDao.deleteByReceivable(receivableId);
         Object obj = p.get("assessItems");
-        if (obj == null) return;
+        if (obj == null) return rowKeyToItemId;
         String json = new Gson().toJson(obj);
-        if ("[]".equals(json) || "{}".equals(json)) return;
+        if ("[]".equals(json) || "{}".equals(json)) return rowKeyToItemId;
         Type t = new TypeToken<List<AssessItemDetail>>() {}.getType();
         List<AssessItemDetail> list = new Gson().fromJson(json, t);
-        if (list == null) return;
+        if (list == null) return rowKeyToItemId;
         for (int i = 0; i < list.size(); i++) {
             AssessItemDetail d = list.get(i);
             if (d == null) continue;
+            String rowKey = null;
+            try {
+                // 前端在 assessItems 中额外放入 rowKey 字段
+                java.lang.reflect.Field f = AssessItemDetail.class.getDeclaredField("rowKey");
+                f.setAccessible(true);
+                rowKey = (String) f.get(d);
+            } catch (Exception ignore) {}
+            // 也可能通过 map 方式传入，尝试从 Gson 反序列化后的对象中没有 rowKey，这里通过 assessItems 的每个元素读取 rowKey 字段（如果是JsonObject 的话）
+            // 兼容：assessItems 中每个 item 是 Map 时，尝试读 rowKey
+            Object origItem = null;
+            if (obj instanceof List) {
+                try { origItem = ((List<?>) obj).get(i); } catch (Exception ignore) {}
+            }
+            if (origItem instanceof Map) {
+                Object rk = ((Map<?, ?>) origItem).get("rowKey");
+                if (rk != null) rowKey = String.valueOf(rk);
+            }
             d.setId(null);
             d.setReceivableId(receivableId);
             d.setPayableId(null);
             d.setSortNo(i + 1);
-            assessItemDao.insertReceivableItem(d);
+            Long newId = assessItemDao.insertReceivableItem(d);
+            if (rowKey != null) rowKeyToItemId.put(rowKey, newId);
+        }
+        return rowKeyToItemId;
+    }
+
+    /** 处理 rowAttachMap：根据 rowKey -> attachIds 的映射，更新附件的 assess_item_id */
+    private void handleRowAttachMap(Long mainId, Map<String, Object> p, Map<String, Long> rowKeyToItemId, String type) {
+        Object ram = p.get("rowAttachMap");
+        if (ram == null) return;
+        String json = new Gson().toJson(ram);
+        if ("[]".equals(json) || "{}".equals(json)) return;
+        Type t = new TypeToken<Map<String, List<Long>>>() {}.getType();
+        Map<String, List<Long>> rowAttachMap;
+        try {
+            rowAttachMap = new Gson().fromJson(json, t);
+        } catch (Exception e) { return; }
+        if (rowAttachMap == null) return;
+        for (Map.Entry<String, List<Long>> e : rowAttachMap.entrySet()) {
+            String rowKey = e.getKey();
+            List<Long> attachIds = e.getValue();
+            Long itemId = rowKeyToItemId.get(rowKey);
+            if (itemId == null || attachIds == null) continue;
+            for (Long aid : attachIds) {
+                if (aid == null) continue;
+                if ("RECEIVABLE".equals(type)) {
+                    assessItemDao.updateReceivableAttachItemId(aid, itemId, mainId);
+                } else {
+                    assessItemDao.updatePayableAttachItemId(aid, itemId, mainId);
+                }
+            }
         }
     }
 
@@ -227,6 +305,7 @@ public class ReceivablePayableServlet extends BaseServlet {
 
     private void doDeleteRecv(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         long id = WebUtil.getLong(p, "id", 0);
+        assessItemDao.deleteReceivableAttachsByReceivable(id);
         assessItemDao.deleteByReceivable(id);
         dao.deleteReceivable(id);
         ResponseUtil.ok(resp);
@@ -245,7 +324,13 @@ public class ReceivablePayableServlet extends BaseServlet {
 
     private void doListPayAssessItems(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         long payableId = WebUtil.getLong(p, "payableId", 0);
-        ResponseUtil.ok(resp, assessItemDao.listByPayable(payableId));
+        List<AssessItemDetail> list = assessItemDao.listByPayable(payableId);
+        if (list != null) {
+            for (AssessItemDetail item : list) {
+                item.setAttachFiles(fillUrl(req, assessItemDao.listPayableAttachsByItem(item.getId())));
+            }
+        }
+        ResponseUtil.ok(resp, list);
     }
 
     private void doSavePay(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) {
@@ -267,29 +352,45 @@ public class ReceivablePayableServlet extends BaseServlet {
         } else {
             dao.updatePayable(r);
         }
-        savePayableAssessItems(r.getId(), p);
-        ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", r.getId()));
+        Map<String, Long> itemIdRowKeyMap = savePayableAssessItems(r.getId(), p);
+        handleRowAttachMap(r.getId(), p, itemIdRowKeyMap, "PAYABLE");
+        Map<String, Object> ret = new HashMap<>();
+        ret.put("id", r.getId());
+        ret.put("itemIdRowKeyMap", itemIdRowKeyMap);
+        ResponseUtil.ok(resp, ret);
     }
 
-    private void savePayableAssessItems(Long payableId, Map<String, Object> p) {
-        if (payableId == null) return;
+    private Map<String, Long> savePayableAssessItems(Long payableId, Map<String, Object> p) {
+        Map<String, Long> rowKeyToItemId = new HashMap<>();
+        if (payableId == null) return rowKeyToItemId;
         assessItemDao.deleteByPayable(payableId);
         Object obj = p.get("assessItems");
-        if (obj == null) return;
+        if (obj == null) return rowKeyToItemId;
         String json = new Gson().toJson(obj);
-        if ("[]".equals(json) || "{}".equals(json)) return;
+        if ("[]".equals(json) || "{}".equals(json)) return rowKeyToItemId;
         Type t = new TypeToken<List<AssessItemDetail>>() {}.getType();
         List<AssessItemDetail> list = new Gson().fromJson(json, t);
-        if (list == null) return;
+        if (list == null) return rowKeyToItemId;
         for (int i = 0; i < list.size(); i++) {
             AssessItemDetail d = list.get(i);
             if (d == null) continue;
+            String rowKey = null;
+            Object origItem = null;
+            if (obj instanceof List) {
+                try { origItem = ((List<?>) obj).get(i); } catch (Exception ignore) {}
+            }
+            if (origItem instanceof Map) {
+                Object rk = ((Map<?, ?>) origItem).get("rowKey");
+                if (rk != null) rowKey = String.valueOf(rk);
+            }
             d.setId(null);
             d.setPayableId(payableId);
             d.setReceivableId(null);
             d.setSortNo(i + 1);
-            assessItemDao.insertPayableItem(d);
+            Long newId = assessItemDao.insertPayableItem(d);
+            if (rowKey != null) rowKeyToItemId.put(rowKey, newId);
         }
+        return rowKeyToItemId;
     }
 
     private void doAuditPay(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) {
@@ -371,5 +472,85 @@ public class ReceivablePayableServlet extends BaseServlet {
         resp.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         resp.setHeader("Content-Disposition", "attachment;filename=" + java.net.URLEncoder.encode(fileName, "UTF-8"));
         wb.write(resp.getOutputStream());
+    }
+
+    // ========== 应收考核明细附件上传 ==========
+    private void doUploadRecvAssessAttach(HttpServletRequest req, HttpServletResponse resp, com.rebate.model.UserContext u) throws Exception {
+        long receivableId = 0;
+        try { receivableId = Long.parseLong(req.getParameter("receivableId")); } catch (Exception ignore) {}
+        if (receivableId <= 0) { ResponseUtil.fail(resp, "receivableId 必填"); return; }
+        long assessItemId = 0;
+        try { assessItemId = Long.parseLong(req.getParameter("assessItemId")); } catch (Exception ignore) {}
+        Part file = req.getPart("file");
+        if (file == null) { ResponseUtil.fail(resp, "请选择文件"); return; }
+        String rel = FileUtil.save(file.getInputStream(), "receivable/assess", file.getSubmittedFileName());
+        AttachFile f = new AttachFile();
+        f.setFileName(file.getSubmittedFileName());
+        f.setFilePath(rel);
+        f.setFileSize(file.getSize());
+        f.setUploadedBy(u.getId());
+        Long attachId = assessItemDao.insertReceivableAssessAttach(
+                assessItemId > 0 ? assessItemId : null, receivableId, f);
+        f.setId(attachId);
+        String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
+        f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+        Map<String, Object> ret = new HashMap<>();
+        ret.put("file", f);
+        if (assessItemId > 0) ret.put("assessItemId", assessItemId);
+        ResponseUtil.ok(resp, ret);
+    }
+
+    // ========== 应付考核明细附件上传 ==========
+    private void doUploadPayAssessAttach(HttpServletRequest req, HttpServletResponse resp, com.rebate.model.UserContext u) throws Exception {
+        long payableId = 0;
+        try { payableId = Long.parseLong(req.getParameter("payableId")); } catch (Exception ignore) {}
+        if (payableId <= 0) { ResponseUtil.fail(resp, "payableId 必填"); return; }
+        long assessItemId = 0;
+        try { assessItemId = Long.parseLong(req.getParameter("assessItemId")); } catch (Exception ignore) {}
+        Part file = req.getPart("file");
+        if (file == null) { ResponseUtil.fail(resp, "请选择文件"); return; }
+        String rel = FileUtil.save(file.getInputStream(), "payable/assess", file.getSubmittedFileName());
+        AttachFile f = new AttachFile();
+        f.setFileName(file.getSubmittedFileName());
+        f.setFilePath(rel);
+        f.setFileSize(file.getSize());
+        f.setUploadedBy(u.getId());
+        Long attachId = assessItemDao.insertPayableAssessAttach(
+                assessItemId > 0 ? assessItemId : null, payableId, f);
+        f.setId(attachId);
+        String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
+        f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+        Map<String, Object> ret = new HashMap<>();
+        ret.put("file", f);
+        if (assessItemId > 0) ret.put("assessItemId", assessItemId);
+        ResponseUtil.ok(resp, ret);
+    }
+
+    // ========== 删除考核明细附件（应收/应付通用）==========
+    private void doDeleteAssessAttach(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) throws Exception {
+        long id = WebUtil.getLong(p, "id", 0);
+        if (id <= 0) { ResponseUtil.fail(resp, "id 必填"); return; }
+        var u = TokenUtil.getLoginUser(req, com.rebate.model.UserContext.class);
+        // 先查应收附件表
+        AttachFile recvAttach = assessItemDao.findReceivableAttach(id);
+        if (recvAttach != null) {
+            if (u != null && !u.isAdmin() && !u.hasPerm("receivable:edit")) {
+                ResponseUtil.forbidden(resp); return;
+            }
+            assessItemDao.deleteReceivableAttach(id);
+            ResponseUtil.ok(resp);
+            return;
+        }
+        // 再查应付附件表
+        AttachFile payAttach = assessItemDao.findPayableAttach(id);
+        if (payAttach != null) {
+            if (u != null && !u.isAdmin() && !u.hasPerm("payable:edit")) {
+                ResponseUtil.forbidden(resp); return;
+            }
+            assessItemDao.deletePayableAttach(id);
+            ResponseUtil.ok(resp);
+            return;
+        }
+        ResponseUtil.fail(resp, "附件不存在");
     }
 }

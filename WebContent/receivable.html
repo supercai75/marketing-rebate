@@ -18,6 +18,67 @@
         .calc-detail .group-section { margin:16px 0; padding:16px; background:#fafafa; border-radius:8px; }
         .calc-detail .formula { color:#67c23a; font-weight:500; }
         .calc-detail .highlight { color:#409eff; font-weight:600; }
+
+        /* 应收编辑弹窗两列布局 */
+        .r-form-grid { display: grid; grid-template-columns: 220px 1fr; gap: 12px 20px; }
+        .r-form-grid .form-item { margin-bottom: 0; }
+        .r-form-grid .form-item.col-full { grid-column: 1 / -1; margin-top: 4px; }
+        .r-form-grid label { width: 110px; flex-shrink: 0; }
+        /* 依据考核应收样式：不可编辑、居左显示、突出 */
+        .assess-amount-display {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            background: #ecf5ff;
+            color: #409eff;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: left;
+            box-sizing: border-box;
+        }
+        /* 明细考核表格加宽 */
+        .r-assess-wrap {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .r-assess-wrap table {
+            width: 100%;
+            min-width: 900px;
+            table-layout: fixed;
+        }
+        .r-assess-wrap col.c-type { width: 160px; }
+        .r-assess-wrap col.c-remark { width: 200px; }
+        .r-assess-wrap col.c-target { width: 110px; }
+        .r-assess-wrap col.c-actual { width: 110px; }
+        .r-assess-wrap col.c-reward { width: 130px; }
+        .r-assess-wrap col.c-attach { width: 230px; }
+        .r-assess-wrap col.c-op { width: 100px; }
+        .r-assess-wrap td, .r-assess-wrap th {
+            padding: 6px 8px;
+            word-break: break-all;
+            vertical-align: top;
+        }
+        /* 附件行内显示 */
+        .attach-inline-box { border:1px solid #ebeef5; border-radius:4px; padding:4px; background:#fafafa; min-height: 28px;}
+        .attach-inline-list { margin-bottom:4px; min-height:20px;}
+        .attach-inline-item { display:inline-flex; align-items:center; gap:2px; padding:2px 6px; background:#fff; border:1px solid #e4e7ed; border-radius:4px; margin:0 2px 2px 0; font-size:11px;}
+        .attach-inline-item .name { max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+        .attach-inline-item a.name { color:#409eff; text-decoration:none; cursor:pointer;}
+        .attach-inline-item a.name:hover { text-decoration:underline;}
+        .attach-inline-item .del { color:#f56c6c; cursor:pointer;}
+        .attach-inline-upload { margin-top:2px;}
+        .attach-inline-upload .btn { padding: 1px 6px; font-size: 11px;}
+        /* 备注全宽 */
+        .remark-full {
+            width: 100% !important;
+            min-height: 80px;
+            resize: vertical;
+        }
+        /* 输入框尺寸收窄 */
+        .narrow-input input, .narrow-input select {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -68,43 +129,73 @@
     </table>
 </div>
 
+<!-- 加宽到 1050px，使用两列布局 -->
 <div class="modal-mask" id="modalR">
-    <div class="modal" style="width:560px;">
+    <div class="modal" style="width:1050px;">
         <div class="modal-header" id="modalRTitle">新增应收<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalR')">×</span></div>
         <div class="modal-body">
             <input type="hidden" id="r_id">
             <input type="hidden" id="r_projectId">
-            <div class="form-item"><label>项目 *</label>
-                <div style="display:flex; gap:8px;">
-                    <input id="r_txtProject" readonly placeholder="请选择项目" style="flex:1; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
-                    <button class="btn" id="r_btnSelProj" type="button">选择项目</button>
+            <div class="r-form-grid">
+                <!-- 左列：阶段（窄） -->
+                <div class="form-item narrow-input"><label>阶段 *</label>
+                    <select id="r_stage">
+                        <option value="全年合计">全年合计</option>
+                        <option value="阶段一">阶段一</option>
+                        <option value="阶段二">阶段二</option>
+                        <option value="阶段三">阶段三</option>
+                        <option value="阶段四">阶段四</option>
+                    </select>
+                </div>
+                <!-- 右列：项目（编辑模式下禁用选择） -->
+                <div class="form-item"><label>项目 *</label>
+                    <div style="display:flex; gap:8px;">
+                        <input id="r_txtProject" readonly placeholder="请选择项目" style="flex:1; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+                        <button class="btn" id="r_btnSelProj" type="button">选择项目</button>
+                    </div>
+                </div>
+                <!-- 左列：依据规模应收（窄） -->
+                <div class="form-item narrow-input"><label>依据规模应收(元)</label><input id="r_scaleAmount" type="number" step="0.01"></div>
+                <!-- 右列：依据考核应收（合计，只读，居左显示） -->
+                <div class="form-item"><label>依据考核应收(元)</label>
+                    <div id="r_assessAmountDisplay" class="assess-amount-display">0.00</div>
+                    <input type="hidden" id="r_assessAmount">
+                </div>
+                <!-- 左列：系统估算（窄） -->
+                <div class="form-item narrow-input"><label>系统估算(元) <span style="cursor:pointer;color:#409eff;display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border:1px solid #409eff;border-radius:50%;font-size:12px;" id="btnCalcEstimate" title="点击计算">?</span></label><input id="r_estimateAmount" type="number" step="0.01" readonly></div>
+                <!-- 右列空着 -->
+                <div></div>
+
+                <!-- 依据考核明细应收（全宽，加宽表格） -->
+                <div class="form-item col-full">
+                    <label style="display:block; margin-bottom:6px;">依据考核应收明细</label>
+                    <div class="r-assess-wrap">
+                        <table class="table-nowrap" id="r_assessTable" style="font-size:13px;">
+                            <colgroup>
+                                <col class="c-type">
+                                <col class="c-remark">
+                                <col class="c-target">
+                                <col class="c-actual">
+                                <col class="c-reward">
+                                <col class="c-attach">
+                                <col class="c-op">
+                            </colgroup>
+                            <thead><tr>
+                                <th>考核项目</th><th>备注说明</th><th>目标</th><th>达成</th><th>奖惩金额</th><th>附件</th><th>操作</th>
+                            </tr></thead>
+                            <tbody id="r_assessBody"></tbody>
+                        </table>
+                        <button class="btn btn-sm" id="r_addAssessRow" type="button" style="margin-top:6px;">+ 添加行</button>
+                    </div>
+                </div>
+
+                <!-- 备注全宽，放最下边 -->
+                <div class="form-item col-full">
+                    <label style="display:block; margin-bottom:6px;">备注</label>
+                    <textarea id="r_remark" rows="4" class="remark-full"></textarea>
                 </div>
             </div>
-            <div class="form-item"><label>阶段 *</label>
-                <select id="r_stage">
-                    <option value="全年合计">全年合计</option>
-                    <option value="阶段一">阶段一</option>
-                    <option value="阶段二">阶段二</option>
-                    <option value="阶段三">阶段三</option>
-                    <option value="阶段四">阶段四</option>
-                </select>
-            </div>
-            <div class="form-item"><label>依据规模应收(元)</label><input id="r_scaleAmount" type="number" step="0.01"></div>
-            <div class="form-item" style="width:100%;">
-                <label>依据考核应收明细</label>
-                <div style="width:100%;">
-                    <table class="table-nowrap" id="r_assessTable" style="font-size:13px;">
-                        <thead><tr>
-                            <th>考核项目</th><th>备注说明</th><th>目标</th><th>达成</th><th>奖惩金额</th><th>操作</th>
-                        </tr></thead>
-                        <tbody id="r_assessBody"></tbody>
-                    </table>
-                    <button class="btn btn-sm" id="r_addAssessRow" type="button">+ 添加行</button>
-                </div>
-            </div>
-            <div class="form-item"><label>系统估算(元) <span style="cursor:pointer;color:#409eff;display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border:1px solid #409eff;border-radius:50%;font-size:12px;" id="btnCalcEstimate" title="点击计算">?</span></label><input id="r_estimateAmount" type="number" step="0.01" readonly></div>
-            <div class="form-item"><label>备注</label><textarea id="r_remark" rows="2"></textarea></div>
-            <p style="color:#888; font-size:12px;">新增/修改后，状态为草稿（DRAFT），待运营人员审核后变为已终稿（FINAL）。</p>
+            <p style="color:#888; font-size:12px; margin-top:12px;">新增/修改后，状态为草稿（DRAFT），待运营人员审核后变为已终稿（FINAL）。考核明细附件需先保存应收记录后再上传。</p>
         </div>
         <div class="modal-footer">
             <button class="btn" onclick="RB.closeModal('modalR')">取消</button>
@@ -133,14 +224,15 @@
     var editingId = null;
     var curProject = null;
     var currentProjectData = null;
+    // 每行的附件缓存：key = tr临时id或assessItemId，value = AttachFile数组
+    var rRowAttachs = {};
+    var rRowTempSeq = 0;
 
     $(function () {
-        // 确保 loadingOverlay 被隐藏
         $('#loadingOverlay').hide();
         
         RB.checkLogin(function () { 
             loadYears();
-            // 工具栏项目选择器
             RB.bindProjectSelector({
                 trigger: '#btnSelProj, #txtProject',
                 display: '#txtProject',
@@ -148,7 +240,6 @@
                 coYear: function() { return $('#selYear').val(); },
                 onChange: function() { load(); }
             });
-            // 弹窗内项目选择器
             RB.bindProjectSelector({
                 trigger: '#r_btnSelProj, #r_txtProject',
                 display: '#r_txtProject',
@@ -175,11 +266,22 @@
         });
         
         $('#r_stage').on('change', function() {
-            // 切换阶段时清空估算值，不自动计算
             $('#r_estimateAmount').val('');
         });
         $('#r_addAssessRow').on('click', function() { addRAssessRow(null); });
     });
+
+    function escAttr(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+    function refreshAssessTotal() {
+        var items = collectRAssessItems(true);
+        var total = 0;
+        for (var i = 0; i < items.length; i++) {
+            total += Number(items[i].rewardAmount || 0);
+        }
+        $('#r_assessAmountDisplay').text(Number(total || 0).toFixed(2));
+        $('#r_assessAmount').val(total);
+    }
 
     function addRAssessRow(data) {
         var itemTypes = [
@@ -193,30 +295,142 @@
             var sel = data && data.itemType === itemTypes[i].value ? ' selected' : '';
             typeOpts += '<option value="' + itemTypes[i].value + '"' + sel + '>' + itemTypes[i].label + '</option>';
         }
-        var esc = function(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;'); };
-        var tr = '<tr>' +
-            '<td><select class="r-assess-type" style="width:100%;padding:2px 4px;">' + typeOpts + '</select></td>' +
-            '<td><input type="text" class="r-assess-remark" value="' + esc(data && data.remark) + '" style="width:100%;padding:2px 4px;"></td>' +
-            '<td><input type="number" step="0.01" class="r-assess-target" value="' + esc(data && data.targetValue) + '" style="width:100%;padding:2px 4px;"></td>' +
-            '<td><input type="number" step="0.01" class="r-assess-actual" value="' + esc(data && data.actualValue) + '" style="width:100%;padding:2px 4px;"></td>' +
-            '<td><input type="number" step="0.01" class="r-assess-reward" value="' + esc(data && data.rewardAmount) + '" style="width:100%;padding:2px 4px;"></td>' +
+        var esc = escAttr;
+        var tempId = '_tmp_' + (++rRowTempSeq);
+        var rowKey = data && data.id ? String(data.id) : tempId;
+        if (!rRowAttachs[rowKey]) rRowAttachs[rowKey] = data && data.attachFiles ? data.attachFiles.slice() : [];
+
+        var tr = '<tr data-rowkey="' + esc(rowKey) + '" data-tmpid="' + esc(tempId) + '" data-itemid="' + esc(data && data.id ? data.id : '') + '">' +
+            '<td><select class="r-assess-type" style="width:100%;padding:4px 6px;">' + typeOpts + '</select></td>' +
+            '<td><input type="text" class="r-assess-remark" value="' + esc(data && data.remark) + '" style="width:100%;padding:4px 6px;"></td>' +
+            '<td><input type="number" step="0.01" class="r-assess-target" value="' + esc(data && data.targetValue) + '" style="width:100%;padding:4px 6px;"></td>' +
+            '<td><input type="number" step="0.01" class="r-assess-actual" value="' + esc(data && data.actualValue) + '" style="width:100%;padding:4px 6px;"></td>' +
+            '<td><input type="number" step="0.01" class="r-assess-reward" value="' + esc(data && data.rewardAmount) + '" style="width:100%;padding:4px 6px;"></td>' +
+            '<td>' + renderRowAttachBox(rowKey) + '</td>' +
             '<td><button type="button" class="btn btn-xs btn-danger r-assess-del">删除</button></td>' +
             '</tr>';
         var $tr = $(tr);
-        $tr.find('.r-assess-del').on('click', function() { $(this).closest('tr').remove(); });
+        $tr.find('.r-assess-del').on('click', function() {
+            var rk = $(this).closest('tr').data('rowkey');
+            if (rk) delete rRowAttachs[rk];
+            $(this).closest('tr').remove();
+            refreshAssessTotal();
+        });
+        $tr.find('.r-assess-reward, .r-assess-target, .r-assess-actual').on('change input', refreshAssessTotal);
+        // 附件上传
+        bindRowAttachUpload($tr, rowKey, 'RECEIVABLE');
         $('#r_assessBody').append($tr);
+        refreshAssessTotal();
     }
 
-    function collectRAssessItems() {
+    function renderRowAttachBox(rowKey) {
+        var list = rRowAttachs[rowKey] || [];
+        var token = RB.getToken ? RB.getToken() : '';
+        var innerList = '';
+        for (var i = 0; i < list.length; i++) {
+            var a = list[i];
+            var nameHtml;
+            if (a.downloadUrl) {
+                var url = a.downloadUrl + (a.downloadUrl.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(token);
+                nameHtml = '<a class="name" href="' + url + '" target="_blank" title="点击下载：' + escAttr(a.fileName) + '">' + a.fileName + '</a>';
+            } else {
+                nameHtml = '<span class="name" title="' + escAttr(a.fileName) + '">' + a.fileName + '</span>';
+            }
+            innerList += '<span class="attach-inline-item" data-aid="' + escAttr(a.id) + '">' + nameHtml +
+                '<span class="del" onclick="deleteRowAttach(\'' + escAttr(rowKey) + '\', ' + a.id + ')">×</span></span>';
+        }
+        return '<div class="attach-inline-box">' +
+            '<div class="attach-inline-list">' + innerList + '</div>' +
+            '<div class="attach-inline-upload">' +
+            '<label class="btn btn-xs" style="cursor:pointer;">' +
+            '+ 附件<input type="file" class="row-attach-input" multiple style="display:none;" data-rowkey="' + escAttr(rowKey) + '">' +
+            '</label></div></div>';
+    }
+
+    function bindRowAttachUpload($tr, rowKey, bizType) {
+        $tr.find('.row-attach-input').on('change', function(e) {
+            var files = e.target.files;
+            if (!files || files.length === 0) return;
+            // 应收记录需要先有id才能上传附件
+            var rId = $('#r_id').val();
+            if (!rId || rId === '0' || !editingId) {
+                RB.toast('请先保存应收记录后再上传附件', 'error');
+                e.target.value = '';
+                return;
+            }
+            // 获取当前行的 assessItemId（如果有）
+            var itemId = $tr.data('itemid') || 0;
+            for (var i = 0; i < files.length; i++) {
+                uploadRowAttach(rId, itemId, rowKey, files[i]);
+            }
+            e.target.value = '';
+        });
+    }
+
+    function uploadRowAttach(recId, itemId, rowKey, file) {
+        var fd = new FormData();
+        fd.append('file', file);
+        fd.append('receivableId', recId);
+        fd.append('assessItemId', itemId || 0);
+        fd.append('rowKey', rowKey);
+        RB.post('/api/receivable-payable?op=uploadAssessAttach', fd, true).done(function(r) {
+            if (r.code === 0) {
+                // 回写真实的itemId到行
+                if (r.data && r.data.assessItemId) {
+                    var $tr = $('#r_assessBody tr[data-rowkey="' + rowKey + '"]');
+                    if ($tr.length && !$tr.data('itemid')) $tr.data('itemid', r.data.assessItemId);
+                }
+                if (!rRowAttachs[rowKey]) rRowAttachs[rowKey] = [];
+                rRowAttachs[rowKey].push(r.data.file);
+                // 重新渲染附件区域
+                var $tr = $('#r_assessBody tr[data-rowkey="' + rowKey + '"]');
+                if ($tr.length) {
+                    $tr.find('td:eq(5)').html(renderRowAttachBox(rowKey));
+                    bindRowAttachUpload($tr, rowKey, 'RECEIVABLE');
+                }
+                RB.toast('上传成功', 'success');
+            } else {
+                RB.toast(r.msg || '上传失败', 'error');
+            }
+        }).fail(function() { RB.toast('上传失败', 'error'); });
+    }
+
+    function deleteRowAttach(rowKey, attachId) {
+        RB.confirm('确认删除该附件？', function() {
+            RB.post('/api/receivable-payable?op=deleteAssessAttach', { id: attachId }).done(function(r) {
+                if (r.code === 0) {
+                    var list = rRowAttachs[rowKey] || [];
+                    for (var i = 0; i < list.length; i++) {
+                        if (String(list[i].id) === String(attachId)) {
+                            list.splice(i, 1);
+                            break;
+                        }
+                    }
+                    var $tr = $('#r_assessBody tr[data-rowkey="' + rowKey + '"]');
+                    if ($tr.length) {
+                        $tr.find('td:eq(5)').html(renderRowAttachBox(rowKey));
+                        bindRowAttachUpload($tr, rowKey, 'RECEIVABLE');
+                    }
+                    RB.toast('已删除', 'success');
+                } else {
+                    RB.toast(r.msg || '删除失败', 'error');
+                }
+            });
+        });
+    }
+
+    function collectRAssessItems(silent) {
         var items = [];
         $('#r_assessBody tr').each(function() {
             var $tr = $(this);
             items.push({
+                id: $tr.data('itemid') || null,
                 itemType: $tr.find('.r-assess-type').val(),
                 remark: $tr.find('.r-assess-remark').val(),
                 targetValue: $tr.find('.r-assess-target').val(),
                 actualValue: $tr.find('.r-assess-actual').val(),
-                rewardAmount: $tr.find('.r-assess-reward').val()
+                rewardAmount: $tr.find('.r-assess-reward').val(),
+                rowKey: $tr.data('rowkey')
             });
         });
         return items;
@@ -241,7 +455,6 @@
         if (!pid) { $('#body').html(''); curProject = null; currentProjectData = null; return; }
         curProject = { id: pid };
         
-        // 先请求列表
         RB.post('/api/receivable-payable?op=listReceivable', { projectId: pid, stage: stage, status: status }).done(function(r) {
             if (r.code === 0) {
                 var rows = r.data;
@@ -280,11 +493,10 @@
             }
         });
         
-        // 同时缓存项目概览数据，用于估算应收弹窗
         RB.post('/api/overview?op=overview', { projectId: pid }).done(function(r2) {
             if (r2.code === 0 && r2.data) {
                 currentProjectData = r2.data;
-                currentProjectData._pid = pid; // 保存项目id用于校验
+                currentProjectData._pid = pid;
             }
         });
     }
@@ -306,39 +518,52 @@
         return html;
     }
 
+    function setProjectEditable(editable) {
+        if (editable) {
+            $('#r_btnSelProj').show();
+            $('#r_txtProject').css('cursor', 'pointer').css('background', '#fff');
+        } else {
+            $('#r_btnSelProj').hide();
+            $('#r_txtProject').css('cursor', 'not-allowed').css('background', '#f5f7fa');
+        }
+    }
+
     function openAdd() {
         var pid = $('#selProject').val();
         if (!pid) { RB.toast('请先选择项目', 'error'); return; }
         editingId = null;
+        rRowAttachs = {};
         $('#modalRTitle').text('新增应收');
         $('#r_id').val('');
         $('#r_projectId').val(pid);
         var curProjectName = $('#txtProject').val() || '';
         $('#r_txtProject').val(curProjectName);
+        // 新增模式：项目可以选择（但仍然建议用户从工具条选择项目后新增，这里保持可选择）
+        setProjectEditable(true);
         $('#r_stage').val('阶段一');
         $('#r_scaleAmount').val('');
         $('#r_assessBody').empty();
         $('#r_estimateAmount').val('');
         $('#r_remark').val('');
+        refreshAssessTotal();
         RB.openModal('modalR');
     }
 
     function editR(id) {
         editingId = id;
+        rRowAttachs = {};
         RB.post('/api/receivable-payable?op=getReceivable', { id: id }).done(function (r) {
             if (r.code === 0) {
                 var x = r.data;
                 $('#modalRTitle').text('编辑应收');
                 $('#r_id').val(x.id);
                 $('#r_projectId').val(x.projectId);
-                // 通过后端接口获取项目名称回显（如果项目存在于当前年度列表，可以用缓存，这里直接用接口取一次）
+                // 编辑模式：项目不可选择
+                setProjectEditable(false);
                 var projectName = $('#txtProject').val() || '';
                 if ($('#selProject').val() && String($('#selProject').val()) === String(x.projectId)) {
-                    // 和当前工具条一致，直接用已选项目名
                 } else {
-                    // 尝试通过接口拿到项目名
                     projectName = '';
-                    // 用同步提示，异步获取项目名
                     (function(targetId) {
                         RB.post('/api/project?op=get', { id: targetId }).done(function(pr) {
                             if (pr.code === 0 && pr.data) {
@@ -351,10 +576,14 @@
                 $('#r_stage').val(x.stage);
                 $('#r_scaleAmount').val(x.scaleAmount || '');
                 $('#r_assessBody').empty();
+                // 加载明细 + 附件
                 RB.post('/api/receivable-payable?op=listReceivableAssessItems', { receivableId: id }).done(function(r2) {
                     if (r2.code === 0 && r2.data && r2.data.length) {
                         r2.data.forEach(function(item) { addRAssessRow(item); });
                     }
+                    // 合计显示
+                    $('#r_assessAmountDisplay').text(Number(x.assessAmount || 0).toFixed(2));
+                    $('#r_assessAmount').val(x.assessAmount || 0);
                 });
                 $('#r_estimateAmount').val(x.estimateAmount || '');
                 $('#r_remark').val(x.remark || '');
@@ -391,6 +620,13 @@
         for (var i = 0; i < assessItems.length; i++) {
             assessTotal += Number(assessItems[i].rewardAmount || 0);
         }
+        // 收集rowKey -> attachs 对应关系，后端保存时关联
+        var rowAttachMap = {};
+        for (var k in rRowAttachs) {
+            if (rRowAttachs.hasOwnProperty(k) && rRowAttachs[k] && rRowAttachs[k].length) {
+                rowAttachMap[k] = rRowAttachs[k].map(function(a) { return a.id; });
+            }
+        }
         var p = {
             id: editingId || 0,
             projectId: $('#r_projectId').val(),
@@ -398,13 +634,35 @@
             scaleAmount: $('#r_scaleAmount').val() || 0,
             assessAmount: assessTotal,
             assessItems: JSON.stringify(assessItems),
+            rowAttachMap: JSON.stringify(rowAttachMap),
             estimateAmount: $('#r_estimateAmount').val() || 0,
             remark: $('#r_remark').val()
         };
         if (!p.projectId || !p.stage) { RB.toast('请选择项目、阶段', 'error'); return; }
         RB.post('/api/receivable-payable?op=saveReceivable', p).done(function (r) {
-            if (r.code === 0) { RB.toast('保存成功', 'success'); RB.closeModal('modalR'); load(); }
-            else RB.toast(r.msg, 'error');
+            if (r.code === 0) {
+                // 如果是新增保存后，刷新行的itemId以便继续上传附件
+                if (r.data && r.data.itemIdRowKeyMap) {
+                    var map = r.data.itemIdRowKeyMap;
+                    $('#r_assessBody tr').each(function() {
+                        var $tr = $(this);
+                        var rk = $tr.data('rowkey');
+                        if (rk && map[rk] && !$tr.data('itemid')) {
+                            $tr.data('itemid', map[rk]);
+                            $tr.attr('data-itemid', map[rk]);
+                        }
+                    });
+                    if (!editingId && r.data.id) {
+                        editingId = r.data.id;
+                        $('#r_id').val(r.data.id);
+                    }
+                }
+                RB.toast('保存成功', 'success');
+                RB.closeModal('modalR');
+                load();
+            } else {
+                RB.toast(r.msg, 'error');
+            }
         });
     }
 
@@ -420,7 +678,6 @@
                 return;
             }
             var reb = r.data;
-            // 按阶段取对应估算值
             var est = 0;
             if (stage === '全年合计') {
                 est = Number(reb.totalRebate || 0);
@@ -443,6 +700,36 @@
 
     function showEstimateDetail(reb, stage, est) {
         var detailHtml = [];
+        var mapStageIdx = { '阶段一': 0, '阶段二': 1, '阶段三': 2, '阶段四': 3 };
+
+        function renderDetailsTable(sr) {
+            if (!sr.details || sr.details.length === 0) return '';
+            var h = '<table class="table-compact" style="width:100%; margin-top:10px; font-size:12px;">';
+            h += '<thead><tr><th>考核组</th><th>奖励类型</th><th>达成率X</th><th>目标</th><th>实际值</th><th>计算基数</th><th>返利比例</th><th>计算模式</th><th>返利金额</th></tr></thead><tbody>';
+            var subTotal = 0;
+            for (var i = 0; i < sr.details.length; i++) {
+                var d = sr.details[i];
+                subTotal += Number(d.rebateAmount || 0);
+                var rt = d.rewardType || 'PERSENT';
+                var rtName = rt === 'PERSENT' ? '达成率' : (rt === 'SCALE' ? '达成额' : '增长率');
+                var ratioPct = (Number(d.effectiveRatio || 0) * 100).toFixed(2) + '%';
+                h += '<tr>'
+                    + '<td>' + esc(d.groupName) + '</td>'
+                    + '<td>' + rtName + '</td>'
+                    + '<td>' + (rt === 'SCALE' ? RB.formatMoney(d.x) : Number(d.x || 0).toFixed(2) + '%') + '</td>'
+                    + '<td>' + RB.formatMoney(d.target) + '</td>'
+                    + '<td>' + RB.formatMoney(d.calcActual) + '</td>'
+                    + '<td>' + RB.formatMoney(d.base) + '</td>'
+                    + '<td>' + ratioPct + '</td>'
+                    + '<td>' + (d.calcMode === 'FLAT' ? '全部计算' : '递进式') + '</td>'
+                    + '<td><strong>' + RB.formatMoney(d.rebateAmount) + '</strong></td>'
+                    + '</tr>';
+            }
+            h += '<tr style="background:#f5f7fa;font-weight:bold;"><td colspan="8" style="text-align:right;">分项合计：</td><td>' + RB.formatMoney(subTotal) + '</td></tr>';
+            h += '</tbody></table>';
+            return h;
+        }
+
         detailHtml.push('<h4>📊 估算结果（后端返利计算引擎）</h4>');
         detailHtml.push('<div class="data-box">');
         detailHtml.push('<strong>阶段：</strong>' + stage + '<br>');
@@ -451,21 +738,25 @@
             if (reb.stageRebates) {
                 for (var i = 0; i < reb.stageRebates.length; i++) {
                     var sr = reb.stageRebates[i];
-                    detailHtml.push('&nbsp;&nbsp;· ' + sr.stageName + '：目标 ' + RB.formatMoney(sr.target || 0)
+                    detailHtml.push('<div class="group-section">');
+                    detailHtml.push('<strong>· ' + sr.stageName + '</strong>：目标 ' + RB.formatMoney(sr.target || 0)
                         + ' / 实际 ' + RB.formatMoney(sr.actual || 0)
-                        + ' → 返利 <strong>' + RB.formatMoney(sr.rebateAmount || 0) + '</strong> 元<br>');
+                        + ' → 返利 <strong>' + RB.formatMoney(sr.rebateAmount || 0) + '</strong> 元');
+                    detailHtml.push(renderDetailsTable(sr));
+                    detailHtml.push('</div>');
                 }
             }
-            detailHtml.push('&nbsp;&nbsp;· 全年专属规则（FULL_YEAR）返利：' + RB.formatMoney(reb.fullYearRebate || 0) + ' 元');
+            detailHtml.push('<div class="group-section"><strong>· 全年专属规则（FULL_YEAR）返利：</strong>' + RB.formatMoney(reb.fullYearRebate || 0) + ' 元</div>');
         } else if (reb.stageRebates) {
-            var mapStageIdx = { '阶段一': 0, '阶段二': 1, '阶段三': 2, '阶段四': 3 };
             var idx = mapStageIdx[stage];
             if (idx != null && reb.stageRebates[idx]) {
                 var sr = reb.stageRebates[idx];
                 detailHtml.push('<strong>阶段目标：</strong>' + RB.formatMoney(sr.target || 0) + ' 元<br>');
                 detailHtml.push('<strong>阶段实际：</strong>' + RB.formatMoney(sr.actual || 0) + ' 元<br>');
                 var rate = (sr.target && sr.target > 0) ? (sr.actual / sr.target * 100).toFixed(2) : '0.00';
-                detailHtml.push('<strong>达成率：</strong>' + rate + '%');
+                detailHtml.push('<strong>达成率：</strong>' + rate + '%<br>');
+                detailHtml.push('<strong>返利合计：</strong>' + RB.formatMoney(sr.rebateAmount || 0) + ' 元');
+                detailHtml.push(renderDetailsTable(sr));
             }
         }
         detailHtml.push('</div>');

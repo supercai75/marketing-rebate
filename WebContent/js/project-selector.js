@@ -18,11 +18,21 @@
     var _curSelection = null;
     var _curRows = [];
 
+    /** 转义 title 属性中的特殊字符 */
+    function escAttr(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     function ensureModal() {
         if ($('#' + MODAL_ID).length) return;
         var html =
             '<div id="' + MODAL_ID + '" class="modal-mask">' +
-            '  <div class="modal" style="min-width:760px;width:820px;">' +
+            '  <div class="modal" style="min-width:1000px;width:1100px;">' +
             '    <div class="modal-header"><span>选择项目（单选）</span>' +
             '      <div class="spacer"></div><span class="close" onclick="RB.closeProjectPicker()">×</span>' +
             '    </div>' +
@@ -34,10 +44,20 @@
             '        <button class="btn btn-primary" id="pp_btnSearch">搜索</button>' +
             '      </div>' +
             '      <div style="max-height:50vh;overflow:auto;border:1px solid #eee;border-radius:4px;">' +
-            '        <table class="table-nowrap" style="width:100%;">' +
+            '        <table class="table-nowrap" style="width:100%;table-layout:fixed;">' +
+            '          <colgroup>' +
+            '            <col style="width:40px;">' +
+            '            <col style="width:110px;">' +
+            '            <col style="width:auto;">' +
+            '            <col style="width:70px;">' +
+            '            <col style="width:100px;">' +
+            '            <col style="width:140px;">' +
+            '            <col style="width:140px;">' +
+            '            <col style="width:80px;">' +
+            '          </colgroup>' +
             '          <thead style="position:sticky;top:0;background:#fafafa;z-index:1;">' +
             '            <tr>' +
-            '              <th style="width:40px;"></th>' +
+            '              <th></th>' +
             '              <th>编号</th><th>项目名称</th><th>年度</th><th>厂牌</th><th>合作品种</th><th>项目分组</th><th>状态</th>' +
             '            </tr>' +
             '          </thead>' +
@@ -107,15 +127,19 @@
                 var statusMap = {NEW:'立项中',APPROVING:'审批中',RUNNING:'执行中',FINISHED:'已完成',ARCHIVED:'已归档'};
                 for (var i = 0; i < r.data.length; i++) {
                     var p = r.data[i];
+                    var ellipsis = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+                    var code = p.projectCode || '', name = p.projectName || '', year = p.coYear || '',
+                        brand = p.brand || '', prod = p.coProduct || '', grp = p.projectGroupName || '',
+                        st = statusMap[p.status] || p.status || '';
                     html += '<tr data-idx="' + i + '" style="cursor:pointer;">' +
                         '<td><input type="radio" name="pp_sel" value="' + i + '"></td>' +
-                        '<td>' + (p.projectCode || '') + '</td>' +
-                        '<td>' + (p.projectName || '') + '</td>' +
-                        '<td>' + (p.coYear || '') + '</td>' +
-                        '<td>' + (p.brand || '') + '</td>' +
-                        '<td>' + (p.coProduct || '') + '</td>' +
-                        '<td>' + (p.projectGroupName || '') + '</td>' +
-                        '<td>' + (statusMap[p.status] || p.status || '') + '</td>' +
+                        '<td title="' + escAttr(code) + '" style="' + ellipsis + '">' + code + '</td>' +
+                        '<td title="' + escAttr(name) + '" style="' + ellipsis + '">' + name + '</td>' +
+                        '<td title="' + escAttr(year) + '" style="' + ellipsis + '">' + year + '</td>' +
+                        '<td title="' + escAttr(brand) + '" style="' + ellipsis + '">' + brand + '</td>' +
+                        '<td title="' + escAttr(prod) + '" style="' + ellipsis + '">' + prod + '</td>' +
+                        '<td title="' + escAttr(grp) + '" style="' + ellipsis + '">' + grp + '</td>' +
+                        '<td title="' + escAttr(st) + '" style="' + ellipsis + '">' + st + '</td>' +
                         '</tr>';
                 }
                 $('#pp_tbody').html(html);

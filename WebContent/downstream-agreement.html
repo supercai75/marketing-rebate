@@ -80,7 +80,7 @@
 </div>
 
 <div class="modal-mask" id="modalForm">
-    <div class="modal" style="width: 900px; max-height:90vh; overflow-y:auto;">
+    <div class="modal" style="width: 1100px; max-height:90vh; overflow-y:auto;">
         <div class="modal-header">下游协议 - <span id="modalTitle">新建</span>
             <span class="spacer"></span>
             <button class="btn btn-sm" onclick="showCloneModal()" style="margin-right:8px;">克隆协议</button>
@@ -203,7 +203,7 @@
 
 <!-- 考核组管理弹窗 -->
 <div class="modal-mask" id="modalAssessGroup">
-    <div class="modal" style="width:800px;">
+    <div class="modal" style="width:1100px;">
         <div class="modal-header">考核组管理<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalAssessGroup')">×</span></div>
         <div class="modal-body">
             <div class="toolbar" style="margin-bottom:12px;">
@@ -224,7 +224,7 @@
 
 <!-- 考核组编辑弹窗 -->
 <div class="modal-mask" id="modalAssessGroupEdit">
-    <div class="modal" style="width:500px;">
+    <div class="modal" style="width:700px;">
         <div class="modal-header">编辑考核组<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalAssessGroupEdit')">×</span></div>
         <div class="modal-body">
             <input type="hidden" id="ag_id">
@@ -237,7 +237,9 @@
             <div class="form-item"><label>阶段四目标</label><input id="ag_s4" type="number" step="0.01"></div>
             <div class="form-item"><label>共享考核组</label>
                 <select id="ag_sharedGroups" multiple style="width:100%; height:70px; font-size:12px;"></select>
-                <div style="font-size:11px;color:#909399;margin-top:4px;">选择其他考核组后，本组将与所选组共享目标（达成率按合计实际值/合计目标值计算，各组仍用自己的规则和实际值计算返利）</div>
+                <div style="font-size:11px;color:#909399;margin-top:4px;">选择其他考核组后，本组将与所选组共享目标（达成率按合计实际值/合计目标值计算，各组仍用自己的规则和实际值计算返利）
+                    <a href="javascript:void(0)" onclick="$('#ag_sharedGroups').val([])" style="color:#409eff;margin-left:8px;">清除共享选择</a>
+                </div>
             </div>
             <div class="form-item"><label>描述</label><textarea id="ag_desc"></textarea></div>
         </div>

@@ -268,10 +268,23 @@
     </div>
 </div>
 
+<div class="modal-mask" id="modalAssessItems">
+    <div class="modal" style="width:900px; max-height:85vh; overflow:hidden;">
+        <div class="modal-header"><span id="assessItemsTitle">考核明细</span><span class="spacer"></span><span class="close" onclick="RB.closeModal('modalAssessItems')">×</span></div>
+        <div class="modal-body" style="max-height:65vh; overflow-y:auto;">
+            <div id="assessItemsContent"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalAssessItems')">关闭</button>
+        </div>
+    </div>
+</div>
+
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/project-selector.js"></script>
 <script>
+    function escAttr(v) { return (v == null ? '' : String(v)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function mapStatus(st) {
         var map = {
             'DRAFT': '草稿',
@@ -505,7 +518,7 @@
             recvTotalEstimate += Number(r.estimateAmount || 0);
             rh += '<tr><td>' + (r.stage || '') + '</td>' +
                 '<td>' + RB.formatMoney(r.scaleAmount) + '</td>' +
-                '<td>' + RB.formatMoney(r.assessAmount) + '</td>' +
+                '<td><a class="num-link" onclick="showRecvAssessItems(' + r.id + ',\'' + escAttr(r.stage || '') + '\')" style="cursor:pointer;color:#409eff;" title="点击查看考核明细">' + RB.formatMoney(r.assessAmount) + '</a></td>' +
                 '<td>' + RB.formatMoney(r.totalAmount) + '</td>' +
                 '<td>' + RB.formatMoney(r.estimateAmount) + '</td>' +
                 '<td>' + mapStatus(r.status) + '</td></tr>';
@@ -524,7 +537,7 @@
             payTotalEstimate += Number(p2.estimateAmount || 0);
             ph += '<tr><td>' + (p2.stage || '') + '</td><td>' + (p2.distributor || '') + '</td><td>' + (p2.distributorType || '') + '</td>' +
                 '<td>' + RB.formatMoney(p2.scaleAmount) + '</td>' +
-                '<td>' + RB.formatMoney(p2.assessAmount) + '</td>' +
+                '<td><a class="num-link" onclick="showPayAssessItems(' + p2.id + ',\'' + escAttr(p2.stage || '') + '\')" style="cursor:pointer;color:#409eff;" title="点击查看考核明细">' + RB.formatMoney(p2.assessAmount) + '</a></td>' +
                 '<td>' + RB.formatMoney(p2.totalAmount) + '</td>' +
                 '<td>' + RB.formatMoney(p2.estimateAmount) + '</td>' +
                 '<td>' + mapStatus(p2.status) + '</td></tr>';
@@ -773,6 +786,68 @@
             $('#viewAgreementContent').html(html);
             RB.openModal('modalViewAgreement');
         });
+    }
+
+    function renderAssessItemsTable(items, type) {
+        var token = RB.getToken ? RB.getToken() : '';
+        function dlUrl(u, p) { return (u || ('./api/file/download?path=' + encodeURIComponent(p))) + '?token=' + encodeURIComponent(token); }
+
+        var h = '<table class="table-compact" style="width:100%; font-size:13px;">';
+        h += '<thead><tr><th>考核项目</th><th>备注说明</th><th>目标</th><th>达成</th><th>奖惩金额</th><th>附件</th></tr></thead><tbody>';
+        var total = 0;
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            total += Number(it.rewardAmount || 0);
+            var attachHtml = '';
+            if (it.attachFiles && it.attachFiles.length > 0) {
+                for (var j = 0; j < it.attachFiles.length; j++) {
+                    var a = it.attachFiles[j];
+                    var url = dlUrl(a.downloadUrl, a.filePath);
+                    attachHtml += '<span style="display:inline-block; margin:2px 4px;"><a href="' + url + '" target="_blank" style="color:#409eff;" title="点击下载：' + escAttr(a.fileName) + '">' + escAttr(a.fileName) + '</a></span>';
+                }
+            }
+            h += '<tr>'
+                + '<td>' + escAttr(it.itemType || it.remark || '-') + '</td>'
+                + '<td>' + escAttr(it.remark || '') + '</td>'
+                + '<td>' + RB.formatMoney(it.targetValue) + '</td>'
+                + '<td>' + RB.formatMoney(it.actualValue) + '</td>'
+                + '<td><strong>' + RB.formatMoney(it.rewardAmount) + '</strong></td>'
+                + '<td style="max-width:200px;">' + attachHtml + '</td>'
+                + '</tr>';
+        }
+        h += '<tr style="background:#f5f7fa;font-weight:bold;"><td colspan="4" style="text-align:right;">依据考核' + (type === 'RECEIVABLE' ? '应收' : '应付') + '合计：</td><td>' + RB.formatMoney(total) + '</td><td></td></tr>';
+        h += '</tbody></table>';
+        return h;
+    }
+
+    function showRecvAssessItems(id, stage) {
+        if (!id) { RB.toast('该记录无ID', 'error'); return; }
+        $('#assessItemsTitle').text('依据考核明细应收表 - ' + (stage || ''));
+        RB.post('/api/receivable-payable?op=listReceivableAssessItems', { receivableId: id }).done(function(r) {
+            if (r.code !== 0) { RB.toast(r.msg || '加载失败', 'error'); return; }
+            var items = r.data || [];
+            if (items.length === 0) {
+                $('#assessItemsContent').html('<div style="text-align:center;color:#999;padding:30px;">暂无考核明细</div>');
+            } else {
+                $('#assessItemsContent').html(renderAssessItemsTable(items, 'RECEIVABLE'));
+            }
+            RB.openModal('modalAssessItems');
+        }).fail(function() { RB.toast('加载失败', 'error'); });
+    }
+
+    function showPayAssessItems(id, stage) {
+        if (!id) { RB.toast('该记录无ID', 'error'); return; }
+        $('#assessItemsTitle').text('依据考核明细应付表 - ' + (stage || ''));
+        RB.post('/api/receivable-payable?op=listPayableAssessItems', { payableId: id }).done(function(r) {
+            if (r.code !== 0) { RB.toast(r.msg || '加载失败', 'error'); return; }
+            var items = r.data || [];
+            if (items.length === 0) {
+                $('#assessItemsContent').html('<div style="text-align:center;color:#999;padding:30px;">暂无考核明细</div>');
+            } else {
+                $('#assessItemsContent').html(renderAssessItemsTable(items, 'PAYABLE'));
+            }
+            RB.openModal('modalAssessItems');
+        }).fail(function() { RB.toast('加载失败', 'error'); });
     }
 </script>
 </body>

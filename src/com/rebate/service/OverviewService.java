@@ -162,6 +162,12 @@ public class OverviewService {
         BigDecimal totalTarget = upstream == null ? BigDecimal.ZERO : upstream.getTargetScale();
         BigDecimal totalRate = ProjectScaleService.rate(scale.get("totalActual"), totalTarget);
 
+        // 达成数量和达成金额（独立于 calcBasis，始终返回两个口径）
+        BigDecimal totalActualQty = ProjectScaleService.sumMonthScale(
+                ProjectScaleService.loadMonthScale(projectId, "QTY"));
+        BigDecimal totalActualAmt = ProjectScaleService.sumMonthScale(
+                ProjectScaleService.loadMonthScale(projectId, "AMT"));
+
         BigDecimal s1a = scale.getOrDefault("stage1Actual", BigDecimal.ZERO);
         BigDecimal s2a = scale.getOrDefault("stage2Actual", BigDecimal.ZERO);
         BigDecimal s3a = scale.getOrDefault("stage3Actual", BigDecimal.ZERO);
@@ -200,6 +206,8 @@ public class OverviewService {
         r.put("downstreams", downs);
         r.put("monthScale", monthScale);
         r.put("totalActual", scale.get("totalActual"));
+        r.put("totalActualQty", totalActualQty);
+        r.put("totalActualAmt", totalActualAmt);
         r.put("totalTarget", totalTarget);
         r.put("totalRate", totalRate);
         r.put("stage1Actual", s1a);
@@ -643,14 +651,20 @@ public class OverviewService {
             targetMap.put(up.getProjectId(), up.getTargetScale());
         }
         
-        // 批量查询流向汇总（用于 totalActual）
+        // 批量查询流向汇总（用于 totalActual / totalActualQty / totalActualAmt / totalRate）
         Map<Long, BigDecimal> actualMap = new HashMap<>();
+        Map<Long, BigDecimal> actualQtyMap = new HashMap<>();
+        Map<Long, BigDecimal> actualAmtMap = new HashMap<>();
         for (Long pid : projectIds) {
             UpstreamAgreement up = upstreamList.stream().filter(u -> pid.equals(u.getProjectId())).findFirst().orElse(null);
             String basis = (up != null && up.getCalcBasis() != null) ? up.getCalcBasis() : "AMT";
-            Map<String, BigDecimal> monthScale = ProjectScaleService.loadMonthScale(pid, basis, null);
-            BigDecimal totalActual = monthScale.getOrDefault("totalActual", BigDecimal.ZERO);
+            BigDecimal totalActual = ProjectScaleService.sumMonthScale(
+                    ProjectScaleService.loadMonthScale(pid, basis, null));
             actualMap.put(pid, totalActual);
+            actualQtyMap.put(pid, ProjectScaleService.sumMonthScale(
+                    ProjectScaleService.loadMonthScale(pid, "QTY", null)));
+            actualAmtMap.put(pid, ProjectScaleService.sumMonthScale(
+                    ProjectScaleService.loadMonthScale(pid, "AMT", null)));
         }
         
         // 组装结果
@@ -700,6 +714,9 @@ public class OverviewService {
             row.put("coYear", p.getCoYear());
             row.put("totalTarget", totalTarget);
             row.put("totalActual", totalActual);
+            row.put("totalActualQty", actualQtyMap.getOrDefault(pid, BigDecimal.ZERO));
+            row.put("totalActualAmt", actualAmtMap.getOrDefault(pid, BigDecimal.ZERO));
+            row.put("totalRate", ProjectScaleService.rate(totalActual, totalTarget));
             row.put("receivableTotal", receivable);
             row.put("receivedTotal", received);
             row.put("investTotal", invest);

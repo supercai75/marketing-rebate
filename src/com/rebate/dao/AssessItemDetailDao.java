@@ -1,6 +1,7 @@
 package com.rebate.dao;
 
 import com.rebate.model.AssessItemDetail;
+import com.rebate.model.AttachFile;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -29,6 +30,28 @@ public class AssessItemDetailDao {
         d.setSortNo(rs.getInt("sort_no"));
         d.setCreatedAt(rs.getTimestamp("created_at"));
         return d;
+    }
+
+    private AttachFile mapAttach(ResultSet rs) throws SQLException {
+        AttachFile f = new AttachFile();
+        f.setId(rs.getLong("id"));
+        f.setFileName(rs.getString("file_name"));
+        f.setFilePath(rs.getString("file_path"));
+        f.setFileSize(rs.getObject("file_size") == null ? null : rs.getLong("file_size"));
+        f.setUploadedBy(rs.getObject("uploaded_by") == null ? null : rs.getLong("uploaded_by"));
+        f.setUploadedAt(rs.getTimestamp("uploaded_at"));
+        return f;
+    }
+
+    /** 通过id查询应收附件，用于确认归属 */
+    public AttachFile findReceivableAttach(Long id) {
+        List<AttachFile> list = BaseDao.query("SELECT * FROM prj_receivable_assess_attach WHERE id=?", this::mapAttach, id);
+        return list != null && !list.isEmpty() ? list.get(0) : null;
+    }
+    /** 通过id查询应付附件，用于确认归属 */
+    public AttachFile findPayableAttach(Long id) {
+        List<AttachFile> list = BaseDao.query("SELECT * FROM prj_payable_assess_attach WHERE id=?", this::mapAttach, id);
+        return list != null && !list.isEmpty() ? list.get(0) : null;
     }
 
     public List<AssessItemDetail> listByReceivable(Long receivableId) {
@@ -63,5 +86,53 @@ public class AssessItemDetailDao {
         return BaseDao.insertReturnId(sql, item.getPayableId(), item.getItemType(), item.getItemName(),
                 item.getRemark(), item.getTargetValue(), item.getActualValue(), item.getRewardAmount(),
                 item.getAttachFileId(), item.getSortNo());
+    }
+
+    // --- 应收明细附件 ---
+    public Long insertReceivableAssessAttach(Long assessItemId, Long receivableId, AttachFile f) {
+        return BaseDao.insertReturnId("INSERT INTO prj_receivable_assess_attach(assess_item_id, receivable_id, file_name, file_path, file_size, uploaded_by) " +
+                "VALUES (?, ?, ?, ?, ?, ?)", assessItemId, receivableId, f.getFileName(), f.getFilePath(), f.getFileSize(), f.getUploadedBy());
+    }
+    public List<AttachFile> listReceivableAttachsByItem(Long assessItemId) {
+        return BaseDao.query("SELECT * FROM prj_receivable_assess_attach WHERE assess_item_id=? ORDER BY uploaded_at DESC, id DESC",
+                this::mapAttach, assessItemId);
+    }
+    public List<AttachFile> listReceivableAttachsByReceivable(Long receivableId) {
+        return BaseDao.query("SELECT * FROM prj_receivable_assess_attach WHERE receivable_id=? ORDER BY uploaded_at DESC, id DESC",
+                this::mapAttach, receivableId);
+    }
+    public int deleteReceivableAttach(Long id) {
+        return BaseDao.update("DELETE FROM prj_receivable_assess_attach WHERE id=?", id);
+    }
+    public int deleteReceivableAttachsByReceivable(Long receivableId) {
+        return BaseDao.update("DELETE FROM prj_receivable_assess_attach WHERE receivable_id=?", receivableId);
+    }
+    public int updateReceivableAttachItemId(Long id, Long assessItemId, Long receivableId) {
+        return BaseDao.update("UPDATE prj_receivable_assess_attach SET assess_item_id=?, receivable_id=? WHERE id=?",
+                assessItemId, receivableId, id);
+    }
+
+    // --- 应付明细附件 ---
+    public Long insertPayableAssessAttach(Long assessItemId, Long payableId, AttachFile f) {
+        return BaseDao.insertReturnId("INSERT INTO prj_payable_assess_attach(assess_item_id, payable_id, file_name, file_path, file_size, uploaded_by) " +
+                "VALUES (?, ?, ?, ?, ?, ?)", assessItemId, payableId, f.getFileName(), f.getFilePath(), f.getFileSize(), f.getUploadedBy());
+    }
+    public List<AttachFile> listPayableAttachsByItem(Long assessItemId) {
+        return BaseDao.query("SELECT * FROM prj_payable_assess_attach WHERE assess_item_id=? ORDER BY uploaded_at DESC, id DESC",
+                this::mapAttach, assessItemId);
+    }
+    public List<AttachFile> listPayableAttachsByPayable(Long payableId) {
+        return BaseDao.query("SELECT * FROM prj_payable_assess_attach WHERE payable_id=? ORDER BY uploaded_at DESC, id DESC",
+                this::mapAttach, payableId);
+    }
+    public int deletePayableAttach(Long id) {
+        return BaseDao.update("DELETE FROM prj_payable_assess_attach WHERE id=?", id);
+    }
+    public int deletePayableAttachsByPayable(Long payableId) {
+        return BaseDao.update("DELETE FROM prj_payable_assess_attach WHERE payable_id=?", payableId);
+    }
+    public int updatePayableAttachItemId(Long id, Long assessItemId, Long payableId) {
+        return BaseDao.update("UPDATE prj_payable_assess_attach SET assess_item_id=?, payable_id=? WHERE id=?",
+                assessItemId, payableId, id);
     }
 }
