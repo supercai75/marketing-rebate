@@ -84,7 +84,7 @@ public class RebateCalcService {
         BigDecimal[] fullYearHolder = new BigDecimal[]{BigDecimal.ZERO};
         BigDecimal[] stageRebates = computeStageRebateAmounts(
                 rules, groupDataList, stageActuals, stageRebateActuals,
-                stageTargets, totalTarget, prevYearData, fullYearHolder);
+                stageTargets, totalTarget, prevYearData, fullYearHolder, agreement == null ? "PROGRESSIVE" : agreement.getCalcMode());
 
         return buildResult(rules, stageActuals, stageTargets, stageRebates, fullYearHolder[0]);
     }
@@ -131,7 +131,7 @@ public class RebateCalcService {
         BigDecimal[] fullYearHolder = new BigDecimal[]{BigDecimal.ZERO};
         BigDecimal[] stageRebateAmounts = computeStageRebateAmounts(
                 allRules, groupDataList, stageActuals, stageRebateActuals,
-                stageTargets, totalTarget, prevYearData, fullYearHolder);
+                stageTargets, totalTarget, prevYearData, fullYearHolder, up.getCalcMode());
 
         return buildResult(allRules, stageActuals, stageTargets, stageRebateAmounts, fullYearHolder[0]);
     }
@@ -186,7 +186,7 @@ public class RebateCalcService {
             BigDecimal[] fullYearHolder = new BigDecimal[]{BigDecimal.ZERO};
             BigDecimal[] stageRebates = computeStageRebateAmounts(
                     rules, groupDataList, stageActuals, stageRebateActuals,
-                    stageTargets, totalTarget, prevYearData, fullYearHolder);
+                    stageTargets, totalTarget, prevYearData, fullYearHolder, agreement == null ? "PROGRESSIVE" : agreement.getCalcMode());
 
             for (int i = 0; i < 4; i++) {
                 projStageActuals[i] = projStageActuals[i].add(stageActuals[i]);
@@ -274,7 +274,7 @@ public class RebateCalcService {
                                                     BigDecimal[] stageActuals, BigDecimal[] stageRebateActuals,
                                                     BigDecimal[] stageTargets,
                                                     BigDecimal totalTarget, Map<String, Object> prevYearData,
-                                                    BigDecimal[] outFullYear) {
+                                                    BigDecimal[] outFullYear, String calcMode) {
         BigDecimal[] stageRebateAmounts = zeros();
         for (int i = 0; i < 4; i++) {
             List<RebateRule> stageRules = filterStageRules(allRules, STAGE_CODES[i]);
@@ -282,7 +282,7 @@ public class RebateCalcService {
             stageRebateAmounts[i] = calcRebateForGroups(
                     stageRules, groupDataList,
                     stageActuals[i], stageRebateActuals[i],
-                    stageTargets[i], prevActual, i);
+                    stageTargets[i], prevActual, i, calcMode);
         }
         if (outFullYear != null) {
             List<RebateRule> fullYearRules = filterFullYearRules(allRules);
@@ -292,7 +292,7 @@ public class RebateCalcService {
                 BigDecimal prevTotalActual = extractPrevTotal(prevYearData);
                 outFullYear[0] = calcRebateForGroups(
                         fullYearRules, groupDataList,
-                        totalActual, totalRebateActual, totalTarget, prevTotalActual, -1);
+                        totalActual, totalRebateActual, totalTarget, prevTotalActual, -1, calcMode);
             }
         }
         return stageRebateAmounts;
@@ -367,6 +367,7 @@ public class RebateCalcService {
             GroupStageData gd = new GroupStageData();
             gd.groupId = ag.getId() == null ? 0L : ag.getId();
             gd.groupName = ag.getGroupName();
+            gd.sharedGroupIds = ag.getSharedGroupIds();
             Map<String, Object> flow = findFlowByGroupId(currentGroupFlows, gd.groupId);
             for (int i = 0; i < 4; i++) {
                 Object rawA = flow != null ? flow.get("stage" + (i + 1) + "Actual") : null;
@@ -472,6 +473,8 @@ public class RebateCalcService {
             GroupStageData gd = new GroupStageData();
             gd.groupId = toLong(ag.get("id"));
             gd.groupName = ag.get("groupName") == null ? "默认" : String.valueOf(ag.get("groupName"));
+            Object sg = ag.get("sharedGroupIds");
+            gd.sharedGroupIds = sg == null ? null : String.valueOf(sg);
             for (int i = 0; i < 4; i++) {
                 Object rawA = ag.get("stage" + (i + 1) + "Actual");
                 gd.stageActuals[i] = rawA == null
@@ -502,16 +505,32 @@ public class RebateCalcService {
     private BigDecimal calcRebateForGroups(List<RebateRule> rules, List<GroupStageData> groups,
                                            BigDecimal fallbackCalcActual, BigDecimal fallbackRebateActual,
                                            BigDecimal fallbackTarget,
-                                           BigDecimal fallbackPrev, int stageIdx) {
+                                           BigDecimal fallbackPrev, int stageIdx, String calcMode) {
         if (rules == null || rules.isEmpty()) return BigDecimal.ZERO;
         if (groups == null || groups.isEmpty()) {
             return calcRulesByType(rules, fallbackCalcActual, fallbackRebateActual,
-                    fallbackTarget, fallbackPrev);
+                    fallbackTarget, fallbackPrev, calcMode);
         }
         BigDecimal total = BigDecimal.ZERO;
+
+        // 收集所有参与共享的考核组ID（用于在普通分组时跳过）
+        java.util.Set<Long> sharedGroupIds = new java.util.HashSet<>();
         for (GroupStageData gd : groups) {
+            if (hasSharedGroups(gd)) {
+                sharedGroupIds.add(gd.groupId);
+                // 共享组配置中的其他组也加入
+                for (Long id : parseGroupIds(gd.sharedGroupIds)) {
+                    sharedGroupIds.add(id);
+                }
+            }
+        }
+
+        // 1) 普通考核组（未配置共享组）：按 assessGroupId 分组，各组独立计算
+        for (GroupStageData gd : groups) {
+            if (sharedGroupIds.contains(gd.groupId)) continue; // 共享组在后面统一处理
             List<RebateRule> rulesForGroup = new ArrayList<>();
             for (RebateRule r : rules) {
+                // 兼容旧数据：如果规则自身仍带有 sharedGroupIds，跳过（由共享逻辑处理）
                 if (hasSharedGroups(r)) continue;
                 if (ruleMatchesGroup(r, gd.groupId)) rulesForGroup.add(r);
             }
@@ -520,7 +539,7 @@ public class RebateCalcService {
                 BigDecimal rebA = valForStage(gd.stageRebateActuals, stageIdx, gd.totalRebateActual);
                 BigDecimal t = valForStage(gd.stageTargets, stageIdx, gd.totalTarget);
                 BigDecimal p = valForStage(gd.prevStageActuals, stageIdx, gd.prevTotalActual);
-                total = total.add(calcRulesByType(rulesForGroup, calcA, rebA, t, p));
+                total = total.add(calcRulesByType(rulesForGroup, calcA, rebA, t, p, calcMode));
             }
         }
         // ================================================================
@@ -530,38 +549,31 @@ public class RebateCalcService {
         //   - 各考核组的返利基数 = 自己的实际值（rebateActual）
         //   例：组2+组3共享150万目标，组2实际80万，组3实际100万
         //       共享达成率 = (80+100)/150 = 120%
-        //       组2用自己的规则(80~120%→5%)，基数=80万 → 返利=80×5%=4万
+        //       组2用自己的规则(120以上→8%)，基数=80万 → 返利=80×8%=6.4万
         //       组3用自己的规则(110~130%→9%)，基数=100万 → 返利=100×9%=9万
+        //   共享关系来源：AssessGroup.sharedGroupIds（非 RebateRule.sharedGroupIds）
         // ================================================================
 
-        // 1) 按 assessGroupId 分组共享规则（每个考核组有自己的规则集）
-        Map<Long, List<RebateRule>> sharedRulesByGroup = new LinkedHashMap<>();
-        // 无 assessGroupId 的共享规则（兜底：用汇总实际值算）
-        List<RebateRule> sharedRulesNoGroup = new ArrayList<>();
-        for (RebateRule r : rules) {
-            if (!hasSharedGroups(r)) continue;
-            Long gid = r.getAssessGroupId();
-            if (gid == null || gid == 0L) {
-                sharedRulesNoGroup.add(r);
-            } else {
-                sharedRulesByGroup.computeIfAbsent(gid, k -> new ArrayList<>()).add(r);
-            }
+        // 2) 按共享组合（sharedKey）聚合：同一共享键下的多个考核组共用达成率
+        //    每个 sharedKey 下，每个考核组用自己的规则 + 自己的实际值
+        Map<String, List<GroupStageData>> sharedBuckets = new LinkedHashMap<>();
+        for (GroupStageData gd : groups) {
+            if (!hasSharedGroups(gd)) continue;
+            String sharedKey = normalizeSharedGroupIds(gd.sharedGroupIds);
+            sharedBuckets.computeIfAbsent(sharedKey, k -> new ArrayList<>()).add(gd);
         }
 
-        // 2) 缓存每个 sharedKey 的汇总值（避免同一共享组合重复计算）
+        // 缓存每个 sharedKey 的汇总值
         Map<String, BigDecimal> sharedCalcCache = new HashMap<>();
         Map<String, BigDecimal> sharedTargetCache = new HashMap<>();
         Map<String, BigDecimal> sharedPrevCache = new HashMap<>();
 
-        // 3) 对每个有独立规则的考核组，用共享达成率 + 自己的规则 + 自己的实际值算返利
-        for (Map.Entry<Long, List<RebateRule>> entry : sharedRulesByGroup.entrySet()) {
-            Long gid = entry.getKey();
-            List<RebateRule> groupRules = entry.getValue();
-
-            String sharedKey = normalizeSharedGroupIds(groupRules.get(0).getSharedGroupIds());
+        for (Map.Entry<String, List<GroupStageData>> entry : sharedBuckets.entrySet()) {
+            String sharedKey = entry.getKey();
+            List<GroupStageData> sharedGroups = entry.getValue();
             List<Long> sharedGIds = parseGroupIds(sharedKey);
 
-            // 计算共享达成率用的汇总值
+            // 共享达成率用的汇总值
             BigDecimal sharedCalc = sharedCalcCache.computeIfAbsent(sharedKey, k -> {
                 BigDecimal s = BigDecimal.ZERO;
                 for (Long id : sharedGIds) {
@@ -587,65 +599,43 @@ public class RebateCalcService {
                 return s;
             });
 
-            // 本考核组自己的实际值（作为返利基数和Y变量）
-            GroupStageData thisGroup = findGroupById(groups, gid);
-            BigDecimal ownRebateActual = thisGroup != null
-                    ? valForStage(thisGroup.stageRebateActuals, stageIdx, thisGroup.totalRebateActual)
-                    : BigDecimal.ZERO;
-
-            // calcActual = 共享汇总值（用于算达成率X和区间匹配）
-            // rebateActual = 本组自己的实际值（用于返利基数base和Y变量）
-            // target = 共享目标（用于算达成率X）
-            total = total.add(calcRulesByType(groupRules, sharedCalc, ownRebateActual, sharedTarget, sharedPrev));
+            // 每个考核组用自己的规则 + 自己的实际值，但用共享达成率
+            for (GroupStageData gd : sharedGroups) {
+                List<RebateRule> groupRules = new ArrayList<>();
+                for (RebateRule r : rules) {
+                    if (ruleMatchesGroup(r, gd.groupId)) groupRules.add(r);
+                }
+                if (groupRules.isEmpty()) continue;
+                BigDecimal ownRebateActual = valForStage(gd.stageRebateActuals, stageIdx, gd.totalRebateActual);
+                // calcActual = 共享汇总值；rebateActual = 本组实际值；target = 共享目标
+                total = total.add(calcRulesByType(groupRules, sharedCalc, ownRebateActual, sharedTarget, sharedPrev, calcMode));
+            }
         }
 
-        // 4) 兜底：无 assessGroupId 的共享规则，用汇总实际值算（旧逻辑兼容）
-        if (!sharedRulesNoGroup.isEmpty()) {
-            Map<String, BigDecimal> aggCalcMap = new HashMap<>();
-            Map<String, BigDecimal> aggRebateMap = new HashMap<>();
-            Map<String, BigDecimal> aggTargetMap = new HashMap<>();
-            Map<String, BigDecimal> aggPrevMap = new HashMap<>();
-            Map<String, List<RebateRule>> noGroupBuckets = new LinkedHashMap<>();
-            for (RebateRule r : sharedRulesNoGroup) {
-                String key = normalizeSharedGroupIds(r.getSharedGroupIds());
-                noGroupBuckets.computeIfAbsent(key, k -> new ArrayList<>()).add(r);
+        // 3) 兜底：规则自身仍带有 sharedGroupIds 但考核组未配置共享（旧数据兼容）
+        //    用规则上的 sharedGroupIds 聚合，按汇总实际值计算
+        Map<String, List<RebateRule>> legacySharedBuckets = new LinkedHashMap<>();
+        for (RebateRule r : rules) {
+            if (!hasSharedGroups(r)) continue;
+            // 如果该规则所属考核组已在新共享逻辑中处理，则跳过
+            Long rgid = r.getAssessGroupId();
+            if (rgid != null && sharedGroupIds.contains(rgid)) continue;
+            String key = normalizeSharedGroupIds(r.getSharedGroupIds());
+            legacySharedBuckets.computeIfAbsent(key, k -> new ArrayList<>()).add(r);
+        }
+        for (Map.Entry<String, List<RebateRule>> e : legacySharedBuckets.entrySet()) {
+            List<Long> gIds = parseGroupIds(e.getKey());
+            BigDecimal aggCalc = BigDecimal.ZERO, aggRebate = BigDecimal.ZERO, aggTarget = BigDecimal.ZERO, aggPrev = BigDecimal.ZERO;
+            for (Long id : gIds) {
+                GroupStageData gd = findGroupById(groups, id);
+                if (gd != null) {
+                    aggCalc = aggCalc.add(valForStage(gd.stageActuals, stageIdx, gd.totalActual));
+                    aggRebate = aggRebate.add(valForStage(gd.stageRebateActuals, stageIdx, gd.totalRebateActual));
+                    aggTarget = aggTarget.add(valForStage(gd.stageTargets, stageIdx, gd.totalTarget));
+                    aggPrev = aggPrev.add(valForStage(gd.prevStageActuals, stageIdx, gd.prevTotalActual));
+                }
             }
-            for (Map.Entry<String, List<RebateRule>> e : noGroupBuckets.entrySet()) {
-                List<Long> gIds = parseGroupIds(e.getKey());
-                BigDecimal aggCalc = aggCalcMap.computeIfAbsent(e.getKey(), k -> {
-                    BigDecimal s = BigDecimal.ZERO;
-                    for (Long id : gIds) {
-                        GroupStageData gd = findGroupById(groups, id);
-                        if (gd != null) s = s.add(valForStage(gd.stageActuals, stageIdx, gd.totalActual));
-                    }
-                    return s;
-                });
-                BigDecimal aggRebate = aggRebateMap.computeIfAbsent(e.getKey(), k -> {
-                    BigDecimal s = BigDecimal.ZERO;
-                    for (Long id : gIds) {
-                        GroupStageData gd = findGroupById(groups, id);
-                        if (gd != null) s = s.add(valForStage(gd.stageRebateActuals, stageIdx, gd.totalRebateActual));
-                    }
-                    return s;
-                });
-                BigDecimal aggTarget = aggTargetMap.computeIfAbsent(e.getKey(), k -> {
-                    BigDecimal s = BigDecimal.ZERO;
-                    for (Long id : gIds) {
-                        GroupStageData gd = findGroupById(groups, id);
-                        if (gd != null) s = s.add(valForStage(gd.stageTargets, stageIdx, gd.totalTarget));
-                    }
-                    return s;
-                });
-                BigDecimal aggPrev = aggPrevMap.computeIfAbsent(e.getKey(), k -> {
-                    BigDecimal s = BigDecimal.ZERO;
-                    for (Long id : gIds) {
-                        GroupStageData gd = findGroupById(groups, id);
-                        if (gd != null) s = s.add(valForStage(gd.prevStageActuals, stageIdx, gd.prevTotalActual));
-                    }
-                    return s;
-                });
-                total = total.add(calcRulesByType(e.getValue(), aggCalc, aggRebate, aggTarget, aggPrev));
-            }
+            total = total.add(calcRulesByType(e.getValue(), aggCalc, aggRebate, aggTarget, aggPrev, calcMode));
         }
         return total;
     }
@@ -655,9 +645,10 @@ public class RebateCalcService {
      *
      * @param calcActual   calcBasis 口径实际值（用于区间匹配 + 计算X）
      * @param rebateActual rebateCalcBasis 口径实际值（用于Y变量 + base）
+     * @param calcMode     返利计算模式 PROGRESSIVE / FLAT（来自协议）
      */
     private BigDecimal calcRulesByType(List<RebateRule> rules, BigDecimal calcActual, BigDecimal rebateActual,
-                                       BigDecimal target, BigDecimal prevActual) {
+                                       BigDecimal target, BigDecimal prevActual, String calcMode) {
         if (rules == null || rules.isEmpty()) return BigDecimal.ZERO;
         Map<String, List<RebateRule>> byType = new LinkedHashMap<>();
         for (RebateRule r : rules) {
@@ -670,16 +661,10 @@ public class RebateCalcService {
             typeRules.sort(Comparator.comparing(r -> nz(r.getThresholdLow())));
             // X: 按 calcBasis 计算达成率/达成额/增长率（匹配区间阈值）
             BigDecimal x = computeX(e.getKey(), calcActual, target, prevActual);
-            String rt = e.getKey();
             // 返利计算基数：统一使用 rebateActual（返利计算依据口径的实际值）
-            //   - SCALE（按达成额）  → rebateActual（如中标金额）
-            //   - PERSENT（按达成率）→ rebateActual（如中标金额）
-            //   - GROWTH（按增长率） → rebateActual（如中标金额）
-            // 例：calcBasis=AMT(105万), rebateCalcBasis=BID_AMT(88万), 目标100万, 达成3%
-            //     判定105万>=100万→达成, 返利=88×3%=2.64万
             BigDecimal base = nz(rebateActual);
             // actualY（Y变量） = rebateBasis 实际值（完成核算数量/金额）
-            total = total.add(RebateCalcUtil.calcRebateAmount(typeRules, x, nz(rebateActual), base));
+            total = total.add(RebateCalcUtil.calcRebateAmount(typeRules, x, nz(rebateActual), base, calcMode));
         }
         return total;
     }
@@ -726,6 +711,11 @@ public class RebateCalcService {
     // ================================================================
     private boolean hasSharedGroups(RebateRule r) {
         String s = r.getSharedGroupIds();
+        return s != null && !s.trim().isEmpty();
+    }
+
+    private boolean hasSharedGroups(GroupStageData gd) {
+        String s = gd.sharedGroupIds;
         return s != null && !s.trim().isEmpty();
     }
 
@@ -868,6 +858,7 @@ public class RebateCalcService {
     private static class GroupStageData {
         Long groupId;
         String groupName;
+        String sharedGroupIds;                          // 共享考核组ID列表（来自AssessGroup，逗号分隔）
         BigDecimal[] stageActuals = zeros();           // calcBasis口径：用于判定达成率
         BigDecimal[] stageRebateActuals = zeros();     // rebateCalcBasis口径：用于返利基数和Y变量
         BigDecimal[] stageTargets = zeros();

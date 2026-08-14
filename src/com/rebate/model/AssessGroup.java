@@ -16,8 +16,9 @@ public class AssessGroup {
     private BigDecimal stage2Target;
     private BigDecimal stage3Target;
     private BigDecimal stage4Target;
+    private String sharedGroupIds; // 共享考核组ID列表（逗号分隔，如 "2,3"）
     private Long createdBy;
-    
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getProjectId() { return projectId; }
@@ -38,6 +39,8 @@ public class AssessGroup {
     public void setStage3Target(BigDecimal stage3Target) { this.stage3Target = stage3Target; }
     public BigDecimal getStage4Target() { return stage4Target; }
     public void setStage4Target(BigDecimal stage4Target) { this.stage4Target = stage4Target; }
+    public String getSharedGroupIds() { return sharedGroupIds; }
+    public void setSharedGroupIds(String sharedGroupIds) { this.sharedGroupIds = sharedGroupIds; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
 }

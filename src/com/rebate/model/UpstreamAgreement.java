@@ -23,6 +23,7 @@ public class UpstreamAgreement {
     private String calcBasis;
     private BigDecimal targetScale;
     private String calcMethod;
+    private String calcMode; // 返利计算模式: PROGRESSIVE(递进式) / FLAT(全部计算)
     private String rebateCalcBasis; // 返利计算依据: QTY/SALE_QTY/CALC_AMT/BID_AMT
     private String supplier;
     private String targetDept;
@@ -86,6 +87,8 @@ public class UpstreamAgreement {
     public void setTargetScale(BigDecimal targetScale) { this.targetScale = targetScale; }
     public String getCalcMethod() { return calcMethod; }
     public void setCalcMethod(String calcMethod) { this.calcMethod = calcMethod; }
+    public String getCalcMode() { return calcMode; }
+    public void setCalcMode(String calcMode) { this.calcMode = calcMode; }
     public String getRebateCalcBasis() { return rebateCalcBasis; }
     public void setRebateCalcBasis(String rebateCalcBasis) { this.rebateCalcBasis = rebateCalcBasis; }
     public String getSupplier() { return supplier; }

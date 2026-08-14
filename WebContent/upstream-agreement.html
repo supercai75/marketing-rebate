@@ -97,6 +97,11 @@
                         <option value="CALC_AMT">核算金额</option>
                         <option value="BID_AMT">中标金额</option>
                     </select></div>
+                <div class="form-item col-4"><label>计算模式</label>
+                    <select id="f_calcMode">
+                        <option value="PROGRESSIVE">递进式</option>
+                        <option value="FLAT">全部计算</option>
+                    </select></div>
                 <div class="form-item col-4"><label>协议指标规模数</label><input id="f_targetScale" type="number" step="0.01"></div>
             </div>
 
@@ -214,7 +219,7 @@
                 <button class="btn btn-sm btn-success" onclick="showAddAssessGroupModal()">+ 新增</button>
             </div>
             <table style="width:100%;">
-                <thead><tr><th>编码</th><th>名称</th><th>总体目标</th><th>阶段1</th><th>阶段2</th><th>阶段3</th><th>阶段4</th><th>描述</th><th>操作</th></tr></thead>
+                <thead><tr><th>编码</th><th>名称</th><th>总体目标</th><th>阶段1</th><th>阶段2</th><th>阶段3</th><th>阶段4</th><th>共享考核组</th><th>描述</th><th>操作</th></tr></thead>
                 <tbody id="agBody"></tbody>
             </table>
         </div>
@@ -238,6 +243,10 @@
                 <div class="form-item col-6"><label>阶段二目标</label><input id="ag_stage2" type="number" step="0.01"></div>
                 <div class="form-item col-6"><label>阶段三目标</label><input id="ag_stage3" type="number" step="0.01"></div>
                 <div class="form-item col-6"><label>阶段四目标</label><input id="ag_stage4" type="number" step="0.01"></div>
+            </div>
+            <div class="form-item"><label>共享考核组</label>
+                <select id="ag_sharedGroups" multiple style="width:100%; height:70px; font-size:12px;"></select>
+                <div style="font-size:11px;color:#909399;margin-top:4px;">选择其他考核组后，本组将与所选组共享目标（达成率按合计实际值/合计目标值计算，各组仍用自己的规则和实际值计算返利）</div>
             </div>
             <div class="form-item"><label>描述</label><textarea id="ag_desc" rows="2" style="width:100%;"></textarea></div>
         </div>
@@ -313,6 +322,12 @@
     var mainAttachs = [];
     var suppAttachs = [];
 
+    // 指标计算依据 → 返利计算依据 默认值联动
+    // 数量(QTY) → 数量(QTY)；金额(AMT) → 核算金额(CALC_AMT)
+    function defaultRebateBasis(calcBasis) {
+        return calcBasis === 'AMT' ? 'CALC_AMT' : 'QTY';
+    }
+
     $(function () {
         RB.checkLogin(function () {
             loadYears();
@@ -333,6 +348,11 @@
             });
             loadAssessGroups();
             load();
+        });
+
+        // 指标计算依据变更时，返利计算依据自动跟随默认值（用户可随后手动覆盖）
+        $('#f_calcBasis').on('change', function () {
+            $('#f_rebateCalcBasis').val(defaultRebateBasis($(this).val()));
         });
 
         $('#btnSearch').on('click', load);
@@ -454,6 +474,8 @@
                 $('#f_region').val(d.region || '');
                 $('#f_targetTerminal').val(d.targetTerminal || '');
                 $('#f_calcBasis').val(d.calcBasis || 'AMT');
+                $('#f_rebateCalcBasis').val(d.rebateCalcBasis || defaultRebateBasis(d.calcBasis || 'AMT'));
+                $('#f_calcMode').val(d.calcMode || 'PROGRESSIVE');
                 $('#f_targetScale').val(d.targetScale || '');
                 $('#f_supplier').val(d.supplier || '');
                 $('#f_targetDept').val(d.targetDept || '');
@@ -540,7 +562,33 @@
     function loadAssessGroups() {
         RB.post('/api/upstream-agreement?op=listAssessGroups', { projectId: $('#projectId').val() }).done(function (r) {
             assessGroups = r.data || [];
-            
+
+            // 构建共享组多选选项（排除自身）
+            function buildAgSharedOptions(selectedIds, excludeId) {
+                var ids = (selectedIds || '').split(/[,，;； ]+/).filter(function(s) { return s.trim(); });
+                var html = '';
+                (assessGroups || []).forEach(function(g) {
+                    if (excludeId && g.id == excludeId) return; // 排除自身
+                    var sel = ids.indexOf(String(g.id)) >= 0 ? 'selected' : '';
+                    html += '<option value="' + g.id + '" ' + sel + '>' + g.groupName + '</option>';
+                });
+                return html;
+            }
+            window._buildAgSharedOptions = buildAgSharedOptions;
+
+            // 共享组ID → 名称列表
+            function sharedIdsToNames(ids) {
+                if (!ids) return '';
+                var arr = ids.split(/[,，;； ]+/).filter(function(s) { return s.trim(); });
+                var names = [];
+                for (var i = 0; i < arr.length; i++) {
+                    for (var j = 0; j < assessGroups.length; j++) {
+                        if (String(assessGroups[j].id) === arr[i]) { names.push(assessGroups[j].groupName); break; }
+                    }
+                }
+                return names.join('、');
+            }
+
             var agHtml = '';
             if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
                 var g = r.data[i];
@@ -550,12 +598,13 @@
                     '<td>' + (g.stage2Target || 0) + '</td>' +
                     '<td>' + (g.stage3Target || 0) + '</td>' +
                     '<td>' + (g.stage4Target || 0) + '</td>' +
+                    '<td>' + sharedIdsToNames(g.sharedGroupIds) + '</td>' +
                     '<td>' + (g.description || '') + '</td>' +
                     '<td><button class="btn btn-sm" onclick="editAssessGroup(' + g.id + ')">编辑</button> ' +
                     '<button class="btn btn-sm btn-danger" onclick="deleteAssessGroup(' + g.id + ')">删除</button></td></tr>';
             }
-            $('#agBody').html(agHtml || '<tr><td colspan="9" style="text-align:center;color:#999;padding:20px;">暂无考核组</td></tr>');
-            
+            $('#agBody').html(agHtml || '<tr><td colspan="10" style="text-align:center;color:#999;padding:20px;">暂无考核组</td></tr>');
+
             // 更新返利规则的tab
             renderRebateRuleTabs();
         });
@@ -659,7 +708,7 @@
          'f_calcMethod','f_policyDetail','f_rebatePayTime','f_teamAssessSettle',
          'f_formalNames','f_informalNames'].forEach(function (id) { $('#' + id).val(''); });
         $('#f_periodStartDate').val(''); $('#f_periodEndDate').val('');
-        $('#f_calcBasis').val('QTY'); $('#f_rebateCalcBasis').val('QTY'); $('#f_settleBasis').val('预付'); $('#f_rebatePayType').val('票折');
+        $('#f_calcBasis').val('QTY'); $('#f_rebateCalcBasis').val('QTY'); $('#f_calcMode').val('PROGRESSIVE'); $('#f_settleBasis').val('预付'); $('#f_rebatePayType').val('票折');
         $('#f_requiredStaffNum').val(0); $('#f_formalCount').val(0); $('#f_informalCount').val(0);
         $('#f_stage1').val(0); $('#f_stage2').val(0); $('#f_stage3').val(0); $('#f_stage4').val(0);
         currentAssessGroupId = null;
@@ -690,7 +739,8 @@
         $('#f_region').val(a.region);
         $('#f_targetTerminal').val(a.targetTerminal);
         $('#f_calcBasis').val(a.calcBasis || 'QTY');
-        $('#f_rebateCalcBasis').val(a.rebateCalcBasis || 'QTY');
+        $('#f_rebateCalcBasis').val(a.rebateCalcBasis || defaultRebateBasis(a.calcBasis || 'QTY'));
+        $('#f_calcMode').val(a.calcMode || 'PROGRESSIVE');
         $('#f_targetScale').val(a.targetScale);
         $('#f_supplier').val(a.supplier);
         $('#f_targetDept').val(a.targetDept);
@@ -808,19 +858,17 @@
                         thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
                         rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
                         expression: (row.find('.rule-expression').val() || '').trim() || null,
-                        rewardType: row.find('.rule-type').val(),
-                        calcMode: row.find('.rule-calcMode').val(),
-                        sharedGroupIds: normalizeSharedGroupIds((row.find('.rule-sharedGroups').val() || []).join(','))
+                        rewardType: row.find('.rule-type').val()
                     });
                 });
                 rebateRulesMap[gid] = groupRules;
             }
         }
-        
+
         currentAssessGroupId = groupId;
         renderRebateRuleTabs();
     }
-    
+
     function saveCurrentTabRules() {
         if (currentAssessGroupId === null || currentAssessGroupId === undefined) return;
         var groupRules = [];
@@ -837,9 +885,7 @@
                     thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
                     rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
                     expression: (row.find('.rule-expression').val() || '').trim() || null,
-                    rewardType: row.find('.rule-type').val(),
-                    calcMode: row.find('.rule-calcMode').val(),
-                    sharedGroupIds: normalizeSharedGroupIds((row.find('.rule-sharedGroups').val() || []).join(','))
+                    rewardType: row.find('.rule-type').val()
                 });
             });
         }
@@ -869,7 +915,6 @@
             html += '<div style="margin-bottom:8px;font-weight:600;color:#409eff;">考核组: ' + groupName + '</div>';
         }
         html += '<div style="margin-bottom:8px;font-size:11px;color:#909399;">提示：按达成额时阈值为金额，按达成率时阈值为百分比(%)。表达式以 X 代表 达成率/增长率/达成额，Y 代表 完成核算数量，X 若大于区间上限则取上限；表达式为空或纯数字时使用「返利比例」列。例：0.125*(X-60)+2</div>';
-        html += '<div style="margin-bottom:8px;font-size:11px;color:#909399;">共享考核组：选择多个考核组后，该规则将按照这些考核组的完成总和计算达成率</div>';
         html += '<table class="rule-table" id="rebateRuleTable_' + currentAssessGroupId + '">';
         html += '<thead><tr>';
         html += '<th>阶段</th>';
@@ -878,8 +923,6 @@
         html += '<th>返利比例(%)</th>';
         html += '<th style="min-width:170px;">表达式<br><span style="font-weight:normal;color:#909399;font-size:11px;">例: 0.125*(X-60)+2</span></th>';
         html += '<th>计算类型</th>';
-        html += '<th>计算模式</th>';
-        html += '<th>共享考核组</th>';
         html += '<th>操作</th>';
         html += '</tr></thead>';
         html += '<tbody id="rebateRuleBody_' + currentAssessGroupId + '">';
@@ -922,8 +965,6 @@
         var typeOptions = '<option value="PERSENT"' + (data && data.rewardType === 'PERSENT' ? ' selected' : '') + '>按达成率</option>' +
             '<option value="GROWTH"' + (data && data.rewardType === 'GROWTH' ? ' selected' : '') + '>按销售增长</option>' +
             '<option value="SCALE"' + (data && data.rewardType === 'SCALE' ? ' selected' : '') + '>按达成额</option>';
-        var calcModeOptions = '<option value="PROGRESSIVE"' + (data && data.calcMode === 'PROGRESSIVE' ? ' selected' : '') + '>递进式</option>' +
-            '<option value="FLAT"' + (data && data.calcMode === 'FLAT' ? ' selected' : '') + '>全部计算</option>';
         var ratio = data ? (data.rebateRatio * 100 || 0) : 0;
         var exprVal = (data && data.expression != null && data.expression !== '') ? data.expression : '';
         var html = '<tr id="' + rowId + '" data-rule-id="' + ruleId + '">' +
@@ -933,8 +974,6 @@
             '<td><input type="number" class="rule-ratio" step="0.01" value="' + ratio + '"></td>' +
             '<td><input type="text" class="rule-expression" placeholder="如 0.125*(X-60)+2" value="' + exprVal + '"></td>' +
             '<td><select class="rule-type">' + typeOptions + '</select></td>' +
-            '<td><select class="rule-calcMode">' + calcModeOptions + '</select></td>' +
-            '<td><select class="rule-sharedGroups" multiple style="width:120px; height:60px; font-size:12px;">' + buildSharedGroupOptions(data && data.sharedGroupIds ? data.sharedGroupIds : '') + '</select></td>' +
             '<td><span class="delete-row-btn" onclick="deleteRebateRuleRowForGroup(\'' + rowId + '\')">删除</span></td>' +
             '</tr>';
         return html;
@@ -954,8 +993,6 @@
         var typeOptions = '<option value="PERSENT">按达成率</option>' +
             '<option value="GROWTH">按销售增长</option>' +
             '<option value="SCALE">按达成额</option>';
-        var calcModeOptions = '<option value="PROGRESSIVE">递进式</option>' +
-            '<option value="FLAT">全部计算</option>';
         var html = '<tr id="' + rowId + '">' +
             '<td><select class="rule-stage">' + stageOptions + '</select></td>' +
             '<td><input type="number" class="rule-threshold-low" step="0.01" value="0"></td>' +
@@ -963,8 +1000,6 @@
             '<td><input type="number" class="rule-ratio" step="0.01" value="0"></td>' +
             '<td><input type="text" class="rule-expression" placeholder="如 0.125*(X-60)+2" value=""></td>' +
             '<td><select class="rule-type">' + typeOptions + '</select></td>' +
-            '<td><select class="rule-calcMode">' + calcModeOptions + '</select></td>' +
-            '<td><select class="rule-sharedGroups" multiple style="width:120px; height:60px; font-size:12px;">' + buildSharedGroupOptions('') + '</select></td>' +
             '<td><span class="delete-row-btn" onclick="deleteRebateRuleRowForGroup(\'' + rowId + '\')">删除</span></td>' +
             '</tr>';
         tbody.append(html);
@@ -1007,17 +1042,14 @@
                     tbody.find('tr').each(function () {
                         var row = $(this);
                         groupRules.push({
-                            id: row.attr('data-rule-id') || null,
-                            assessGroupId: gid,
-                            stageCode: row.find('.rule-stage').val(),
-                            thresholdLow: parseFloat(row.find('.rule-threshold-low').val()) || 0,
-                            thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
-                            rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
-                            expression: (row.find('.rule-expression').val() || '').trim() || null,
-                            rewardType: row.find('.rule-type').val(),
-                            calcMode: row.find('.rule-calcMode').val(),
-                            sharedGroupIds: normalizeSharedGroupIds((row.find('.rule-sharedGroups').val() || []).join(','))
-                        });
+                        id: row.attr('data-rule-id') || null,
+                        assessGroupId: gid,
+                        stageCode: row.find('.rule-stage').val(),
+                        thresholdLow: parseFloat(row.find('.rule-threshold-low').val()) || 0,
+                        thresholdHigh: parseFloat(row.find('.rule-threshold-high').val()) || 0,
+                        rebateRatio: (parseFloat(row.find('.rule-ratio').val()) || 0) / 100,
+                        expression: (row.find('.rule-expression').val() || '').trim() || null,
+                        rewardType: row.find('.rule-type').val()
                     });
                     rebateRulesMap[gid] = groupRules;
                 }
@@ -1095,6 +1127,7 @@
             targetTerminal: $('#f_targetTerminal').val(),
             calcBasis: $('#f_calcBasis').val(),
             rebateCalcBasis: $('#f_rebateCalcBasis').val(),
+            calcMode: $('#f_calcMode').val(),
             targetScale: $('#f_targetScale').val(),
             supplier: $('#f_supplier').val(),
             targetDept: $('#f_targetDept').val(),
@@ -1157,6 +1190,7 @@
             $('#ag_stage2').val(0);
             $('#ag_stage3').val(0);
             $('#ag_stage4').val(0);
+            $('#ag_sharedGroups').html(window._buildAgSharedOptions ? window._buildAgSharedOptions('', '') : '');
             $('#ag_desc').val('');
             RB.openModal('modalAssessGroupEdit');
         }, '权限不足，无法新增上游协议');
@@ -1174,6 +1208,8 @@
                     $('#ag_stage2').val(r.data.stage2Target || 0);
                     $('#ag_stage3').val(r.data.stage3Target || 0);
                     $('#ag_stage4').val(r.data.stage4Target || 0);
+                    // 共享组多选：排除自身，回填已选
+                    $('#ag_sharedGroups').html(window._buildAgSharedOptions ? window._buildAgSharedOptions(r.data.sharedGroupIds || '', r.data.id) : '');
                     $('#ag_desc').val(r.data.description || '');
                     RB.openModal('modalAssessGroupEdit');
                 }
@@ -1189,7 +1225,9 @@
             var name = $('#ag_name').val();
             if (!code) { RB.toast('请输入考核组编码', 'error'); return; }
             if (!name) { RB.toast('请输入考核组名称', 'error'); return; }
-            
+
+            var sharedIds = ($('#ag_sharedGroups').val() || []).join(',');
+
             var p = {
                 projectId: projectId,
                 groupCode: code,
@@ -1199,12 +1237,13 @@
                 stage2Target: $('#ag_stage2').val() || 0,
                 stage3Target: $('#ag_stage3').val() || 0,
                 stage4Target: $('#ag_stage4').val() || 0,
+                sharedGroupIds: sharedIds,
                 description: $('#ag_desc').val()
             };
-            
+
             var op = id ? 'updateAssessGroup' : 'addAssessGroup';
             if (id) p.id = id;
-            
+
             RB.post('/api/upstream-agreement?op=' + op, p).done(function (r) {
                 if (r.code === 0) {
                     RB.toast('保存成功', 'success');

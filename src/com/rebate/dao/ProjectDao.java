@@ -69,7 +69,7 @@ public class ProjectDao {
         String sql = BASE_SELECT + " WHERE (? = '' OR p.project_name LIKE ? OR p.brand LIKE ? OR p.project_code LIKE ?) " +
                 "AND (? = '' OR p.status = ?) " +
                 "AND (? = '' OR p.co_year = ?) " +
-                "AND (? IS NULL OR p.project_group_id = ?) " +
+                "AND (CAST(? AS BIGINT) IS NULL OR p.project_group_id = ?) " +
                 "ORDER BY p.id DESC LIMIT ? OFFSET ?";
         return BaseDao.query(sql, this::map, kw, kw, kw, kw,
                 status == null ? "" : status, status == null ? "" : status,
@@ -83,7 +83,7 @@ public class ProjectDao {
         String sql = "SELECT COUNT(*) FROM prj_project p WHERE (? = '' OR p.project_name LIKE ? OR p.brand LIKE ? OR p.project_code LIKE ?) " +
                 "AND (? = '' OR p.status = ?) " +
                 "AND (? = '' OR p.co_year = ?) " +
-                "AND (? IS NULL OR p.project_group_id = ?)";
+                "AND (CAST(? AS BIGINT) IS NULL OR p.project_group_id = ?)";
         return BaseDao.count(sql, kw, kw, kw, kw,
                 status == null ? "" : status, status == null ? "" : status,
                 coYear == null ? "" : coYear, coYear == null ? "" : coYear,

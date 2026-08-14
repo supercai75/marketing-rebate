@@ -44,6 +44,7 @@ public class RebateRuleDao {
         g.setStage2Target(rs.getBigDecimal("stage2_target"));
         g.setStage3Target(rs.getBigDecimal("stage3_target"));
         g.setStage4Target(rs.getBigDecimal("stage4_target"));
+        try { g.setSharedGroupIds(rs.getString("shared_group_ids")); } catch (SQLException ignored) {}
         return g;
     }
 
@@ -107,15 +108,17 @@ public class RebateRuleDao {
     }
 
     public Long insertAssessGroup(AssessGroup group) {
-        String sql = "INSERT INTO prj_assess_group(project_id, group_code, group_name, description, target_scale, stage1_target, stage2_target, stage3_target, stage4_target, created_by) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO prj_assess_group(project_id, group_code, group_name, description, target_scale, stage1_target, stage2_target, stage3_target, stage4_target, shared_group_ids, created_by) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql, group.getProjectId(), group.getGroupCode(), group.getGroupName(), group.getDescription(),
-                group.getTargetScale(), group.getStage1Target(), group.getStage2Target(), group.getStage3Target(), group.getStage4Target(), group.getCreatedBy());
+                group.getTargetScale(), group.getStage1Target(), group.getStage2Target(), group.getStage3Target(), group.getStage4Target(),
+                group.getSharedGroupIds(), group.getCreatedBy());
     }
 
     public int updateAssessGroup(AssessGroup group) {
-        String sql = "UPDATE prj_assess_group SET group_code=?, group_name=?, description=?, target_scale=?, stage1_target=?, stage2_target=?, stage3_target=?, stage4_target=? WHERE id=?";
+        String sql = "UPDATE prj_assess_group SET group_code=?, group_name=?, description=?, target_scale=?, stage1_target=?, stage2_target=?, stage3_target=?, stage4_target=?, shared_group_ids=? WHERE id=?";
         return BaseDao.update(sql, group.getGroupCode(), group.getGroupName(), group.getDescription(),
-                group.getTargetScale(), group.getStage1Target(), group.getStage2Target(), group.getStage3Target(), group.getStage4Target(), group.getId());
+                group.getTargetScale(), group.getStage1Target(), group.getStage2Target(), group.getStage3Target(), group.getStage4Target(),
+                group.getSharedGroupIds(), group.getId());
     }
 
     public int deleteAssessGroup(Long id) {

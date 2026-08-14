@@ -94,14 +94,26 @@ public class RebateCalcUtil {
      */
     public static BigDecimal calcRebateAmount(List<RebateRule> rules, BigDecimal actualX,
                                                BigDecimal actualY, BigDecimal baseAmount) {
+        return calcRebateAmount(rules, actualX, actualY, baseAmount, null);
+    }
+
+    /**
+     * 计算返利金额（支持递进式和全部计算两种模式），显式传入 calcMode
+     *
+     * @param calcMode 计算模式 PROGRESSIVE(递进式) / FLAT(全部计算)；
+     *                 为 null 时回退到规则自身的 calcMode 字段（兼容旧数据）
+     */
+    public static BigDecimal calcRebateAmount(List<RebateRule> rules, BigDecimal actualX,
+                                               BigDecimal actualY, BigDecimal baseAmount, String calcMode) {
         if (rules == null || rules.isEmpty()) return BigDecimal.ZERO;
         BigDecimal x = nvl(actualX);
         BigDecimal y = nvl(actualY);
         BigDecimal base = nvl(baseAmount);
 
-        // 判断计算模式：默认 PROGRESSIVE
-        String calcMode = rules.get(0).getCalcMode();
-        boolean isFlat = "FLAT".equalsIgnoreCase(calcMode);
+        // 判断计算模式：优先用传入参数，回退到规则字段
+        String mode = calcMode;
+        if (mode == null || mode.isEmpty()) mode = rules.get(0).getCalcMode();
+        boolean isFlat = "FLAT".equalsIgnoreCase(mode);
 
         if (isFlat) {
             // 全部计算：找到匹配区间的比例，用整体基数 × 比例

@@ -360,6 +360,8 @@ public class UpstreamAgreementServlet extends BaseServlet {
         a.setCalcBasis(WebUtil.getSafeParam(p, "calcBasis"));
         a.setTargetScale(toBd(p.get("targetScale")));
         a.setCalcMethod(WebUtil.getSafeParam(p, "calcMethod"));
+        String calcMode = WebUtil.getSafeParam(p, "calcMode");
+        a.setCalcMode(calcMode == null || calcMode.isEmpty() ? "PROGRESSIVE" : calcMode);
         a.setRebateCalcBasis(WebUtil.getSafeParam(p, "rebateCalcBasis"));
         a.setSupplier(WebUtil.getSafeParam(p, "supplier"));
         a.setTargetDept(WebUtil.getSafeParam(p, "targetDept"));
@@ -440,6 +442,7 @@ public class UpstreamAgreementServlet extends BaseServlet {
         g.setStage2Target(toBd(p.get("stage2Target")));
         g.setStage3Target(toBd(p.get("stage3Target")));
         g.setStage4Target(toBd(p.get("stage4Target")));
+        g.setSharedGroupIds(normalizeSharedGroupIds(WebUtil.getSafeParam(p, "sharedGroupIds")));
         g.setCreatedBy(u.getId());
         Long id = ruleDao.insertAssessGroup(g);
         ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", id));
@@ -456,6 +459,7 @@ public class UpstreamAgreementServlet extends BaseServlet {
         g.setStage2Target(toBd(p.get("stage2Target")));
         g.setStage3Target(toBd(p.get("stage3Target")));
         g.setStage4Target(toBd(p.get("stage4Target")));
+        g.setSharedGroupIds(normalizeSharedGroupIds(WebUtil.getSafeParam(p, "sharedGroupIds")));
         ruleDao.updateAssessGroup(g);
         ResponseUtil.ok(resp);
     }

@@ -329,6 +329,8 @@ public class DownstreamAgreementServlet extends BaseServlet {
         a.setCalcBasis(WebUtil.getSafeParam(p, "calcBasis"));
         a.setTargetScale(toBd(p.get("targetScale")));
         a.setCalcMethod(WebUtil.getSafeParam(p, "calcMethod"));
+        String calcMode = WebUtil.getSafeParam(p, "calcMode");
+        a.setCalcMode(calcMode == null || calcMode.isEmpty() ? "PROGRESSIVE" : calcMode);
         a.setRebateCalcBasis(WebUtil.getSafeParam(p, "rebateCalcBasis"));
         a.setDistributor(WebUtil.getSafeParam(p, "distributor"));
         a.setDistributorType(WebUtil.getSafeParam(p, "distributorType"));
@@ -446,12 +448,16 @@ public class DownstreamAgreementServlet extends BaseServlet {
         String groupCode = WebUtil.getSafeParam(p, "groupCode");
         String groupName = WebUtil.getSafeParam(p, "groupName");
         String description = WebUtil.getSafeParam(p, "description");
+        String sharedGroupIds = normalizeSharedGroupIds(WebUtil.getSafeParam(p, "sharedGroupIds"));
 
         // 检查同项目下是否已有相同编码的组
         AssessGroup existing = ruleDao.getAssessGroupByProjectAndCode(projectId, groupCode);
         Long groupId;
         if (existing != null) {
             groupId = existing.getId();
+            // 更新共享组（已存在组时也同步更新）
+            existing.setSharedGroupIds(sharedGroupIds);
+            ruleDao.updateAssessGroup(existing);
         } else {
             // 创建组定义（只存名称/编码/描述，不存目标字段）
             AssessGroup g = new AssessGroup();
@@ -459,6 +465,7 @@ public class DownstreamAgreementServlet extends BaseServlet {
             g.setGroupCode(groupCode);
             g.setGroupName(groupName);
             g.setDescription(description);
+            g.setSharedGroupIds(sharedGroupIds);
             g.setCreatedBy(u.getId());
             groupId = ruleDao.insertAssessGroup(g);
         }
@@ -491,6 +498,16 @@ public class DownstreamAgreementServlet extends BaseServlet {
             String groupName = WebUtil.getSafeParam(p, "groupName");
             String groupCode = WebUtil.getSafeParam(p, "groupCode");
             String description = WebUtil.getSafeParam(p, "description");
+            String sharedGroupIds = normalizeSharedGroupIds(WebUtil.getSafeParam(p, "sharedGroupIds"));
+
+            // 同步更新考核组定义（含共享组）
+            if (grp != null) {
+                grp.setGroupCode(groupCode);
+                grp.setGroupName(groupName);
+                grp.setDescription(description);
+                grp.setSharedGroupIds(sharedGroupIds);
+                ruleDao.updateAssessGroup(grp);
+            }
 
             AssessDownstreamTarget t = new AssessDownstreamTarget();
             t.setAgreementId(agreementId);

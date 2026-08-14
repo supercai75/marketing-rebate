@@ -468,7 +468,13 @@ public class OverviewService {
         // 获取下游协议的考核组目标数据
         AssessDownstreamTargetDao assessDownstreamTargetDao = new AssessDownstreamTargetDao();
         List<AssessDownstreamTarget> assessDownstreamTargets = assessDownstreamTargetDao.listByAgreement(agreementId);
-        
+
+        // 加载项目级考核组（用于读取 sharedGroupIds 共享组配置）
+        Map<Long, AssessGroup> assessGroupMap = new HashMap<>();
+        for (AssessGroup ag : rebateRuleDao.listAssessGroups(project.getId())) {
+            if (ag.getId() != null) assessGroupMap.put(ag.getId(), ag);
+        }
+
         // 按考核组计算实际达成
         List<Map<String, Object>> assessGroups = new ArrayList<>();
         for (AssessDownstreamTarget target : assessDownstreamTargets) {
@@ -479,6 +485,9 @@ public class OverviewService {
             group.put("groupName", (gName == null || gName.isEmpty()) ? "默认" : gName);
             String gCode = target.getGroupCode();
             group.put("groupCode", (gCode == null || gCode.isEmpty()) ? "DEFAULT" : gCode);
+            // 共享考核组配置（来自 AssessGroup.sharedGroupIds）
+            AssessGroup agInfo = agId == null ? null : assessGroupMap.get(agId);
+            group.put("sharedGroupIds", agInfo != null ? agInfo.getSharedGroupIds() : null);
             group.put("stage1Target", target.getStage1Target());
             group.put("stage2Target", target.getStage2Target());
             group.put("stage3Target", target.getStage3Target());
