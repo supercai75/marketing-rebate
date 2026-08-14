@@ -38,9 +38,11 @@ public class ProjectServlet extends BaseServlet {
             case "list": doList(req, resp); break;
             case "listYears": doListYears(req, resp); break;
             case "listByYear": doListByYear(req, resp, p); break;
+            case "listFilters": doListFilters(req, resp, p); break;
+            case "groups": doListGroups(req, resp); break;
             case "get": doGet(req, resp, p); break;
-            case "add": doAdd(req, resp, p); break;
-            case "update": doUpdate(req, resp, p); break;
+            case "add": doAdd(req, resp, p, u); break;
+            case "update": doUpdate(req, resp, p, u); break;
             case "delete": doDelete(req, resp, p); break;
             case "importFromBpm": doImportBpm(req, resp, p, u); break;
             case "checkPrevYear": doCheckPrevYear(req, resp, p); break;
@@ -56,6 +58,8 @@ public class ProjectServlet extends BaseServlet {
             case "list":
             case "listYears":
             case "listByYear":
+            case "listFilters":
+            case "groups":
             case "get":
             case "checkPrevYear":
             case "listBpmProjects":
@@ -74,14 +78,29 @@ public class ProjectServlet extends BaseServlet {
     private void doPage(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         int page = Math.max(1, WebUtil.getInt(p, "page", 1));
         int size = Math.max(1, Math.min(100, WebUtil.getInt(p, "size", 20)));
+        Long gId = WebUtil.getLong(p, "projectGroupId", 0);
+        Long gid = (gId == null || gId == 0) ? null : gId;
         List<Project> rows = projectDao.page(WebUtil.getSafeParam(p, "keyword"),
-                WebUtil.getSafeParam(p, "status"), WebUtil.getSafeParam(p, "coYear"), page, size);
-        long total = projectDao.count(WebUtil.getSafeParam(p, "keyword"), WebUtil.getSafeParam(p, "status"), WebUtil.getSafeParam(p, "coYear"));
+                WebUtil.getSafeParam(p, "status"), WebUtil.getSafeParam(p, "coYear"), gid, page, size);
+        long total = projectDao.count(WebUtil.getSafeParam(p, "keyword"), WebUtil.getSafeParam(p, "status"),
+                WebUtil.getSafeParam(p, "coYear"), gid);
         ResponseUtil.ok(resp, WebUtil.pageResult(page, size, total, rows));
     }
 
     private void doList(HttpServletRequest req, HttpServletResponse resp) {
         ResponseUtil.ok(resp, projectDao.listAll());
+    }
+
+    private void doListFilters(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+        Long gId = WebUtil.getLong(p, "projectGroupId", 0);
+        Long gid = (gId == null || gId == 0) ? null : gId;
+        ResponseUtil.ok(resp, projectDao.listByFilters(
+                WebUtil.getSafeParam(p, "coYear"), gid,
+                WebUtil.getSafeParam(p, "keyword"), WebUtil.getSafeParam(p, "status")));
+    }
+
+    private void doListGroups(HttpServletRequest req, HttpServletResponse resp) {
+        ResponseUtil.ok(resp, projectDao.listGroups());
     }
     
     private void doListYears(HttpServletRequest req, HttpServletResponse resp) {
@@ -98,19 +117,19 @@ public class ProjectServlet extends BaseServlet {
         ResponseUtil.ok(resp, projectDao.findById(id));
     }
 
-    private void doAdd(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
-        Project po = parseProject(p);
-        po.setCreatedBy(((UserContext)TokenUtil.getLoginUser(req, UserContext.class)).getId());
+    private void doAdd(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, UserContext u) {
+        Project po = parseProject(p, u.getId());
+        po.setCreatedBy(u.getId());
         po.setStatus("NEW");
         Long id = projectDao.insert(po);
         ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", id));
     }
 
-    private void doUpdate(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+    private void doUpdate(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, UserContext u) {
         long id = WebUtil.getLong(p, "id", 0);
         Project po = projectDao.findById(id);
         if (po == null) { ResponseUtil.fail(resp, "项目不存在"); return; }
-        Project upd = parseProject(p);
+        Project upd = parseProject(p, u.getId());
         upd.setId(id);
         upd.setCreatedBy(po.getCreatedBy());
         projectDao.update(upd);
@@ -215,7 +234,7 @@ public class ProjectServlet extends BaseServlet {
         ResponseUtil.ok(resp, projects);
     }
 
-    private Project parseProject(Map<String, Object> p) {
+    private Project parseProject(Map<String, Object> p, Long userId) {
         Project po = new Project();
         po.setProjectCode(WebUtil.getSafeParam(p, "projectCode"));
         po.setProjectName(WebUtil.getSafeParam(p, "projectName"));
@@ -234,6 +253,15 @@ public class ProjectServlet extends BaseServlet {
         po.setDescription(WebUtil.getSafeParam(p, "description"));
         po.setOwnerUserId(WebUtil.getLong(p, "ownerUserId", 0) == 0 ? null : WebUtil.getLong(p, "ownerUserId", 0));
         po.setStatus(WebUtil.getSafeParam(p, "status"));
+
+        // 分组：优先用 projectGroupId（已有分组）；如果前端传的是 projectGroupName（文本或新建），走懒创建
+        Long gId = WebUtil.getLong(p, "projectGroupId", 0);
+        String gName = WebUtil.getSafeParam(p, "projectGroupName");
+        if (gId != null && gId > 0) {
+            po.setProjectGroupId(gId);
+        } else if (gName != null && !gName.trim().isEmpty()) {
+            po.setProjectGroupId(projectDao.ensureGroup(gName, userId));
+        }
         return po;
     }
 

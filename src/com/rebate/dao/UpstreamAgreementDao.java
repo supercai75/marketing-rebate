@@ -22,16 +22,17 @@ public class UpstreamAgreementDao {
     public Long insert(UpstreamAgreement a) {
         String sql = "INSERT INTO prj_upstream_agreement(project_id, version, is_current, bpm_agree_id, " +
                 "agreement_name, agreement_no, period_start_date, period_end_date, region, target_terminal, " +
-                "calc_basis, target_scale, calc_method, supplier, target_dept, flow_contact, flow_phone, " +
+                "calc_basis, target_scale, calc_method, rebate_calc_basis, supplier, target_dept, flow_contact, flow_phone, " +
                 "flow_channel, flow_provide_method, stage1_target, stage2_target, stage3_target, stage4_target, " +
                 "owner_user_id, policy_detail, rebate_calc_rule, settle_basis, settle_ratio, rebate_pay_type, " +
                 "rebate_pay_time, team_assess_settle, required_staff_num, formal_count, formal_names, " +
                 "informal_count, informal_names, created_by) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql,
                 a.getProjectId(), a.getVersion(), a.getIsCurrent(), a.getBpmAgreeId(),
                 a.getAgreementName(), a.getAgreementNo(), a.getPeriodStartDate(), a.getPeriodEndDate(),
                 a.getRegion(), a.getTargetTerminal(), a.getCalcBasis(), a.getTargetScale(), a.getCalcMethod(),
+                a.getRebateCalcBasis(),
                 a.getSupplier(), a.getTargetDept(), a.getFlowContact(), a.getFlowPhone(), a.getFlowChannel(),
                 a.getFlowProvideMethod(), a.getStage1Target(), a.getStage2Target(), a.getStage3Target(), a.getStage4Target(),
                 a.getOwnerUserId(), a.getPolicyDetail(), a.getRebateCalcRule(), a.getSettleBasis(), a.getSettleRatio(),
@@ -41,7 +42,7 @@ public class UpstreamAgreementDao {
 
     public int update(UpstreamAgreement a) {
         String sql = "UPDATE prj_upstream_agreement SET agreement_name=?, agreement_no=?, period_start_date=?, " +
-                "period_end_date=?, region=?, target_terminal=?, calc_basis=?, target_scale=?, calc_method=?, " +
+                "period_end_date=?, region=?, target_terminal=?, calc_basis=?, target_scale=?, calc_method=?, rebate_calc_basis=?, " +
                 "supplier=?, target_dept=?, flow_contact=?, flow_phone=?, flow_channel=?, flow_provide_method=?, " +
                 "stage1_target=?, stage2_target=?, stage3_target=?, stage4_target=?, owner_user_id=?, " +
                 "policy_detail=?, rebate_calc_rule=?, settle_basis=?, settle_ratio=?, rebate_pay_type=?, " +
@@ -50,6 +51,7 @@ public class UpstreamAgreementDao {
         return BaseDao.update(sql,
                 a.getAgreementName(), a.getAgreementNo(), a.getPeriodStartDate(), a.getPeriodEndDate(),
                 a.getRegion(), a.getTargetTerminal(), a.getCalcBasis(), a.getTargetScale(), a.getCalcMethod(),
+                a.getRebateCalcBasis(),
                 a.getSupplier(), a.getTargetDept(), a.getFlowContact(), a.getFlowPhone(), a.getFlowChannel(),
                 a.getFlowProvideMethod(), a.getStage1Target(), a.getStage2Target(), a.getStage3Target(), a.getStage4Target(),
                 a.getOwnerUserId(), a.getPolicyDetail(), a.getRebateCalcRule(), a.getSettleBasis(), a.getSettleRatio(),
@@ -166,6 +168,7 @@ public class UpstreamAgreementDao {
         a.setCalcBasis(rs.getString("calc_basis"));
         a.setTargetScale(BaseDao.toBigDecimal(rs.getObject("target_scale")));
         a.setCalcMethod(rs.getString("calc_method"));
+        try { a.setRebateCalcBasis(rs.getString("rebate_calc_basis")); } catch (SQLException ignored) {}
         a.setSupplier(rs.getString("supplier"));
         a.setTargetDept(rs.getString("target_dept"));
         a.setFlowContact(rs.getString("flow_contact"));

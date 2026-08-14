@@ -273,10 +273,16 @@ public class OverviewService {
     }
 
     /**
-     * 获取指定项目所有阶段的流向数据（一次查询获取所有阶段）
-     * @param basis 计算依据 "AMT" 或 "QTY"
-     * @return Map: key="S1"/"S2"/"S3"/"S4", value=BigDecimal 金额
+     * 根据下游协议反查所属 Project
      */
+    public Project findProjectByAgreement(DownstreamAgreement down) {
+        if (down == null) return null;
+        if (down.getProjectId() != null) {
+            return projectDao.findById(down.getProjectId());
+        }
+        return null;
+    }
+
     private Map<String, BigDecimal> getAllStageFlows(long projectId, Long assessGroupId, String basis) {
         Map<String, BigDecimal> result = new HashMap<>();
         result.put("S1", BigDecimal.ZERO);
@@ -289,8 +295,8 @@ public class OverviewService {
             return result;
         }
         
-        // 根据计算依据选择列
-        String sumCol = "AMT".equalsIgnoreCase(basis) ? "calc_amount" : "quantity";
+        // 根据计算依据选择列（支持 QTY/SALE_QTY/CALC_AMT/BID_AMT 多口径）
+        String sumCol = ProjectScaleService.basisToColumn(basis);
         
         java.sql.Date startDate = project.getPeriodStartDate();
         java.util.Calendar cal = java.util.Calendar.getInstance();

@@ -47,7 +47,9 @@
 <div class="toolbar">
     <select id="selYear" style="width:120px;">
     </select>
-    <select id="projectId" style="width: 280px;"></select>
+    <input type="hidden" id="projectId">
+    <input id="txtProject" readonly placeholder="选择项目..." style="width:280px; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+    <button class="btn" id="btnSelProj">选择项目</button>
     <button class="btn btn-primary" id="btnSearch">查询</button>
     <button class="btn btn-success" id="btnImport">+ 导入Excel</button>
     <input type="file" id="fileInput" accept=".xlsx" style="display:none;">
@@ -134,7 +136,8 @@
         <table class="table-nowrap">
             <thead><tr>
                 <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
-                <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th><th>考核组</th><th>状态</th>
+                <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th><th>客户等级</th>
+                <th>销售数量</th><th>无税金额</th><th>中标价金额</th><th>考核组</th><th>状态</th>
             </tr></thead>
             <tbody id="recordsBody"></tbody>
         </table>
@@ -180,6 +183,7 @@
 
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/project-selector.js"></script>
 <script>
     var curProject = null;
 
@@ -188,11 +192,18 @@
     var currentBatchId = null; // 当前选中的批次ID
 
     $(function () {
-        RB.checkLogin(function () { loadYears(); });
+        RB.checkLogin(function () { 
+            loadYears();
+            RB.bindProjectSelector({
+                trigger: '#btnSelProj, #txtProject',
+                display: '#txtProject',
+                hidden: '#projectId',
+                coYear: function() { return $('#selYear').val(); },
+                onChange: function() { load(); }
+            });
+        });
 
         $('#btnSearch').on('click', function() { currentBatchId = null; load(); });
-        $('#selYear').on('change', function() { loadProjects(function () { load(); }); });
-        $('#projectId').on('change', load);
         $('#btnImport').on('click', showImportModal);
         $('#fileInput').on('change', importFile);
         $('#btnLoad').on('click', function() { recordsPage = 1; recalculateRecordsPageSize(); loadRecords(); });
@@ -233,7 +244,6 @@
                 }
                 $('#selYear').html(html);
             }
-            loadProjects(function () { load(); });
         });
     }
 
@@ -378,19 +388,6 @@
         RB.closeModal('modalImport');
         $('#fileInput').click();
         }, '权限不足，无法导入流向');
-    }
-
-    function loadProjects(cb) {
-        var coYear = $('#selYear').val();
-        var param = coYear ? { coYear: coYear } : {};
-        RB.post('/api/project?op=listByYear', param).done(function (r) {
-            var html = '<option value="">选择项目...</option>';
-            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
-                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
-            }
-            $('#projectId').html(html);
-            if (cb) cb();
-        });
     }
 
     function load() {
@@ -584,21 +581,25 @@
             var rowStyle = isInvalid ? 'style="background-color:#fef0f0;color:#f56c6c;"' : '';
             var state = r.isFinal === 1 ? '<span style="color:#388e3c;">终版</span>' : (r.isValid === 1 ? '有效' : '<span>失效</span>');
             var groupHtml = r.assessGroupName || '';
-            html += '<tr' + rowStyle + '><td>' + r.monthYyyymm + '</td>' +
+            html += '<tr' + (rowStyle ? ' ' + rowStyle : '') + '><td>' + r.monthYyyymm + '</td>' +
                 '<td>' + (r.businessDate || '') + '</td>' +
                 '<td>' + (r.productName || '') + '</td>' +
                 '<td>' + (r.spec || '') + '</td>' +
                 '<td>' + (r.sellerName || '') + '</td>' +
                 '<td>' + (r.sellerCity || '') + '</td>' +
-                '<td>' + r.calcPrice + '</td>' +
-                '<td>' + r.quantity + '</td>' +
-                '<td>' + r.calcAmount + '</td>' +
+                '<td>' + (r.calcPrice ?? '') + '</td>' +
+                '<td>' + (r.quantity ?? '') + '</td>' +
+                '<td>' + (r.calcAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
+                '<td>' + (r.customerLevel || '') + '</td>' +
+                '<td>' + (r.saleQty ?? '') + '</td>' +
+                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
+                '<td>' + (r.bidAmount ?? '') + '</td>' +
                 '<td>' + groupHtml + '</td>' +
                 '<td>' + state + '</td></tr>';
         }
-        $('#recordsBody').html(html || '<tr><td colspan="13" style="text-align:center;color:#999;padding:24px;">暂无明细</td></tr>');
+        $('#recordsBody').html(html || '<tr><td colspan="17" style="text-align:center;color:#999;padding:24px;">暂无明细</td></tr>');
         updateRecordsPagination();
     }
     

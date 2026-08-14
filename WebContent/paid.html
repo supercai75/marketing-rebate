@@ -25,7 +25,9 @@
 <div class="toolbar">
     <select id="selYear" style="width:120px;">
     </select>
-    <select id="selProject" style="width:300px;"></select>
+    <input type="hidden" id="selProject">
+    <input id="txtProject" readonly placeholder="请选择项目" style="width:300px; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+    <button class="btn" id="btnSelProj">选择项目</button>
     <select id="selAgreement" style="width:240px;"><option value="">全部下游协议</option></select>
     <select id="selStage">
         <option value="">全部阶段</option>
@@ -74,8 +76,14 @@
         <div class="modal-header" id="modalPTitle">新增实付<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalP')">×</span></div>
         <div class="modal-body">
             <input type="hidden" id="p_id">
+            <input type="hidden" id="p_projectId">
             <div class="form-row">
-                <div class="form-item col-2"><label>项目 *</label><select id="p_projectId"></select></div>
+                <div class="form-item col-2"><label>项目 *</label>
+                    <div style="display:flex; gap:8px;">
+                        <input id="p_txtProject" readonly placeholder="请选择项目" style="flex:1; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+                        <button class="btn" id="p_btnSelProj" type="button">选择</button>
+                    </div>
+                </div>
                 <div class="form-item col-2"><label>下游协议 *</label><select id="p_agreementId"></select></div>
             </div>
             <div class="form-row">
@@ -121,19 +129,35 @@
 
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/project-selector.js"></script>
 <script>
     var editingId = null;
 
     $(function () {
-        RB.checkLogin(function () { loadYears(); });
+        RB.checkLogin(function () { 
+            loadYears();
+            // 工具栏项目选择器
+            RB.bindProjectSelector({
+                trigger: '#btnSelProj, #txtProject',
+                display: '#txtProject',
+                hidden: '#selProject',
+                coYear: function() { return $('#selYear').val(); },
+                onChange: function() { loadAgreements(); load(); }
+            });
+            // 弹窗内项目选择器
+            RB.bindProjectSelector({
+                trigger: '#p_btnSelProj, #p_txtProject',
+                display: '#p_txtProject',
+                hidden: '#p_projectId',
+                coYear: function() { return $('#selYear').val(); },
+                onChange: function() { loadAgreements(); }
+            });
+        });
         $('#btnSearch').on('click', load);
         $('#btnRefresh').on('click', load);
         $('#btnExport').on('click', exportPaid);
         $('#btnAdd').on('click', function() { RB.withPerm('paid:edit', openAdd, '权限不足，无法编辑实付'); });
         $('#btnSaveP').on('click', function() { RB.withPerm('paid:edit', saveP, '权限不足，无法编辑实付'); });
-        $('#selYear').on('change', function() { loadProjects(); });
-        $('#selProject').on('change', function () { loadAgreements(); load(); });
-        $('#p_projectId').on('change', loadAgreements);
     });
 
     function loadYears() {
@@ -145,20 +169,6 @@
                 }
                 $('#selYear').html(html);
             }
-            loadProjects();
-        });
-    }
-
-    function loadProjects() {
-        var coYear = $('#selYear').val();
-        var param = coYear ? { coYear: coYear } : {};
-        RB.post('/api/project?op=listByYear', param).done(function (r) {
-            var html = '<option value="">请选择项目</option>';
-            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
-                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
-            }
-            $('#selProject').html(html);
-            $('#p_projectId').html(html);
         });
     }
 
@@ -272,6 +282,7 @@
         $('#modalPTitle').text('新增实付');
         $('#p_id').val('');
         $('#p_projectId').val(pid);
+        $('#p_txtProject').val($('#txtProject').val() || '');
         loadAgreements();
         $('#p_stage').val('阶段一');
         $('#p_rebateType').val('票折');
@@ -290,6 +301,15 @@
             $('#modalPTitle').text('编辑实付');
             $('#p_id').val(x.id);
             $('#p_projectId').val(x.projectId);
+            var projectName = $('#txtProject').val() || '';
+            if (!($('#selProject').val() && String($('#selProject').val()) === String(x.projectId))) {
+                (function(targetId) {
+                    RB.post('/api/project?op=get', { id: targetId }).done(function(pr) {
+                        if (pr.code === 0 && pr.data) $('#p_txtProject').val(pr.data.projectName || '');
+                    });
+                })(x.projectId);
+            }
+            $('#p_txtProject').val(projectName);
             loadAgreements();
             setTimeout(function () { $('#p_agreementId').val(x.agreementId); }, 200);
             $('#p_stage').val(x.stage);

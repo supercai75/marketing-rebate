@@ -113,6 +113,13 @@ public class FlowImportService {
                 if (buyerCity != null && !buyerCity.trim().isEmpty()) {
                     r.setBuyerCity(buyerCity.trim());
                 }
+                String customerLevel = row.get("客户等级");
+                if (customerLevel != null && !customerLevel.trim().isEmpty()) {
+                    r.setCustomerLevel(customerLevel.trim());
+                }
+                r.setSaleQty(safeBd(row.get("销售数量")));
+                r.setNoTaxAmount(safeBd(row.get("无税金额")));
+                r.setBidAmount(safeBd(row.get("中标金额")));
                 
                 // 处理考核组列（从内存Map获取）
                 String assessGroupName = row.get("考核组");

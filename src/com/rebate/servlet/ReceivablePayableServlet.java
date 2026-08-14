@@ -1,8 +1,12 @@
 package com.rebate.servlet;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.rebate.dao.AssessItemDetailDao;
 import com.rebate.dao.ProjectDao;
 import com.rebate.dao.ReceivablePayableDao;
 import com.rebate.dao.UpstreamFlowDao;
+import com.rebate.model.AssessItemDetail;
 import com.rebate.model.Payable;
 import com.rebate.model.Project;
 import com.rebate.model.Receivable;
@@ -14,6 +18,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -27,6 +32,7 @@ import java.util.stream.Collectors;
 public class ReceivablePayableServlet extends BaseServlet {
 
     private final ReceivablePayableDao dao = new ReceivablePayableDao();
+    private final AssessItemDetailDao assessItemDao = new AssessItemDetailDao();
 
     @Override
     protected void doAction(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) throws Exception {
@@ -46,10 +52,12 @@ public class ReceivablePayableServlet extends BaseServlet {
             case "saveReceivable": doSaveRecv(req, resp, p, u); break;
             case "auditReceivable": doAuditRecv(req, resp, p, u); break;
             case "deleteReceivable": doDeleteRecv(req, resp, p); break;
+            case "listReceivableAssessItems": doListRecvAssessItems(req, resp, p); break;
             case "listPayable": doListPay(req, resp, p); break;
             case "savePayable": doSavePay(req, resp, p, u); break;
             case "auditPayable": doAuditPay(req, resp, p, u); break;
             case "confirmPayable": doConfirmPay(req, resp, p, u); break;
+            case "listPayableAssessItems": doListPayAssessItems(req, resp, p); break;
             case "exportReceivable": doExportReceivable(req, resp, p); break;
             case "exportPayable": doExportPayable(req, resp, p); break;
             default: ResponseUtil.fail(resp, "未知操作: " + op);
@@ -61,6 +69,7 @@ public class ReceivablePayableServlet extends BaseServlet {
         switch (op) {
             case "listReceivable":
             case "getReceivable":
+            case "listReceivableAssessItems":
             case "exportReceivable":
                 return u.hasPerm("receivable:view");
             case "saveReceivable":
@@ -69,6 +78,7 @@ public class ReceivablePayableServlet extends BaseServlet {
             case "auditReceivable":
                 return u.hasPerm("receivable:audit");
             case "listPayable":
+            case "listPayableAssessItems":
             case "exportPayable":
                 return u.hasPerm("payable:view");
             case "savePayable":
@@ -83,12 +93,25 @@ public class ReceivablePayableServlet extends BaseServlet {
 
     private void doListRecv(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         long pid = WebUtil.getLong(p, "projectId", 0);
-        ResponseUtil.ok(resp, dao.listReceivableByProject(pid));
+        List<Receivable> list = dao.listReceivableByProject(pid);
+        for (Receivable r : list) {
+            r.setAssessItems(assessItemDao.listByReceivable(r.getId()));
+        }
+        ResponseUtil.ok(resp, list);
+    }
+
+    private void doListRecvAssessItems(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+        long receivableId = WebUtil.getLong(p, "receivableId", 0);
+        ResponseUtil.ok(resp, assessItemDao.listByReceivable(receivableId));
     }
 
     private void doGetRecv(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         long id = WebUtil.getLong(p, "id", 0);
-        ResponseUtil.ok(resp, dao.findReceivable(id));
+        Receivable r = dao.findReceivable(id);
+        if (r != null) {
+            r.setAssessItems(assessItemDao.listByReceivable(r.getId()));
+        }
+        ResponseUtil.ok(resp, r);
     }
 
     private void doSaveRecv(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) {
@@ -111,7 +134,29 @@ public class ReceivablePayableServlet extends BaseServlet {
         } else {
             dao.updateReceivable(r);
         }
+        saveReceivableAssessItems(r.getId(), p);
         ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", r.getId()));
+    }
+
+    private void saveReceivableAssessItems(Long receivableId, Map<String, Object> p) {
+        if (receivableId == null) return;
+        assessItemDao.deleteByReceivable(receivableId);
+        Object obj = p.get("assessItems");
+        if (obj == null) return;
+        String json = new Gson().toJson(obj);
+        if ("[]".equals(json) || "{}".equals(json)) return;
+        Type t = new TypeToken<List<AssessItemDetail>>() {}.getType();
+        List<AssessItemDetail> list = new Gson().fromJson(json, t);
+        if (list == null) return;
+        for (int i = 0; i < list.size(); i++) {
+            AssessItemDetail d = list.get(i);
+            if (d == null) continue;
+            d.setId(null);
+            d.setReceivableId(receivableId);
+            d.setPayableId(null);
+            d.setSortNo(i + 1);
+            assessItemDao.insertReceivableItem(d);
+        }
     }
 
     private void doAuditRecv(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) {
@@ -182,6 +227,7 @@ public class ReceivablePayableServlet extends BaseServlet {
 
     private void doDeleteRecv(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         long id = WebUtil.getLong(p, "id", 0);
+        assessItemDao.deleteByReceivable(id);
         dao.deleteReceivable(id);
         ResponseUtil.ok(resp);
     }
@@ -190,7 +236,16 @@ public class ReceivablePayableServlet extends BaseServlet {
         long pid = WebUtil.getLong(p, "projectId", 0);
         Long agId = WebUtil.getLong(p, "agreementId", 0);
         if (agId != null && agId == 0) agId = null;
-        ResponseUtil.ok(resp, dao.listPayableByProject(pid, agId, WebUtil.getSafeParam(p, "stage"), WebUtil.getSafeParam(p, "status")));
+        List<Payable> list = dao.listPayableByProject(pid, agId, WebUtil.getSafeParam(p, "stage"), WebUtil.getSafeParam(p, "status"));
+        for (Payable r : list) {
+            r.setAssessItems(assessItemDao.listByPayable(r.getId()));
+        }
+        ResponseUtil.ok(resp, list);
+    }
+
+    private void doListPayAssessItems(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+        long payableId = WebUtil.getLong(p, "payableId", 0);
+        ResponseUtil.ok(resp, assessItemDao.listByPayable(payableId));
     }
 
     private void doSavePay(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) {
@@ -212,7 +267,29 @@ public class ReceivablePayableServlet extends BaseServlet {
         } else {
             dao.updatePayable(r);
         }
+        savePayableAssessItems(r.getId(), p);
         ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", r.getId()));
+    }
+
+    private void savePayableAssessItems(Long payableId, Map<String, Object> p) {
+        if (payableId == null) return;
+        assessItemDao.deleteByPayable(payableId);
+        Object obj = p.get("assessItems");
+        if (obj == null) return;
+        String json = new Gson().toJson(obj);
+        if ("[]".equals(json) || "{}".equals(json)) return;
+        Type t = new TypeToken<List<AssessItemDetail>>() {}.getType();
+        List<AssessItemDetail> list = new Gson().fromJson(json, t);
+        if (list == null) return;
+        for (int i = 0; i < list.size(); i++) {
+            AssessItemDetail d = list.get(i);
+            if (d == null) continue;
+            d.setId(null);
+            d.setPayableId(payableId);
+            d.setReceivableId(null);
+            d.setSortNo(i + 1);
+            assessItemDao.insertPayableItem(d);
+        }
     }
 
     private void doAuditPay(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) {

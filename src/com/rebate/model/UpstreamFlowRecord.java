@@ -22,6 +22,10 @@ public class UpstreamFlowRecord {
     private BigDecimal calcAmount;
     private String buyerName;
     private String buyerCity;
+    private String customerLevel;
+    private BigDecimal saleQty;
+    private BigDecimal noTaxAmount;
+    private BigDecimal bidAmount;
     private Long assessGroupId;
     private String assessGroupName;
     private Integer isValid;
@@ -57,6 +61,14 @@ public class UpstreamFlowRecord {
     public void setBuyerName(String buyerName) { this.buyerName = buyerName; }
     public String getBuyerCity() { return buyerCity; }
     public void setBuyerCity(String buyerCity) { this.buyerCity = buyerCity; }
+    public String getCustomerLevel() { return customerLevel; }
+    public void setCustomerLevel(String customerLevel) { this.customerLevel = customerLevel; }
+    public BigDecimal getSaleQty() { return saleQty; }
+    public void setSaleQty(BigDecimal saleQty) { this.saleQty = saleQty; }
+    public BigDecimal getNoTaxAmount() { return noTaxAmount; }
+    public void setNoTaxAmount(BigDecimal noTaxAmount) { this.noTaxAmount = noTaxAmount; }
+    public BigDecimal getBidAmount() { return bidAmount; }
+    public void setBidAmount(BigDecimal bidAmount) { this.bidAmount = bidAmount; }
     public Long getAssessGroupId() { return assessGroupId; }
     public void setAssessGroupId(Long assessGroupId) { this.assessGroupId = assessGroupId; }
     public String getAssessGroupName() { return assessGroupName; }

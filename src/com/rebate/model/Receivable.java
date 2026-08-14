@@ -24,6 +24,7 @@ public class Receivable {
     private String projectName;
     private String fillUserName;
     private String auditUserName;
+    private java.util.List<AssessItemDetail> assessItems;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -57,4 +58,6 @@ public class Receivable {
     public void setFillUserName(String fillUserName) { this.fillUserName = fillUserName; }
     public String getAuditUserName() { return auditUserName; }
     public void setAuditUserName(String auditUserName) { this.auditUserName = auditUserName; }
+    public java.util.List<AssessItemDetail> getAssessItems() { return assessItems; }
+    public void setAssessItems(java.util.List<AssessItemDetail> assessItems) { this.assessItems = assessItems; }
 }

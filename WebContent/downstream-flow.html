@@ -77,7 +77,9 @@
 <div class="toolbar">
     <select id="selYear" style="width:120px;">
     </select>
-    <select id="projectId" style="width:300px;"></select>
+    <input type="hidden" id="projectId">
+    <input id="txtProject" readonly placeholder="选择项目..." style="width:300px; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+    <button class="btn" id="btnSelProj">选择项目</button>
     <select id="agreementId" style="width:350px;"></select>
     <button class="btn btn-primary" id="btnSearch">查询</button>
     <span style="flex:1;"></span>
@@ -103,6 +105,7 @@
         <input id="filterMonthCurrent" placeholder="筛选月份 yyyyMM">
         <input id="filterBuyerCurrent" placeholder="筛选采购方">
         <input id="filterBuyerCityCurrent" placeholder="筛选采购方城市">
+        <input id="filterCustomerLevelCurrent" placeholder="筛选客户等级">
         <button class="btn btn-primary" id="btnLoadCurrent">查询</button>
         <button class="btn" id="btnExportCurrent">导出Excel</button>
         <button class="btn btn-danger" id="btnRemoveAllCurrent">全部剔除</button>
@@ -111,7 +114,8 @@
         <table class="table-nowrap">
             <thead><tr>
                 <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
-                <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th><th>考核组</th><th width="60">操作</th>
+                <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th><th>客户等级</th>
+                <th>销售数量</th><th>无税金额</th><th>中标价金额</th><th>考核组</th><th width="60">操作</th>
             </tr></thead>
             <tbody id="currentBody"></tbody>
         </table>
@@ -133,6 +137,7 @@
         <input id="filterMonthInvalid" placeholder="筛选月份 yyyyMM">
         <input id="filterBuyerInvalid" placeholder="筛选采购方">
         <input id="filterBuyerCityInvalid" placeholder="筛选采购方城市">
+        <input id="filterCustomerLevelInvalid" placeholder="筛选客户等级">
         <button class="btn btn-primary" id="btnLoadInvalid">查询</button>
         <button class="btn" id="btnExportInvalid">导出Excel</button>
     </div>
@@ -140,6 +145,7 @@
         <table class="table-nowrap">
             <thead><tr>
                 <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>采购方</th><th>采购方城市</th>
+                <th>客户等级</th><th>销售数量</th><th>无税金额</th><th>中标价金额</th>
                 <th>核算价格</th><th>数量</th><th>核算金额</th>
             </tr></thead>
             <tbody id="invalidBody"></tbody>
@@ -273,6 +279,7 @@
 
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/project-selector.js"></script>
 <script>
     var curProject = null;
     var curAgreement = null;
@@ -289,18 +296,25 @@
     var curInField = null;
 
     $(function () {
-        RB.checkLogin(function () { loadYears(); });
-
-        $('#selYear').on('change', function() { loadProjects(function () { loadTabData(); }); });
+        RB.checkLogin(function () { 
+            loadYears();
+            RB.bindProjectSelector({
+                trigger: '#btnSelProj, #txtProject',
+                display: '#txtProject',
+                hidden: '#projectId',
+                coYear: function() { return $('#selYear').val(); },
+                onChange: function() { 
+                    var id = $('#projectId').val(); 
+                    curProject = id ? {id: id} : null; 
+                    loadAgreements(); 
+                    curAgreement = null; 
+                    clearTabTables();
+                    loadTabData();
+                }
+            });
+        });
 
         $('#btnSearch').on('click', function () { loadStage(); loadCurrent(); loadInvalid(); });
-        $('#projectId').on('change', function () { 
-            var id = $(this).val(); 
-            curProject = id ? {id: id} : null; 
-            loadAgreements(); 
-            curAgreement = null; 
-            clearTabTables();
-        });
         $('#agreementId').on('change', function () { 
             var id = $(this).val(); 
             curAgreement = id ? {id: id} : null; 
@@ -423,20 +437,6 @@
                 }
                 $('#selYear').html(html);
             }
-            loadProjects(function () { loadTabData(); });
-        });
-    }
-
-    function loadProjects(cb) {
-        var coYear = $('#selYear').val();
-        var param = coYear ? { coYear: coYear } : {};
-        RB.post('/api/project?op=listByYear', param).done(function (r) {
-            var html = '<option value="">选择项目...</option>';
-            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
-                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
-            }
-            $('#projectId').html(html);
-            if (cb) cb();
         });
     }
 
@@ -493,13 +493,14 @@
     function loadCurrent() {
         var pid = $('#projectId').val();
         var aid = $('#agreementId').val();
-        if (!pid) { $('#currentBody').html('<tr><td colspan="13" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
+        if (!pid) { $('#currentBody').html('<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
         $('#loadingOverlay').show();
         RB.post('/api/downstream-flow?op=listRecords', {
             projectId: pid,
             month: $('#filterMonthCurrent').val(),
             buyerName: $('#filterBuyerCurrent').val(),
             buyerCity: $('#filterBuyerCityCurrent').val(),
+            customerLevel: $('#filterCustomerLevelCurrent').val(),
             isValid: 1,
             agreementId: aid,
             page: currentPage,
@@ -558,16 +559,20 @@
                 '<td>' + (r.spec || '') + '</td>' +
                 '<td>' + (r.sellerName || '') + '</td>' +
                 '<td>' + (r.sellerCity || '') + '</td>' +
-                '<td>' + r.calcPrice + '</td>' +
-                '<td>' + r.quantity + '</td>' +
-                '<td>' + r.calcAmount + '</td>' +
+                '<td>' + (r.calcPrice ?? '') + '</td>' +
+                '<td>' + (r.quantity ?? '') + '</td>' +
+                '<td>' + (r.calcAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
+                '<td>' + (r.customerLevel || '') + '</td>' +
+                '<td>' + (r.saleQty ?? '') + '</td>' +
+                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
+                '<td>' + (r.bidAmount ?? '') + '</td>' +
                 '<td>' + (r.assessGroupName || '') + '</td>' +
                 '<td><button class="btn btn-danger btn-sm" onclick="removeCurrentRecord(' + r.id + ')">剔除</button></td>' +
                 '</tr>';
         }
-        $('#currentBody').html(html || '<tr><td colspan="13" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        $('#currentBody').html(html || '<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
         updateCurrentPagination();
     }
 
@@ -582,13 +587,14 @@
     function loadInvalid() {
         var pid = $('#projectId').val();
         var aid = $('#agreementId').val();
-        if (!pid) { $('#invalidBody').html('<tr><td colspan="10" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
+        if (!pid) { $('#invalidBody').html('<tr><td colspan="14" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
         $('#loadingOverlay').show();
         RB.post('/api/downstream-flow?op=listRecords', {
             projectId: pid,
             month: $('#filterMonthInvalid').val(),
             buyerName: $('#filterBuyerInvalid').val(),
             buyerCity: $('#filterBuyerCityInvalid').val(),
+            customerLevel: $('#filterCustomerLevelInvalid').val(),
             isValid: 0,
             agreementId: aid,
             page: invalidPage,
@@ -616,12 +622,16 @@
                 '<td>' + (r.sellerName || '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
-                '<td>' + r.calcPrice + '</td>' +
-                '<td>' + r.quantity + '</td>' +
-                '<td>' + r.calcAmount + '</td>' +
+                '<td>' + (r.customerLevel || '') + '</td>' +
+                '<td>' + (r.saleQty ?? '') + '</td>' +
+                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
+                '<td>' + (r.bidAmount ?? '') + '</td>' +
+                '<td>' + (r.calcPrice ?? '') + '</td>' +
+                '<td>' + (r.quantity ?? '') + '</td>' +
+                '<td>' + (r.calcAmount ?? '') + '</td>' +
                 '</tr>';
         }
-        $('#invalidBody').html(html || '<tr><td colspan="10" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        $('#invalidBody').html(html || '<tr><td colspan="14" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
         updateInvalidPagination();
     }
 
@@ -697,8 +707,8 @@
     }
 
     function clearTabTables() {
-        $('#currentBody').html('<tr><td colspan="11" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
-        $('#invalidBody').html('<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        $('#currentBody').html('<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        $('#invalidBody').html('<tr><td colspan="14" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
         $('#sourceBody').html('<tr><td colspan="11" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
         selectedRows = [];
         updateSelectedCount();

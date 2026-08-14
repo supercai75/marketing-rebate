@@ -42,11 +42,14 @@
 </div>
 <div class="toolbar">
     <select id="selYear" style="width:120px;"></select>
-    <select id="selProject" style="width:240px;">
-        <option value="">全部项目</option>
-    </select>
+    <input type="hidden" id="selProject">
+    <input id="txtProject" readonly placeholder="全部项目（点击选择单个项目筛选）" style="width:280px; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+    <button class="btn" id="btnSelProj">选择项目</button>
+    <button class="btn" id="btnClearProj" title="清除已选项目">×</button>
     <button class="btn btn-primary" id="btnSearch">查询</button>
     <button class="btn" id="btnExport">导出Excel</button>
+    <button class="btn" id="btnRecalcRebateUp">重新估算返利(上游)</button>
+    <button class="btn" id="btnRecalcRebateDown">重新估算返利(下游)</button>
     <span style="flex:1;"></span>
     <span style="color:#909399; font-size:12px;">点击项目名称可进入项目概览</span>
 </div>
@@ -91,14 +94,63 @@
     </table>
 </div>
 
+<div id="rebateResult" style="display:none; background:#fff; padding:16px 20px; border-radius:6px; margin-top:14px; box-shadow:0 1px 3px rgba(0,0,0,.05);"></div>
+
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/project-selector.js"></script>
 <script>
     $(function () {
-        RB.checkLogin(function () { loadYears(); });
+        RB.checkLogin(function () { 
+            loadYears(); 
+            RB.bindProjectSelector({
+                trigger: '#btnSelProj, #txtProject',
+                display: '#txtProject',
+                hidden: '#selProject',
+                coYear: function() { return $('#selYear').val(); },
+                onChange: function() { load(); }
+            });
+        });
         $('#btnSearch').on('click', load);
         $('#btnExport').on('click', exportXlsx);
+        $('#btnClearProj').on('click', function() {
+            $('#selProject').val('');
+            $('#txtProject').val('');
+            load();
+        });
+        $('#btnRecalcRebateUp').on('click', function () { recalcRebate('upstream'); });
+        $('#btnRecalcRebateDown').on('click', function () { recalcRebate('downstream'); });
     });
+
+    function recalcRebate(type) {
+        var pid = $('#selProject').val();
+        if (!pid) { RB.toast('请先选择单个项目', 'error'); return; }
+        $('#loadingOverlay').show();
+        RB.post('/api/overview?op=recalcRebate', { projectId: pid, type: type }).done(function (r) {
+            $('#loadingOverlay').hide();
+            if (r.code !== 0) { RB.toast(r.msg || '估算失败', 'error'); return; }
+            var d = r.data || {};
+            var html = '<div style="margin:10px 0;">';
+            html += '<h4 style="margin:0 0 10px 0;font-size:14px;color:#303133;">估算返利明细（' + (type === 'upstream' ? '上游' : '下游') + '）</h4>';
+            html += '<table class="balance-table"><thead><tr><th>阶段</th><th>目标</th><th>实际达成</th><th>估算返利</th></tr></thead><tbody>';
+            (d.stageRebates || []).forEach(function (s) {
+                html += '<tr><td>' + (s.stageName || s.stageCode || '') + '</td>' +
+                    '<td class="num">' + RB.formatMoney(s.target) + '</td>' +
+                    '<td class="num">' + RB.formatMoney(s.actual) + '</td>' +
+                    '<td class="num">' + RB.formatMoney(s.rebateAmount) + '</td></tr>';
+            });
+            html += '<tr class="summary-row"><td>全年合计</td><td></td><td></td><td class="num">' + RB.formatMoney(d.totalRebate) + '</td></tr>';
+            if (d.fullYearRebate && d.fullYearRebate > 0) {
+                html += '<tr><td>按全年规则</td><td></td><td></td><td class="num">' + RB.formatMoney(d.fullYearRebate) + '</td></tr>';
+            }
+            html += '</tbody></table></div>';
+            $('#rebateResult').html(html).show();
+            RB.toast('估算完成', 'success');
+        }).fail(function () {
+            $('#loadingOverlay').hide();
+            RB.toast('估算失败', 'error');
+        });
+    }
 
     function loadYears() {
         RB.post('/api/project?op=listYears', {}).done(function (r) {
@@ -109,19 +161,6 @@
                 }
                 $('#selYear').html(html);
             }
-            loadProjects();
-        });
-    }
-
-    function loadProjects() {
-        var coYear = $('#selYear').val();
-        var param = coYear ? { coYear: coYear } : {};
-        RB.post('/api/project?op=listByYear', param).done(function (r) {
-            var html = '<option value="">全部项目</option>';
-            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
-                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
-            }
-            $('#selProject').html(html);
         });
     }
 

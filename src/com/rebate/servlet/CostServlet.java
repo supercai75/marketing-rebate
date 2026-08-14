@@ -33,7 +33,7 @@ public class CostServlet extends BaseServlet {
         String op = WebUtil.getSafeParam(p, "op");
         if (op == null) op = "list";
         
-        if (!checkPerm(u, op)) {
+        if (!checkPerm(u, op, p)) {
             ResponseUtil.forbidden(resp);
             return;
         }
@@ -57,12 +57,19 @@ public class CostServlet extends BaseServlet {
         }
     }
     
-    private boolean checkPerm(com.rebate.model.UserContext u, String op) {
+    private boolean checkPerm(com.rebate.model.UserContext u, String op, Map<String, Object> p) {
         if (u.isAdmin()) return true;
+        String costType = WebUtil.getSafeParam(p, "costType");
+        boolean isLabor = "LABOR".equalsIgnoreCase(costType);
         switch (op) {
             case "list":
+                if (isLabor) return u.hasPerm("labor:view");
+                return u.hasPerm("expense:view");
             case "listExpense":
+                return u.hasPerm("expense:view");
             case "get":
+                if (isLabor) return u.hasPerm("labor:view");
+                return u.hasPerm("expense:view");
             case "exportExpense":
                 return u.hasPerm("expense:view");
             case "addExpense":
@@ -79,9 +86,11 @@ public class CostServlet extends BaseServlet {
             case "add":
             case "update":
             case "delete":
-                return u.hasPerm("expense:edit") || u.hasPerm("labor:edit");
+                if (isLabor) return u.hasPerm("labor:edit");
+                return u.hasPerm("expense:edit");
             case "reallocate":
-                return u.hasPerm("expense:edit") || u.hasPerm("labor:edit");
+                if (isLabor) return u.hasPerm("labor:edit");
+                return u.hasPerm("expense:edit");
             default:
                 return false;
         }

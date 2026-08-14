@@ -9,9 +9,13 @@
 <div class="toolbar">
     <select id="selYear" style="width:120px;">
     </select>
-    <select id="projectId" style="width: 280px;"></select>
+    <input type="text" id="txtProject" readonly placeholder="点击选择项目..." style="width:280px;background:#fafafa;">
+    <button class="btn" id="btnSelProj">选择项目</button>
+    <input type="hidden" id="projectId">
     <button class="btn btn-primary" id="btnSearch">查询</button>
     <button class="btn btn-success" id="btnAdd">+ 添加人员</button>
+    <button class="btn" id="btnDownloadTpl">下载模板</button>
+    <button class="btn" id="btnImportExcel">导入Excel</button>
 </div>
 <div class="table-wrap">
     <table>
@@ -70,8 +74,26 @@
     </div>
 </div>
 
+<div class="modal-mask" id="modalImport">
+    <div class="modal" style="width:520px;">
+        <div class="modal-header">导入项目作业人员（所有字段均为必填）<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalImport')">×</span></div>
+        <div class="modal-body">
+            <div style="margin-bottom:12px;padding:8px 12px;background:#e3f2fd;color:#1565c0;border-radius:4px;font-size:13px;">
+                请先在页面顶部选择目标项目。模板中包含：人员姓名、工号、部门、岗位、用工类型、人工分摊比例(%)、费用分摊比例(%)，全部必填。
+            </div>
+            <div id="curImportProject" style="margin-bottom:10px;color:#606266;">当前项目：未选择</div>
+            <div class="form-item"><label>选择Excel文件 *</label><input type="file" id="importFile" accept=".xlsx,.xls"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" onclick="RB.closeModal('modalImport')">取消</button>
+            <button class="btn btn-primary" id="btnDoImport">开始导入</button>
+        </div>
+    </div>
+</div>
+
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/project-selector.js"></script>
 <script>
     var curProject = null;
     var page = 1, pageSize = 10, total = 0;
@@ -81,34 +103,38 @@
             loadYears(); 
         });
         $('#btnSearch').on('click', function () { page = 1; recalculatePageSize(); load(); });
-        $('#selYear').on('change', function() { loadProjects(); });
+        $('#selYear').on('change', function() { /* 年度仅做参考，项目选择弹窗中按年度筛选 */ });
         $('#btnAdd').on('click', showAddModal);
         $('#btnSave').on('click', save);
+        $('#btnDownloadTpl').on('click', downloadTemplate);
+        $('#btnImportExcel').on('click', function() {
+            RB.withPerm('project:edit', showImportModal, '权限不足，无法导入作业人员');
+        });
+        $('#btnDoImport').on('click', doImportStaff);
         $(window).on('resize', function () { recalculatePageSize(); load(); });
+
+        RB.bindProjectSelector({
+            trigger: '#btnSelProj',
+            display: '#txtProject',
+            hidden:  '#projectId',
+            coYear: function() { return $('#selYear').val() || ''; },
+            onChange: function(p) {
+                page = 1;
+                curProject = p;
+                load();
+            }
+        });
     });
 
     function loadYears() {
         RB.post('/api/project?op=listYears', {}).done(function (r) {
             if (r.code === 0 && r.data) {
-                var html = '';
+                var html = '<option value="">全部年度</option>';
                 for (var i = 0; i < r.data.length; i++) {
                     html += '<option value="' + r.data[i] + '">' + r.data[i] + '</option>';
                 }
                 $('#selYear').html(html);
             }
-            loadProjects();
-        });
-    }
-
-    function loadProjects() {
-        var coYear = $('#selYear').val();
-        var param = coYear ? { coYear: coYear } : {};
-        RB.post('/api/project?op=listByYear', param).done(function (r) {
-            var html = '<option value="">选择项目...</option>';
-            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
-                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
-            }
-            $('#projectId').html(html);
         });
     }
 
@@ -332,6 +358,61 @@
                 }
             });
         }, '权限不足，无法编辑作业人员');
+    }
+
+    function downloadTemplate() {
+        var token = RB.token ? RB.token : (localStorage.getItem('rb_token') || '');
+        var url = '/api/project-staff?op=downloadStaffTemplate&token=' + encodeURIComponent(token);
+        window.open(url, '_blank');
+    }
+
+    function showImportModal() {
+        var pid = $('#projectId').val();
+        if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+        $('#curImportProject').text('当前项目：' + ($('#txtProject').val() || '') + '（ID：' + pid + '）');
+        $('#importFile').val('');
+        RB.openModal('modalImport');
+    }
+
+    function doImportStaff() {
+        var pid = $('#projectId').val();
+        if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+        var fileInput = document.getElementById('importFile');
+        if (!fileInput.files || fileInput.files.length === 0) { RB.toast('请选择Excel文件', 'error'); return; }
+
+        var fd = new FormData();
+        fd.append('file', fileInput.files[0]);
+        fd.append('projectId', pid);
+        var token = RB.token ? RB.token : (localStorage.getItem('rb_token') || '');
+        fd.append('token', token);
+
+        RB.showLoading();
+        $.ajax({
+            url: '/api/project-staff?op=importStaffExcel',
+            type: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            success: function (r) {
+                RB.hideLoading();
+                if (r.code === 0) {
+                    var msg = '导入完成：成功 ' + (r.data.ok || 0) + ' 条，失败 ' + (r.data.fail || 0) + ' 条';
+                    if (r.data.errors && r.data.errors.length > 0) {
+                        msg += '\n错误详情：\n' + r.data.errors.slice(0, 20).join('\n');
+                        if (r.data.errors.length > 20) msg += '\n... 共 ' + r.data.errors.length + ' 条错误，仅显示前20条';
+                    }
+                    alert(msg);
+                    RB.closeModal('modalImport');
+                    load();
+                } else {
+                    RB.toast(r.msg || '导入失败', 'error');
+                }
+            },
+            error: function () {
+                RB.hideLoading();
+                RB.toast('网络异常', 'error');
+            }
+        });
     }
 </script>
 </body>

@@ -14,7 +14,7 @@ public class DownstreamAgreementDao {
     public Long insert(DownstreamAgreement a) {
         String sql = "INSERT INTO prj_downstream_agreement(project_id, upstream_id, version, is_current, bpm_agree_id, " +
                 "upstream_name, upstream_no, agreement_name, agreement_no, period_start_date, period_end_date, " +
-                "region, target_terminal, calc_basis, target_scale, calc_method, distributor, distributor_type, " +
+                "region, target_terminal, calc_basis, target_scale, calc_method, rebate_calc_basis, distributor, distributor_type, " +
                 "target_dept, flow_contact, flow_phone, flow_channel, flow_provide_method, " +
                 "stage1_target, stage2_target, stage3_target, stage4_target, owner_user_id, " +
                 "policy_detail, rebate_calc_rule, settle_basis, settle_ratio, rebate_pay_type, rebate_pay_time, " +
@@ -25,7 +25,8 @@ public class DownstreamAgreementDao {
                 a.getProjectId(), a.getUpstreamId(), a.getVersion(), a.getIsCurrent(), a.getBpmAgreeId(),
                 a.getUpstreamName(), a.getUpstreamNo(), a.getAgreementName(), a.getAgreementNo(),
                 a.getPeriodStartDate(), a.getPeriodEndDate(), a.getRegion(), a.getTargetTerminal(),
-                a.getCalcBasis(), a.getTargetScale(), a.getCalcMethod(), a.getDistributor(), a.getDistributorType(),
+                a.getCalcBasis(), a.getTargetScale(), a.getCalcMethod(), a.getRebateCalcBasis(),
+                a.getDistributor(), a.getDistributorType(),
                 a.getTargetDept(), a.getFlowContact(), a.getFlowPhone(), a.getFlowChannel(), a.getFlowProvideMethod(),
                 a.getStage1Target(), a.getStage2Target(), a.getStage3Target(), a.getStage4Target(), a.getOwnerUserId(),
                 a.getPolicyDetail(), a.getRebateCalcRule(), a.getSettleBasis(), a.getSettleRatio(),
@@ -36,7 +37,7 @@ public class DownstreamAgreementDao {
     public int update(DownstreamAgreement a) {
         String sql = "UPDATE prj_downstream_agreement SET upstream_id=?, upstream_name=?, upstream_no=?, " +
                 "agreement_name=?, agreement_no=?, period_start_date=?, period_end_date=?, region=?, target_terminal=?, " +
-                "calc_basis=?, target_scale=?, calc_method=?, distributor=?, distributor_type=?, target_dept=?, " +
+                "calc_basis=?, target_scale=?, calc_method=?, rebate_calc_basis=?, distributor=?, distributor_type=?, target_dept=?, " +
                 "flow_contact=?, flow_phone=?, flow_channel=?, flow_provide_method=?, " +
                 "stage1_target=?, stage2_target=?, stage3_target=?, stage4_target=?, owner_user_id=?, " +
                 "policy_detail=?, rebate_calc_rule=?, settle_basis=?, settle_ratio=?, rebate_pay_type=?, " +
@@ -46,6 +47,7 @@ public class DownstreamAgreementDao {
                 a.getUpstreamId(), a.getUpstreamName(), a.getUpstreamNo(),
                 a.getAgreementName(), a.getAgreementNo(), a.getPeriodStartDate(), a.getPeriodEndDate(),
                 a.getRegion(), a.getTargetTerminal(), a.getCalcBasis(), a.getTargetScale(), a.getCalcMethod(),
+                a.getRebateCalcBasis(),
                 a.getDistributor(), a.getDistributorType(), a.getTargetDept(), a.getFlowContact(), a.getFlowPhone(),
                 a.getFlowChannel(), a.getFlowProvideMethod(),
                 a.getStage1Target(), a.getStage2Target(), a.getStage3Target(), a.getStage4Target(), a.getOwnerUserId(),
@@ -137,6 +139,7 @@ public class DownstreamAgreementDao {
         a.setCalcBasis(rs.getString("calc_basis"));
         a.setTargetScale(BaseDao.toBigDecimal(rs.getObject("target_scale")));
         a.setCalcMethod(rs.getString("calc_method"));
+        try { a.setRebateCalcBasis(rs.getString("rebate_calc_basis")); } catch (SQLException ignored) {}
         a.setDistributor(rs.getString("distributor"));
         a.setDistributorType(rs.getString("distributor_type"));
         a.setTargetDept(rs.getString("target_dept"));

@@ -15,9 +15,9 @@
 <div class="toolbar">
     <select id="selYear" style="width:120px;">
     </select>
-    <select id="projectId" style="width: 280px;">
-        <option value="">选择项目...</option>
-    </select>
+    <input type="hidden" id="projectId">
+    <input id="txtProject" readonly placeholder="选择项目..." style="width:280px; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+    <button class="btn" id="btnSelProj">选择项目</button>
     <input id="filterWorkNo" style="width: 140px;" placeholder="报销人">
     <input id="filterDocNo" style="width: 140px;" placeholder="发票号">
     <select id="filterExpenseType" style="width: 140px;">
@@ -111,6 +111,7 @@
 
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/project-selector.js"></script>
 <script>
     var curProject = null;
     var page = 1, pageSize = 10, total = 0;
@@ -120,6 +121,13 @@
         RB.checkLogin(function () { 
             loadYears(); 
             recalculatePageSize(); 
+            RB.bindProjectSelector({
+                trigger: '#btnSelProj, #txtProject',
+                display: '#txtProject',
+                hidden: '#projectId',
+                coYear: function() { return $('#selYear').val(); },
+                onChange: function() { page = 1; load(); }
+            });
         });
         $('#btnSearch').on('click', function () { page = 1; load(); });
         $('#btnAdd').on('click', function() { RB.withPerm('expense:edit', showAddModal, '权限不足，无法新增费用'); });
@@ -127,7 +135,6 @@
         $('#btnImport').on('click', function() { RB.withPerm('expense:import', function() { RB.openModal('importModal'); }, '权限不足，无法导入费用数据'); });
         $('#btnImportSave').on('click', function() { RB.withPerm('expense:import', importExcel, '权限不足，无法导入费用数据'); });
         $('#btnExport').on('click', exportExpense);
-        $('#selYear').on('change', function() { loadProjects(); });
         $(window).on('resize', function () { recalculatePageSize(); load(); });
     });
 
@@ -166,19 +173,6 @@
                 }
                 $('#selYear').html(html);
             }
-            loadProjects();
-        });
-    }
-
-    function loadProjects() {
-        var coYear = $('#selYear').val();
-        var param = coYear ? { coYear: coYear } : {};
-        RB.post('/api/project?op=listByYear', param).done(function (r) {
-            var html = '<option value="">选择项目...</option>';
-            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
-                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
-            }
-            $('#projectId').html(html);
         });
     }
 

@@ -77,17 +77,17 @@ public class DownstreamFlowServlet extends BaseServlet {
         String month = WebUtil.getSafeParam(p, "month");
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
+        String customerLevel = WebUtil.getSafeParam(p, "customerLevel");
         String isValidStr = WebUtil.getSafeParam(p, "isValid");
         Integer isValid = null;
         if (isValidStr != null && !isValidStr.isEmpty()) {
             try {
                 isValid = Integer.parseInt(isValidStr);
             } catch (NumberFormatException e) {
-                // 尝试作为浮点数处理
                 try {
                     isValid = (int) Math.round(Double.parseDouble(isValidStr));
                 } catch (NumberFormatException e2) {
-                    // 忽略无效值
+                    // ignore
                 }
             }
         }
@@ -96,13 +96,11 @@ public class DownstreamFlowServlet extends BaseServlet {
         Integer page = WebUtil.getInt(p, "page", 1);
         Integer pageSize = WebUtil.getInt(p, "pageSize", 20);
         
-        // 获取分页后的记录
         List<DownstreamFlowRecord> pageRecords;
         long total;
         
-        // 没有复杂过滤条件时使用数据库分页
-        total = dao.countRecordsWithUpstream(projectId, month, buyerName, buyerCity, isValid, agreementId);
-        pageRecords = dao.listRecordsWithUpstreamPage(projectId, month, buyerName, buyerCity, isValid, agreementId, page, pageSize);
+        total = dao.countRecordsWithUpstream(projectId, month, buyerName, buyerCity, customerLevel, isValid, agreementId);
+        pageRecords = dao.listRecordsWithUpstreamPage(projectId, month, buyerName, buyerCity, customerLevel, isValid, agreementId, page, pageSize);
         
         int totalPages = (int) ((total + pageSize - 1) / pageSize);
         
@@ -163,7 +161,7 @@ public class DownstreamFlowServlet extends BaseServlet {
         boolean useQuantity = "QTY".equalsIgnoreCase(calcBasis);
         
         // 获取记录并聚合
-        List<DownstreamFlowRecord> allRecords = dao.listRecordsWithUpstream(agreement.getProjectId(), null, null, null, 1, agreementId);
+        List<DownstreamFlowRecord> allRecords = dao.listRecordsWithUpstream(agreement.getProjectId(), null, null, null, null, 1, agreementId);
         
         java.math.BigDecimal totalActual = java.math.BigDecimal.ZERO;
         java.math.BigDecimal stage1Actual = java.math.BigDecimal.ZERO;
@@ -275,10 +273,10 @@ public class DownstreamFlowServlet extends BaseServlet {
         Long agreementId = WebUtil.getLong(p, "agreementId", 0L);
         if (agreementId == 0) agreementId = null;
 
-        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, 1, agreementId);
+        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, null, 1, agreementId);
 
         List<String> headers = Arrays.asList("月份", "业务日期", "产品名称", "规格", "销售方", "销售城市",
-                "核算价格", "数量", "核算金额", "采购方", "采购方城市", "考核组");
+                "核算价格", "数量", "核算金额", "采购方", "采购方城市", "客户等级", "销售数量", "无税金额", "中标金额", "考核组");
         List<List<String>> rows = new ArrayList<>();
         for (DownstreamFlowRecord r : records) {
             List<String> row = new ArrayList<>();
@@ -293,6 +291,10 @@ public class DownstreamFlowServlet extends BaseServlet {
             row.add(r.getCalcAmount() != null ? r.getCalcAmount().toString() : "");
             row.add(r.getBuyerName() != null ? r.getBuyerName() : "");
             row.add(r.getBuyerCity() != null ? r.getBuyerCity() : "");
+            row.add(r.getCustomerLevel() != null ? r.getCustomerLevel() : "");
+            row.add(r.getSaleQty() != null ? r.getSaleQty().toString() : "");
+            row.add(r.getNoTaxAmount() != null ? r.getNoTaxAmount().toString() : "");
+            row.add(r.getBidAmount() != null ? r.getBidAmount().toString() : "");
             row.add(r.getAssessGroupName() != null ? r.getAssessGroupName() : "");
             rows.add(row);
         }
@@ -313,10 +315,10 @@ public class DownstreamFlowServlet extends BaseServlet {
         Long agreementId = WebUtil.getLong(p, "agreementId", 0L);
         if (agreementId == 0) agreementId = null;
 
-        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, 0, agreementId);
+        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, null, 0, agreementId);
 
         List<String> headers = Arrays.asList("月份", "业务日期", "产品名称", "规格", "销售方", "采购方", "采购方城市",
-                "核算价格", "数量", "核算金额");
+                "客户等级", "销售数量", "无税金额", "中标金额", "核算价格", "数量", "核算金额");
         List<List<String>> rows = new ArrayList<>();
         for (DownstreamFlowRecord r : records) {
             List<String> row = new ArrayList<>();
@@ -327,6 +329,10 @@ public class DownstreamFlowServlet extends BaseServlet {
             row.add(r.getSellerName() != null ? r.getSellerName() : "");
             row.add(r.getBuyerName() != null ? r.getBuyerName() : "");
             row.add(r.getBuyerCity() != null ? r.getBuyerCity() : "");
+            row.add(r.getCustomerLevel() != null ? r.getCustomerLevel() : "");
+            row.add(r.getSaleQty() != null ? r.getSaleQty().toString() : "");
+            row.add(r.getNoTaxAmount() != null ? r.getNoTaxAmount().toString() : "");
+            row.add(r.getBidAmount() != null ? r.getBidAmount().toString() : "");
             row.add(r.getCalcPrice() != null ? r.getCalcPrice().toString() : "");
             row.add(r.getQuantity() != null ? r.getQuantity().toString() : "");
             row.add(r.getCalcAmount() != null ? r.getCalcAmount().toString() : "");

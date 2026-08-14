@@ -87,7 +87,7 @@ public class ProjectScaleService {
      * 拉取某项目各月份的有效规模，支持按考核组过滤，返回 month->scale 的 Map
      */
     public static Map<String, BigDecimal> loadMonthScale(long projectId, String basis, Long assessGroupId) {
-        String sumCol = "AMT".equalsIgnoreCase(basis) ? "calc_amount" : "quantity";
+        String sumCol = basisToColumn(basis);
         String sql;
         List<Object> params = new java.util.ArrayList<>();
         params.add(projectId);
@@ -107,6 +107,21 @@ public class ProjectScaleService {
             r.put((String) row.get("m"), (BigDecimal) row.get("s"));
         }
         return r;
+    }
+
+    /**
+     * 根据口径枚举映射到流向表的实际求和列
+     */
+    public static String basisToColumn(String basis) {
+        if (basis == null) return "calc_amount";
+        switch (basis.toUpperCase()) {
+            case "QTY": return "quantity";
+            case "SALE_QTY": return "sale_qty";
+            case "BID_AMT": return "bid_amount";
+            case "CALC_AMT":
+            case "AMT":
+            default: return "calc_amount";
+        }
     }
 
     private static BigDecimal sumRange(Map<String, BigDecimal> monthScale, int fromMonth, int toMonth) {

@@ -31,6 +31,8 @@ public class Project {
     private Timestamp updatedAt;
     private String ownerName;
     private String createdByName;
+    private Long projectGroupId;
+    private String projectGroupName;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -80,4 +82,8 @@ public class Project {
     public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
     public String getCreatedByName() { return createdByName; }
     public void setCreatedByName(String createdByName) { this.createdByName = createdByName; }
+    public Long getProjectGroupId() { return projectGroupId; }
+    public void setProjectGroupId(Long projectGroupId) { this.projectGroupId = projectGroupId; }
+    public String getProjectGroupName() { return projectGroupName; }
+    public void setProjectGroupName(String projectGroupName) { this.projectGroupName = projectGroupName; }
 }

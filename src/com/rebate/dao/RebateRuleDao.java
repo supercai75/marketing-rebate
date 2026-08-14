@@ -27,6 +27,8 @@ public class RebateRuleDao {
         r.setAssessGroupId(agIdObj == null ? null : ((Number) agIdObj).longValue());
         r.setSortNo(rs.getInt("sort_no"));
         r.setExpression(rs.getString("expression"));
+        try { r.setCalcMode(rs.getString("calc_mode")); } catch (SQLException ignored) {}
+        try { r.setSharedGroupIds(rs.getString("shared_group_ids")); } catch (SQLException ignored) {}
         return r;
     }
 
@@ -67,9 +69,10 @@ public class RebateRuleDao {
     }
 
     public Long insertRule(RebateRule rule) {
-        String sql = "INSERT INTO prj_upstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no, expression) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO prj_upstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no, expression, calc_mode, shared_group_ids) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql, rule.getAgreementId(), rule.getStageCode(), rule.getThresholdLow(),
-                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo(), rule.getExpression());
+                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo(), rule.getExpression(),
+                rule.getCalcMode() != null ? rule.getCalcMode() : "PROGRESSIVE", rule.getSharedGroupIds());
     }
 
     public List<RebateRule> listDownstreamRebateRules(Long agreementId) {
@@ -81,9 +84,10 @@ public class RebateRuleDao {
     }
 
     public Long insertDownstreamRebateRule(RebateRule rule) {
-        String sql = "INSERT INTO prj_downstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no, expression) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO prj_downstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no, expression, calc_mode, shared_group_ids) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql, rule.getAgreementId(), rule.getStageCode(), rule.getThresholdLow(),
-                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo(), rule.getExpression());
+                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo(), rule.getExpression(),
+                rule.getCalcMode() != null ? rule.getCalcMode() : "PROGRESSIVE", rule.getSharedGroupIds());
     }
 
     public List<AssessGroup> listAssessGroups(Long projectId) {

@@ -8,6 +8,7 @@
 <body>
 <div class="toolbar">
     <input id="kw" placeholder="搜索项目名称/厂牌" style="width: 220px;">
+    <select id="projectGroupFilter"><option value="">全部分组</option></select>
     <select id="status">
         <option value="">全部状态</option>
         <option value="NEW">新建</option>
@@ -30,6 +31,7 @@
             <th>项目名称</th>
             <th>签约厂牌</th>
             <th>合作年度</th>
+            <th>项目分组</th>
             <th>项目目标规模</th>
             <th>预计收益</th>
             <th>状态</th>
@@ -59,6 +61,10 @@
                 <div class="form-item col-4"><label>合作品种(<=200字)</label><input id="f_coProduct" maxlength="200"></div>
                 <div class="form-item col-4"><label>合作模式</label><input id="f_coMode"></div>
                 <div class="form-item col-4"><label>合作年度</label><input id="f_coYear" type="number" min="2000" max="2100" placeholder="如2024" maxlength="4"></div>
+                <div class="form-item col-4"><label>项目分组（下拉选已有）</label>
+                    <select id="f_projectGroupId"><option value="">（不分组）</option></select></div>
+                <div class="form-item col-4"><label>或输入新分组名（优先于下拉）</label>
+                    <input id="f_projectGroupName" placeholder="输入后自动创建分组"></div>
                 <div class="form-item col-4"><label>起始日期</label><input id="f_periodStartDate" type="date"></div>
                 <div class="form-item col-4"><label>终止日期</label><input id="f_periodEndDate" type="date"></div>
                 <div class="form-item col-4"><label>覆盖地区(<=200字)</label><input id="f_region" maxlength="200"></div>
@@ -159,6 +165,7 @@
     $(function () {
         RB.checkLogin(function () {
             loadYears();
+            loadProjectGroups();
             load();
         });
 
@@ -188,8 +195,31 @@
         });
     }
 
+    function loadProjectGroups() {
+        RB.post('/api/project?op=groups', {}).done(function (r) {
+            if (r.code === 0 && r.data) {
+                var filterOpt = '<option value="">全部分组</option>';
+                var formOpt   = '<option value="">（不分组）</option>';
+                for (var i = 0; i < r.data.length; i++) {
+                    filterOpt += '<option value="' + r.data[i].id + '">' + esc(r.data[i].name) + '</option>';
+                    formOpt   += '<option value="' + r.data[i].id + '">' + esc(r.data[i].name) + '</option>';
+                }
+                $('#projectGroupFilter').html(filterOpt);
+                $('#f_projectGroupId').html(formOpt);
+            }
+        });
+    }
+
     function load() {
-        RB.post('/api/project?op=page', { keyword: $('#kw').val(), status: $('#status').val(), coYear: $('#coYear').val(), page: state.page, size: state.size }).done(function (r) {
+        var gid = $('#projectGroupFilter').val();
+        RB.post('/api/project?op=page', {
+            keyword: $('#kw').val(),
+            status: $('#status').val(),
+            coYear: $('#coYear').val(),
+            projectGroupId: (gid && gid !== '') ? gid : null,
+            page: state.page,
+            size: state.size
+        }).done(function (r) {
             if (r.code === 0) {
                 state.total = r.data.total;
                 renderRows(r.data.rows);
@@ -202,6 +232,10 @@
         var map = { 'NEW': '新建', 'RUNNING': '进行中', 'CLOSED': '已关闭' };
         return map[status] || status || '';
     }
+    function esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
 
     function renderRows(rows) {
         var html = '';
@@ -213,17 +247,19 @@
                 '<td><a href="overview.html?projectId=' + r.id + '" target="_blank">' + (r.projectName || '') + '</a></td>' +
                 '<td>' + (r.brand || '') + '</td>' +
                 '<td>' + (r.coYear || '') + '</td>' +
+                '<td>' + (r.projectGroupName || '') + '</td>' +
                 '<td>' + RB.formatMoney(r.targetScale) + '</td>' +
                 '<td>' + RB.formatMoney(r.expectedRebate) + '</td>' +
                 '<td>' + formatStatus(r.status) + '</td>' +
                 '<td>' + (r.ownerName || '') + '</td>' +
                 '<td>' +
                     '<button class="btn btn-sm" onclick="edit(' + r.id + ')">编辑</button> ' +
+                    '<button class="btn btn-sm" onclick="managePerson(' + r.id + ',\'' + esc(r.projectName).replace(/'/g,'&#39;') + '\')">人员</button> ' +
                     '<button class="btn btn-sm btn-danger" onclick="del(' + r.id + ')">删除</button>' +
                 '</td>' +
                 '</tr>';
         }
-        $('#dataBody').html(html || '<tr><td colspan="10" style="text-align:center;color:#999;padding:24px;">暂无数据</td></tr>');
+        $('#dataBody').html(html || '<tr><td colspan="11" style="text-align:center;color:#999;padding:24px;">暂无数据</td></tr>');
     }
 
     function renderPager() {
@@ -258,10 +294,12 @@
 
     function clearForm() {
         ['f_projectCode', 'f_projectName', 'f_brand', 'f_coProduct', 'f_coMode', 'f_coYear',
-         'f_region', 'f_targetScale', 'f_expectedRebate', 'f_expectedCost', 'f_description']
+         'f_region', 'f_targetScale', 'f_expectedRebate', 'f_expectedCost', 'f_description',
+         'f_projectGroupName']
         .forEach(function (id) { $('#' + id).val(''); });
         $('#f_periodStartDate').val(''); $('#f_periodEndDate').val('');
         $('#f_status').val('NEW');
+        $('#f_projectGroupId').val('');
     }
     function fillForm(p) {
         $('#f_projectCode').val(p.projectCode || '');
@@ -278,6 +316,8 @@
         $('#f_expectedCost').val(p.expectedCost || 0);
         $('#f_description').val(p.description || '');
         $('#f_status').val(p.status || 'NEW');
+        $('#f_projectGroupId').val(p.projectGroupId || '');
+        $('#f_projectGroupName').val('');
     }
 
     function saveForm() {
@@ -298,11 +338,25 @@
             description: $('#f_description').val(),
             status: $('#f_status').val()
         };
+        // 分组：文本优先（用户希望新建分组）；否则取下拉中的 id
+        var gName = $.trim($('#f_projectGroupName').val());
+        if (gName) {
+            p.projectGroupName = gName;
+        } else {
+            var gid = $('#f_projectGroupId').val();
+            if (gid) p.projectGroupId = gid;
+        }
         if (!p.projectName) { RB.toast('请填写项目名称', 'error'); return; }
         var op = curProject ? 'update' : 'add';
         RB.post('/api/project?op=' + op, p).done(function (r) {
-            if (r.code === 0) { RB.toast('保存成功', 'success'); RB.closeModal('modalForm'); load(); }
-            else { RB.toast(r.msg, 'error'); }
+            if (r.code === 0) {
+                RB.toast('保存成功', 'success');
+                RB.closeModal('modalForm');
+                loadProjectGroups(); // 新分组已创建，刷新下拉
+                load();
+            } else {
+                RB.toast(r.msg, 'error');
+            }
         });
     }
 

@@ -317,6 +317,7 @@ public class UpstreamAgreementServlet extends BaseServlet {
                             rule.setAgreementId(agreementId);
                             rule.setAssessGroupId(assessGroupId);
                             rule.setSortNo(i + 1);
+                            rule.setSharedGroupIds(normalizeSharedGroupIds(rule.getSharedGroupIds()));
                             ruleDao.insertRule(rule);
                         }
                     }
@@ -333,6 +334,7 @@ public class UpstreamAgreementServlet extends BaseServlet {
                         RebateRule rule = rules.get(i);
                         rule.setAgreementId(agreementId);
                         rule.setSortNo(i + 1);
+                        rule.setSharedGroupIds(normalizeSharedGroupIds(rule.getSharedGroupIds()));
                         if (assessGroupId != null && assessGroupId > 0) {
                             rule.setAssessGroupId(assessGroupId);
                         }
@@ -358,6 +360,7 @@ public class UpstreamAgreementServlet extends BaseServlet {
         a.setCalcBasis(WebUtil.getSafeParam(p, "calcBasis"));
         a.setTargetScale(toBd(p.get("targetScale")));
         a.setCalcMethod(WebUtil.getSafeParam(p, "calcMethod"));
+        a.setRebateCalcBasis(WebUtil.getSafeParam(p, "rebateCalcBasis"));
         a.setSupplier(WebUtil.getSafeParam(p, "supplier"));
         a.setTargetDept(WebUtil.getSafeParam(p, "targetDept"));
         a.setFlowContact(WebUtil.getSafeParam(p, "flowContact"));
@@ -391,6 +394,24 @@ public class UpstreamAgreementServlet extends BaseServlet {
     private BigDecimal toBd(Object o) {
         if (o == null) return BigDecimal.ZERO;
         try { return new BigDecimal(String.valueOf(o)); } catch (Exception e) { return BigDecimal.ZERO; }
+    }
+
+    /** sharedGroupIds 排序归一化：确保 "2,3" 和 "3,2" 存为同一字符串 "2,3" */
+    static String normalizeSharedGroupIds(String val) {
+        if (val == null || val.trim().isEmpty()) return "";
+        java.util.List<Long> ids = new java.util.ArrayList<>();
+        for (String p : val.split("[,，;； ]+")) {
+            String t = p.trim();
+            if (t.isEmpty()) continue;
+            try { ids.add(Long.parseLong(t)); } catch (NumberFormatException ignored) {}
+        }
+        java.util.Collections.sort(ids);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < ids.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append(ids.get(i));
+        }
+        return sb.toString();
     }
 
     private void doListRebateRules(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {

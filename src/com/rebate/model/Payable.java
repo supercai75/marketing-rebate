@@ -30,6 +30,7 @@ public class Payable {
     private String fillUserName;
     private String auditUserName;
     private String confirmUserName;
+    private java.util.List<AssessItemDetail> assessItems;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -77,4 +78,6 @@ public class Payable {
     public void setAuditUserName(String auditUserName) { this.auditUserName = auditUserName; }
     public String getConfirmUserName() { return confirmUserName; }
     public void setConfirmUserName(String confirmUserName) { this.confirmUserName = confirmUserName; }
+    public java.util.List<AssessItemDetail> getAssessItems() { return assessItems; }
+    public void setAssessItems(java.util.List<AssessItemDetail> assessItems) { this.assessItems = assessItems; }
 }

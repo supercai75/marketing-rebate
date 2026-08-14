@@ -6,6 +6,7 @@ import com.rebate.model.DownstreamAgreement;
 import com.rebate.model.Project;
 import com.rebate.model.UpstreamAgreement;
 import com.rebate.service.OverviewService;
+import com.rebate.service.RebateCalcService;
 import com.rebate.util.ExcelUtil;
 import com.rebate.util.ResponseUtil;
 import com.rebate.util.TokenUtil;
@@ -25,6 +26,7 @@ import java.util.Map;
 public class OverviewServlet extends BaseServlet {
 
     private final OverviewService service = new OverviewService();
+    private final RebateCalcService rebateCalcService = new RebateCalcService();
     private final AgreementSubDao subDao = new AgreementSubDao();
 
     @Override
@@ -45,6 +47,9 @@ public class OverviewServlet extends BaseServlet {
             case "overviewByAssessGroup": doOverviewByAssessGroup(req, resp, p); break;
             case "balanceTable": ResponseUtil.ok(resp, service.balanceTable(WebUtil.getSafeParam(p, "coYear"))); break;
             case "payableEstimate": doPayableEstimate(req, resp, p); break;
+            case "recalcRebate":
+            case "calcRebate": doRecalcRebate(req, resp, p); break;
+            case "calcDownstreamRebate": doCalcDownstreamRebate(req, resp, p); break;
             case "exportExcel": doExportExcel(req, resp, p); break;
             case "exportBalance": doExportBalance(req, resp, p); break;
             default: ResponseUtil.fail(resp, "未知操作: " + op);
@@ -59,6 +64,9 @@ public class OverviewServlet extends BaseServlet {
             case "overviewByAssessGroup":
             case "balanceTable":
             case "payableEstimate":
+            case "recalcRebate":
+            case "calcRebate":
+            case "calcDownstreamRebate":
             case "exportExcel":
             case "exportBalance":
                 return u.hasPerm("overview:view");
@@ -117,6 +125,19 @@ public class OverviewServlet extends BaseServlet {
     private void doPayableEstimate(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
         long agreementId = WebUtil.getLong(p, "agreementId", 0);
         ResponseUtil.ok(resp, service.payableEstimate(agreementId));
+    }
+
+    private void doRecalcRebate(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+        long pid = WebUtil.getLong(p, "projectId", 0);
+        String type = WebUtil.getSafeParam(p, "type");
+        boolean isUpstream = !"downstream".equalsIgnoreCase(type);
+        ResponseUtil.ok(resp, rebateCalcService.calcProjectRebate(pid, isUpstream));
+    }
+
+    /** 单个下游协议的返利估算（应付台账用） */
+    private void doCalcDownstreamRebate(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+        long aid = WebUtil.getLong(p, "agreementId", 0);
+        ResponseUtil.ok(resp, rebateCalcService.calcSingleDownstreamAgreementRebate(aid));
     }
     
     private void doExportExcel(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) throws Exception {

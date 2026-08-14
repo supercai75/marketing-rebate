@@ -31,9 +31,12 @@
 <div class="toolbar">
     <select id="selYear" style="width:120px;">
     </select>
-    <select id="selProject" style="width:300px;"></select>
+    <input type="hidden" id="selProject">
+    <input id="txtProject" readonly placeholder="请选择项目" style="width:300px; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+    <button class="btn" id="btnSelProj">选择项目</button>
     <select id="selStage">
         <option value="">全部阶段</option>
+        <option value="全年">全年合计</option>
         <option value="阶段一">阶段一</option>
         <option value="阶段二">阶段二</option>
         <option value="阶段三">阶段三</option>
@@ -70,9 +73,16 @@
         <div class="modal-header" id="modalRTitle">新增应收<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalR')">×</span></div>
         <div class="modal-body">
             <input type="hidden" id="r_id">
-            <div class="form-item"><label>项目 *</label><select id="r_projectId"></select></div>
+            <input type="hidden" id="r_projectId">
+            <div class="form-item"><label>项目 *</label>
+                <div style="display:flex; gap:8px;">
+                    <input id="r_txtProject" readonly placeholder="请选择项目" style="flex:1; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+                    <button class="btn" id="r_btnSelProj" type="button">选择项目</button>
+                </div>
+            </div>
             <div class="form-item"><label>阶段 *</label>
                 <select id="r_stage">
+                    <option value="全年合计">全年合计</option>
                     <option value="阶段一">阶段一</option>
                     <option value="阶段二">阶段二</option>
                     <option value="阶段三">阶段三</option>
@@ -80,7 +90,18 @@
                 </select>
             </div>
             <div class="form-item"><label>依据规模应收(元)</label><input id="r_scaleAmount" type="number" step="0.01"></div>
-            <div class="form-item"><label>依据考核应收(元)</label><input id="r_assessAmount" type="number" step="0.01"></div>
+            <div class="form-item" style="width:100%;">
+                <label>依据考核应收明细</label>
+                <div style="width:100%;">
+                    <table class="table-nowrap" id="r_assessTable" style="font-size:13px;">
+                        <thead><tr>
+                            <th>考核项目</th><th>备注说明</th><th>目标</th><th>达成</th><th>奖惩金额</th><th>操作</th>
+                        </tr></thead>
+                        <tbody id="r_assessBody"></tbody>
+                    </table>
+                    <button class="btn btn-sm" id="r_addAssessRow" type="button">+ 添加行</button>
+                </div>
+            </div>
             <div class="form-item"><label>系统估算(元) <span style="cursor:pointer;color:#409eff;display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border:1px solid #409eff;border-radius:50%;font-size:12px;" id="btnCalcEstimate" title="点击计算">?</span></label><input id="r_estimateAmount" type="number" step="0.01" readonly></div>
             <div class="form-item"><label>备注</label><textarea id="r_remark" rows="2"></textarea></div>
             <p style="color:#888; font-size:12px;">新增/修改后，状态为草稿（DRAFT），待运营人员审核后变为已终稿（FINAL）。</p>
@@ -107,6 +128,7 @@
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/rebate-calc.js"></script>
+<script src="js/project-selector.js"></script>
 <script>
     var editingId = null;
     var curProject = null;
@@ -116,10 +138,26 @@
         // 确保 loadingOverlay 被隐藏
         $('#loadingOverlay').hide();
         
-        RB.checkLogin(function () { loadYears(); });
+        RB.checkLogin(function () { 
+            loadYears();
+            // 工具栏项目选择器
+            RB.bindProjectSelector({
+                trigger: '#btnSelProj, #txtProject',
+                display: '#txtProject',
+                hidden: '#selProject',
+                coYear: function() { return $('#selYear').val(); },
+                onChange: function() { load(); }
+            });
+            // 弹窗内项目选择器
+            RB.bindProjectSelector({
+                trigger: '#r_btnSelProj, #r_txtProject',
+                display: '#r_txtProject',
+                hidden: '#r_projectId',
+                coYear: function() { return $('#selYear').val(); },
+                onChange: function() { $('#r_estimateAmount').val(''); }
+            });
+        });
 
-        $('#selYear').on('change', function() { loadProjects(); });
-        $('#selProject').on('change', load);
         $('#selStage').on('change', load);
         $('#selStatus').on('change', load);
         $('#btnSearch').on('click', load);
@@ -136,15 +174,53 @@
             tryLoadEstimate();
         });
         
-        $('#r_projectId').on('change', function() {
-            // 切换项目时清空估算值，不自动计算
-            $('#r_estimateAmount').val('');
-        });
         $('#r_stage').on('change', function() {
             // 切换阶段时清空估算值，不自动计算
             $('#r_estimateAmount').val('');
         });
+        $('#r_addAssessRow').on('click', function() { addRAssessRow(null); });
     });
+
+    function addRAssessRow(data) {
+        var itemTypes = [
+            {value: 'STAFF_COUNT', label: '作业人数'},
+            {value: 'VISIT_COUNT', label: '拜访次数'},
+            {value: 'MEETING', label: '会议活动'},
+            {value: 'OTHER', label: '其它'}
+        ];
+        var typeOpts = '';
+        for (var i = 0; i < itemTypes.length; i++) {
+            var sel = data && data.itemType === itemTypes[i].value ? ' selected' : '';
+            typeOpts += '<option value="' + itemTypes[i].value + '"' + sel + '>' + itemTypes[i].label + '</option>';
+        }
+        var esc = function(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;'); };
+        var tr = '<tr>' +
+            '<td><select class="r-assess-type" style="width:100%;padding:2px 4px;">' + typeOpts + '</select></td>' +
+            '<td><input type="text" class="r-assess-remark" value="' + esc(data && data.remark) + '" style="width:100%;padding:2px 4px;"></td>' +
+            '<td><input type="number" step="0.01" class="r-assess-target" value="' + esc(data && data.targetValue) + '" style="width:100%;padding:2px 4px;"></td>' +
+            '<td><input type="number" step="0.01" class="r-assess-actual" value="' + esc(data && data.actualValue) + '" style="width:100%;padding:2px 4px;"></td>' +
+            '<td><input type="number" step="0.01" class="r-assess-reward" value="' + esc(data && data.rewardAmount) + '" style="width:100%;padding:2px 4px;"></td>' +
+            '<td><button type="button" class="btn btn-xs btn-danger r-assess-del">删除</button></td>' +
+            '</tr>';
+        var $tr = $(tr);
+        $tr.find('.r-assess-del').on('click', function() { $(this).closest('tr').remove(); });
+        $('#r_assessBody').append($tr);
+    }
+
+    function collectRAssessItems() {
+        var items = [];
+        $('#r_assessBody tr').each(function() {
+            var $tr = $(this);
+            items.push({
+                itemType: $tr.find('.r-assess-type').val(),
+                remark: $tr.find('.r-assess-remark').val(),
+                targetValue: $tr.find('.r-assess-target').val(),
+                actualValue: $tr.find('.r-assess-actual').val(),
+                rewardAmount: $tr.find('.r-assess-reward').val()
+            });
+        });
+        return items;
+    }
 
     function loadYears() {
         RB.post('/api/project?op=listYears', {}).done(function (r) {
@@ -155,20 +231,6 @@
                 }
                 $('#selYear').html(html);
             }
-            loadProjects();
-        });
-    }
-
-    function loadProjects() {
-        var coYear = $('#selYear').val();
-        var param = coYear ? { coYear: coYear } : {};
-        RB.post('/api/project?op=listByYear', param).done(function (r) {
-            var html = '<option value="">请选择项目</option>';
-            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
-                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
-            }
-            $('#selProject').html(html);
-            $('#r_projectId').html(html);
         });
     }
 
@@ -251,13 +313,14 @@
         $('#modalRTitle').text('新增应收');
         $('#r_id').val('');
         $('#r_projectId').val(pid);
+        var curProjectName = $('#txtProject').val() || '';
+        $('#r_txtProject').val(curProjectName);
         $('#r_stage').val('阶段一');
         $('#r_scaleAmount').val('');
-        $('#r_assessAmount').val('');
+        $('#r_assessBody').empty();
         $('#r_estimateAmount').val('');
         $('#r_remark').val('');
         RB.openModal('modalR');
-        // 不自动调用估算，等用户点击"?"按钮再调用
     }
 
     function editR(id) {
@@ -268,9 +331,31 @@
                 $('#modalRTitle').text('编辑应收');
                 $('#r_id').val(x.id);
                 $('#r_projectId').val(x.projectId);
+                // 通过后端接口获取项目名称回显（如果项目存在于当前年度列表，可以用缓存，这里直接用接口取一次）
+                var projectName = $('#txtProject').val() || '';
+                if ($('#selProject').val() && String($('#selProject').val()) === String(x.projectId)) {
+                    // 和当前工具条一致，直接用已选项目名
+                } else {
+                    // 尝试通过接口拿到项目名
+                    projectName = '';
+                    // 用同步提示，异步获取项目名
+                    (function(targetId) {
+                        RB.post('/api/project?op=get', { id: targetId }).done(function(pr) {
+                            if (pr.code === 0 && pr.data) {
+                                $('#r_txtProject').val(pr.data.projectName || '');
+                            }
+                        });
+                    })(x.projectId);
+                }
+                $('#r_txtProject').val(projectName);
                 $('#r_stage').val(x.stage);
                 $('#r_scaleAmount').val(x.scaleAmount || '');
-                $('#r_assessAmount').val(x.assessAmount || '');
+                $('#r_assessBody').empty();
+                RB.post('/api/receivable-payable?op=listReceivableAssessItems', { receivableId: id }).done(function(r2) {
+                    if (r2.code === 0 && r2.data && r2.data.length) {
+                        r2.data.forEach(function(item) { addRAssessRow(item); });
+                    }
+                });
                 $('#r_estimateAmount').val(x.estimateAmount || '');
                 $('#r_remark').val(x.remark || '');
                 RB.openModal('modalR');
@@ -301,12 +386,18 @@
     }
 
     function saveR() {
+        var assessItems = collectRAssessItems();
+        var assessTotal = 0;
+        for (var i = 0; i < assessItems.length; i++) {
+            assessTotal += Number(assessItems[i].rewardAmount || 0);
+        }
         var p = {
             id: editingId || 0,
             projectId: $('#r_projectId').val(),
             stage: $('#r_stage').val(),
             scaleAmount: $('#r_scaleAmount').val() || 0,
-            assessAmount: $('#r_assessAmount').val() || 0,
+            assessAmount: assessTotal,
+            assessItems: JSON.stringify(assessItems),
             estimateAmount: $('#r_estimateAmount').val() || 0,
             remark: $('#r_remark').val()
         };
@@ -321,315 +412,70 @@
         var pid = $('#r_projectId').val();
         var stage = $('#r_stage').val();
         if (!pid || !stage) { $('#r_estimateAmount').val(''); return; }
-        // 使用缓存的数据，而不是重新请求
-        var d = currentProjectData;
-        if (!d || d._pid != pid) {
-            $('#loadingOverlay').show();
-            RB.post('/api/overview?op=overview', { projectId: pid }).done(function(r) {
-                $('#loadingOverlay').hide();
-                if (r.code !== 0 || !r.data) return;
-                currentProjectData = r.data;
-                currentProjectData._pid = pid;
-                showEstimateDetail(currentProjectData, stage);
-            }).fail(function() {
-                $('#loadingOverlay').hide();
-                RB.toast('获取数据失败', 'error');
-            });
-        } else {
-            showEstimateDetail(d, stage);
-        }
-    }
-    
-    function showEstimateDetail(d, stage) {
-        var actual = 0, target = 0, rate = 0;
-        if (stage === '阶段一') { actual = Number(d.stage1Actual || 0); target = Number(d.stage1Target || 0); rate = Number(d.stage1Rate || 0); }
-        else if (stage === '阶段二') { actual = Number(d.stage2Actual || 0); target = Number(d.stage2Target || 0); rate = Number(d.stage2Rate || 0); }
-        else if (stage === '阶段三') { actual = Number(d.stage3Actual || 0); target = Number(d.stage3Target || 0); rate = Number(d.stage3Rate || 0); }
-        else if (stage === '阶段四') { actual = Number(d.stage4Actual || 0); target = Number(d.stage4Target || 0); rate = Number(d.stage4Rate || 0); }
-        
-        var detailHtml = [];
-        detailHtml.push('<h4>📊 计算参数</h4>');
-        detailHtml.push('<div class="data-box">');
-        detailHtml.push('<strong>项目：</strong>' + (d.projectName || '') + '<br>');
-        detailHtml.push('<strong>阶段：</strong>' + stage + '<br>');
-        detailHtml.push('<strong>实际达成：</strong>' + RB.formatMoney(actual) + ' 元<br>');
-        detailHtml.push('<strong>阶段目标：</strong>' + RB.formatMoney(target) + ' 元<br>');
-        detailHtml.push('<strong>达成率：</strong>' + (rate || 0) + '%');
-        detailHtml.push('</div>');
-        
-        try {
+        $('#loadingOverlay').show();
+        RB.post('/api/overview?op=calcRebate', { projectId: pid, type: 'upstream' }).done(function(r) {
+            $('#loadingOverlay').hide();
+            if (r.code !== 0 || !r.data) {
+                RB.toast('获取估算数据失败', 'error');
+                return;
+            }
+            var reb = r.data;
+            // 按阶段取对应估算值
             var est = 0;
-            
-            if (d.upstream && d.upstream.rebateRules) {
-                var stageCode = 'S1';
-                if (stage === '阶段二') stageCode = 'S2';
-                else if (stage === '阶段三') stageCode = 'S3';
-                else if (stage === '阶段四') stageCode = 'S4';
-                
-                var assessGroups = (d.assessGroups && d.assessGroups.length > 0) ? d.assessGroups : 
-                                    ((d.upstream && d.upstream.assessGroups && d.upstream.assessGroups.length > 0) ? d.upstream.assessGroups : 
-                                    [{ id: 0, groupName: '默认', groupCode: 'DEFAULT' }]);
-                var currentGroupFlows = d.currentGroupFlows || [];
-                var prevYearData = d.prevYearData || null;
-                
-                var upstream = d.upstream || {};
-                var upstreamStage1Target = Number(upstream.stage1Target || 0);
-                var upstreamStage2Target = Number(upstream.stage2Target || 0);
-                var upstreamStage3Target = Number(upstream.stage3Target || 0);
-                var upstreamStage4Target = Number(upstream.stage4Target || 0);
-                
-                var useUpstreamTarget = assessGroups.length <= 1;
-                
-                detailHtml.push('<h4>📋 考核组信息</h4>');
-                detailHtml.push('<div class="data-box">');
-                detailHtml.push('<strong>考核组数量：</strong>' + assessGroups.length + ' 个');
-                detailHtml.push('</div>');
-                
-                for (var g = 0; g < assessGroups.length; g++) {
-                    var group = assessGroups[g];
-                    var groupId = group.id || 0;
-                    
-                    var groupFlow = currentGroupFlows.find(function(f) { return f.groupId === groupId; }) || {};
-                    var groupActual = 0, groupTarget = 0;
-                    
-                    var rawGroupActual, rawGroupTarget;
-                    if (useUpstreamTarget) {
-                        if (stage === '阶段一') { rawGroupActual = d.stage1Actual; rawGroupTarget = upstreamStage1Target; }
-                        else if (stage === '阶段二') { rawGroupActual = d.stage2Actual; rawGroupTarget = upstreamStage2Target; }
-                        else if (stage === '阶段三') { rawGroupActual = d.stage3Actual; rawGroupTarget = upstreamStage3Target; }
-                        else if (stage === '阶段四') { rawGroupActual = d.stage4Actual; rawGroupTarget = upstreamStage4Target; }
-                        // 只有当考核组该阶段数据缺失（undefined/null）时才用协议整体数据填充；明确为0时应显示0
-                        groupActual = (rawGroupActual === undefined || rawGroupActual === null) ? (actual > 0 ? actual : 0) : Number(rawGroupActual);
-                        groupTarget = (rawGroupTarget === undefined || rawGroupTarget === null) ? (target > 0 ? target : 0) : Number(rawGroupTarget);
-                    } else {
-                        if (stage === '阶段一') { 
-                            rawGroupActual = groupFlow.stage1Actual !== undefined ? groupFlow.stage1Actual : group.stage1Actual;
-                            rawGroupTarget = groupFlow.stage1Target !== undefined ? groupFlow.stage1Target : group.stage1Target;
-                        }
-                        else if (stage === '阶段二') { 
-                            rawGroupActual = groupFlow.stage2Actual !== undefined ? groupFlow.stage2Actual : group.stage2Actual;
-                            rawGroupTarget = groupFlow.stage2Target !== undefined ? groupFlow.stage2Target : group.stage2Target;
-                        }
-                        else if (stage === '阶段三') { 
-                            rawGroupActual = groupFlow.stage3Actual !== undefined ? groupFlow.stage3Actual : group.stage3Actual;
-                            rawGroupTarget = groupFlow.stage3Target !== undefined ? groupFlow.stage3Target : group.stage3Target;
-                        }
-                        else if (stage === '阶段四') { 
-                            rawGroupActual = groupFlow.stage4Actual !== undefined ? groupFlow.stage4Actual : group.stage4Actual;
-                            rawGroupTarget = groupFlow.stage4Target !== undefined ? groupFlow.stage4Target : group.stage4Target;
-                        }
-                        groupActual = (rawGroupActual === undefined || rawGroupActual === null) ? (actual > 0 ? actual : 0) : Number(rawGroupActual);
-                        groupTarget = (rawGroupTarget === undefined || rawGroupTarget === null) ? (target > 0 ? target : 0) : Number(rawGroupTarget);
-                    }
-                    
-                    var prevGroupActual = 0;
-                    if (prevYearData) {
-                        if (useUpstreamTarget) {
-                            if (stage === '阶段一') prevGroupActual = Number(prevYearData.stage1Actual || 0);
-                            else if (stage === '阶段二') prevGroupActual = Number(prevYearData.stage2Actual || 0);
-                            else if (stage === '阶段三') prevGroupActual = Number(prevYearData.stage3Actual || 0);
-                            else if (stage === '阶段四') prevGroupActual = Number(prevYearData.stage4Actual || 0);
-                        } else {
-                            if (prevYearData.groupFlows) {
-                                var prevGroupFlow = prevYearData.groupFlows.find(function(f) { 
-                                    return f.groupName === group.groupName; 
-                                }) || {};
-                                if (stage === '阶段一') prevGroupActual = Number(prevGroupFlow.stage1Actual || 0);
-                                else if (stage === '阶段二') prevGroupActual = Number(prevGroupFlow.stage2Actual || 0);
-                                else if (stage === '阶段三') prevGroupActual = Number(prevGroupFlow.stage3Actual || 0);
-                                else if (stage === '阶段四') prevGroupActual = Number(prevGroupFlow.stage4Actual || 0);
-                            }
-                        }
-                    }
-                    
-                    detailHtml.push('<div class="group-section">');
-                    detailHtml.push('<strong>考核组：</strong>' + group.groupName + '<br>');
-                    detailHtml.push('<strong>当前阶段实际达成：</strong>' + RB.formatMoney(groupActual) + ' 元<br>');
-                    detailHtml.push('<strong>当前阶段目标：</strong>' + RB.formatMoney(groupTarget) + ' 元<br>');
-                    detailHtml.push('<strong>上年同期达成：</strong>' + RB.formatMoney(prevGroupActual) + ' 元');
-                    
-                    var rules = d.upstream.rebateRules.filter(function(rule) {
-                        var stageMatch = (rule.stageCode === stageCode || rule.stageCode === 'ALL');
-                        var groupMatch = (rule.assessGroupId == null || rule.assessGroupId === 0 || rule.assessGroupId === groupId);
-                        var typeMatch = (rule.rewardType === 'SCALE' || rule.rewardType === 'PERSENT' || rule.rewardType === 'GROWTH');
-                        return stageMatch && groupMatch && typeMatch;
-                    });
-                    
-                    if (rules.length > 0) {
-                        rules.sort(function(a, b) { 
-                            var typeOrder = { 'PERSENT': 1, 'GROWTH': 2, 'SCALE': 3 };
-                            var typeCompare = (typeOrder[a.rewardType] || 99) - (typeOrder[b.rewardType] || 99);
-                            if (typeCompare !== 0) return typeCompare;
-                            return (a.thresholdLow || 0) - (b.thresholdLow || 0); 
-                        });
-                        
-                        detailHtml.push('<h4 style="font-size:14px;color:#606266;margin:12px 0 8px;">返利规则计算</h4>');
-                        
-                        if (rules.length === 1) {
-                            var rule = rules[0];
-                            var low = Number(rule.thresholdLow || 0);
-                            var high = Number(rule.thresholdHigh || 0);
-                            var rebateRatioDB = Number(rule.rebateRatio || 0); // 数据库存的是小数，如 0.05
-                            var rebateRatioDisplay = rebateRatioDB * 100; // 显示用的整数，如 5
-                            var expression = (rule.expression || '').trim();
-                            var ruleEst = 0;
-                            
-                            var typeName = { 'SCALE': '按达成额', 'PERSENT': '按达成率', 'GROWTH': '按销售增长' };
-                            // 根据 rewardType 算 X（达成率/增长率/达成额）
-                            var xObj = RebateCalc.computeX(rule, groupActual, groupTarget, prevGroupActual);
-                            var xActual = xObj.x;
-                            // X 区间上限封顶
-                            var xEffective = RebateCalc.capX(xActual, high);
-                            var inRange = RebateCalc.inRange(xActual, low, high);
-                            
-                            // 返利比例
-                            var ratio = RebateCalc.ratioByRule(rule, xEffective);
-                            var ratioDisplayPct = (ratio * 100).toFixed(4);
-                            
-                            detailHtml.push('<div class="rule-row">');
-                            detailHtml.push('<strong>计算类型：</strong>' + typeName[rule.rewardType] + '<br>');
-                            if (rule.rewardType === 'SCALE') {
-                                detailHtml.push('<strong>阈值范围：</strong>' + low + ' 元 ~ ' + (high === 0 ? '无上限' : (high + ' 元')) + '<br>');
-                            } else {
-                                detailHtml.push('<strong>阈值范围：</strong>' + low + '% ~ ' + (high === 0 ? '无上限' : (high + '%')) + '<br>');
-                            }
-                            detailHtml.push('<strong>返利比例(原始)：</strong>' + rebateRatioDisplay + '%' + (expression ? '；<strong>表达式：</strong><code style="background:#f5f7fa;padding:1px 4px;border-radius:3px;">' + expression + '</code>' : '') + '<br>');
-                            detailHtml.push('<strong>实际 ' + xObj.xLabel + '：</strong>' + (rule.rewardType === 'SCALE' ? RB.formatMoney(xActual) : xActual.toFixed(2) + '%')
-                                + (xEffective !== xActual ? '；<strong style="color:#409eff;">X 封顶：</strong>' + (rule.rewardType === 'SCALE' ? RB.formatMoney(xEffective) : xEffective.toFixed(2) + '%') : '')
-                                + '<br>');
-                            detailHtml.push('<strong>最终使用比例：</strong>' + ratioDisplayPct + '%<br>');
-                            
-                            if (inRange) {
-                                ruleEst = xObj.base * ratio;
-                                detailHtml.push('<strong class="formula">计算：</strong>基数 ' + RB.formatMoney(xObj.base) + ' × ' + ratioDisplayPct + '% = ' + RB.formatMoney(ruleEst) + '<br>');
-                            } else {
-                                detailHtml.push('<strong style="color:#e6a23c;">说明：</strong>' + xObj.xLabel + ' '
-                                    + (rule.rewardType === 'SCALE' ? RB.formatMoney(xActual) : xActual.toFixed(2) + '%')
-                                    + ' 不在阈值范围内，不计入返利<br>');
-                            }
-                            detailHtml.push('<strong>本规则返利：</strong><span class="highlight">' + RB.formatMoney(ruleEst) + '</span>');
-                            detailHtml.push('</div>');
-                            est += ruleEst;
-                        } else {
-                            var groupEst = 0;
-                            var prevHigh = 0;
-                            var prevRewardType = null;
-                            var typeLabel = '';
-                            
-                            for (var i = 0; i < rules.length; i++) {
-                                var rule = rules[i];
-                                var low = Number(rule.thresholdLow || 0);
-                                var high = Number(rule.thresholdHigh || 0);
-                                var rebateRatioDB = Number(rule.rebateRatio || 0);
-                                var rebateRatioDisplay = rebateRatioDB * 100;
-                                var expression = (rule.expression || '').trim();
-                                var ruleEst = 0;
-                                
-                                if (prevRewardType !== null && prevRewardType !== rule.rewardType) {
-                                    prevHigh = 0;
-                                }
-                                prevRewardType = rule.rewardType;
-                                
-                                var typeName = { 'SCALE': '按达成额', 'PERSENT': '按达成率', 'GROWTH': '按销售增长' };
-                                var currentTypeLabel = typeName[rule.rewardType];
-                                if (currentTypeLabel !== typeLabel) {
-                                    typeLabel = currentTypeLabel;
-                                    detailHtml.push('<div style="margin:8px 0 4px;color:#67c23a;font-weight:500;">◆ ' + typeLabel + '</div>');
-                                }
-                                
-                                // 根据 rewardType 计算 X
-                                var xObj = RebateCalc.computeX(rule, groupActual, groupTarget, prevGroupActual);
-                                var xActual = xObj.x;
-                                var xEffective = RebateCalc.capX(xActual, high);
-                                var ratio = RebateCalc.ratioByRule(rule, xEffective);
-                                var ratioDisplayPct = (ratio * 100).toFixed(4);
-                                
-                                detailHtml.push('<div class="rule-row" style="border-color:#67c23a;">');
-                                if (rule.rewardType === 'SCALE') {
-                                    detailHtml.push('<strong>阈值：</strong>' + low + ' 元 ~ ' + (high === 0 ? '无上限' : (high + ' 元'))
-                                        + '，<strong>比例：</strong>' + rebateRatioDisplay + '%'
-                                        + (expression ? '；<strong>表达式：</strong><code style="background:#f5f7fa;padding:1px 4px;border-radius:3px;">' + expression + '</code>' : '')
-                                        + '<br><strong>实际达成额：</strong>' + RB.formatMoney(xActual)
-                                        + (xEffective !== xActual ? '；<strong style="color:#409eff;">X 封顶：</strong>' + RB.formatMoney(xEffective) : ''));
-                                } else {
-                                    detailHtml.push('<strong>阈值：</strong>' + low + '% ~ ' + (high === 0 ? '无上限' : (high + '%'))
-                                        + '，<strong>比例：</strong>' + rebateRatioDisplay + '%'
-                                        + (expression ? '；<strong>表达式：</strong><code style="background:#f5f7fa;padding:1px 4px;border-radius:3px;">' + expression + '</code>' : ''));
-                                }
-                                
-                                if (rule.rewardType === 'SCALE') {
-                                    var effectiveStart = Math.max(low, prevHigh);
-                                    var effectiveEnd = high === 0 ? groupActual : Math.min(high, groupActual);
-                                    if (effectiveEnd > effectiveStart) {
-                                        ruleEst = (effectiveEnd - effectiveStart) * ratio;
-                                        detailHtml.push('<br><strong>使用比例：</strong>' + ratioDisplayPct + '%');
-                                        detailHtml.push('<br><strong class="formula">计算：</strong>(' + RB.formatMoney(effectiveEnd) + ' - ' + RB.formatMoney(effectiveStart) + ') × ' + ratioDisplayPct + '% = ' + RB.formatMoney(ruleEst));
-                                        groupEst += ruleEst;
-                                    } else {
-                                        detailHtml.push('<br><strong style="color:#e6a23c;">说明：</strong>当前达成额不在此区间');
-                                    }
-                                    prevHigh = high;
-                                } else {
-                                    var lowNorm = (rule.rewardType === 'SCALE') ? low : low / 100;
-                                    var highNorm = (rule.rewardType === 'SCALE') ? high : high / 100;
-                                    var xNorm = xActual / 100; // PERSENT/GROWTH: X 是百分比，这里归一化为 0~1
-                                    var effectiveStart = Math.max(lowNorm, prevHigh);
-                                    var effectiveEnd = highNorm === 0 ? xNorm : Math.min(highNorm, xNorm);
-                                    // 比例（ratio）已经是基于 X 的返利比例，所以阶梯的区间差额 × 目标/基数 × ratio
-                                    if (effectiveEnd > effectiveStart) {
-                                        var baseForStep = (groupTarget && groupTarget > 0) ? groupTarget : (Number(groupActual) || 0);
-                                        ruleEst = baseForStep * (effectiveEnd - effectiveStart) * ratio;
-                                        var pctBefore = (xActual).toFixed(2);
-                                        detailHtml.push('<br><strong>' + xObj.xLabel + '：</strong>' + pctBefore + '%'
-                                            + (xEffective !== xActual ? '；<strong style="color:#409eff;">X 封顶：</strong>' + xEffective.toFixed(2) + '%' : ''));
-                                        detailHtml.push('<br><strong>使用比例：</strong>' + ratioDisplayPct + '%');
-                                        detailHtml.push('<br><strong class="formula">计算：</strong>' + RB.formatMoney(baseForStep) + ' × ('
-                                            + ((effectiveEnd * 100).toFixed(2)) + '% - ' + ((effectiveStart * 100).toFixed(2)) + '%) × ' + ratioDisplayPct + '% = ' + RB.formatMoney(ruleEst));
-                                        groupEst += ruleEst;
-                                    } else {
-                                        detailHtml.push('<br><strong>' + xObj.xLabel + '：</strong>' + (xActual).toFixed(2) + '%');
-                                        detailHtml.push('<br><strong style="color:#e6a23c;">说明：</strong>当前' + xObj.xLabel + '不在此区间');
-                                    }
-                                    prevHigh = highNorm;
-                                }
-                                detailHtml.push('</div>');
-                            }
-                            est += groupEst;
-                            detailHtml.push('<div style="margin-top:12px;padding-top:12px;border-top:1px dashed #ccc;">');
-                            detailHtml.push('<strong>本考核组合计返利：</strong><span class="highlight">' + RB.formatMoney(groupEst) + '</span>');
-                            detailHtml.push('</div>');
-                        }
-                    } else {
-                        detailHtml.push('<div style="color:#909399;margin-top:8px;">暂无适用的返利规则</div>');
-                    }
-                    detailHtml.push('</div>');
+            if (stage === '全年合计') {
+                est = Number(reb.totalRebate || 0);
+            } else if (stage === '阶段一' && reb.stageRebates && reb.stageRebates[0]) {
+                est = Number(reb.stageRebates[0].rebateAmount || 0);
+            } else if (stage === '阶段二' && reb.stageRebates && reb.stageRebates[1]) {
+                est = Number(reb.stageRebates[1].rebateAmount || 0);
+            } else if (stage === '阶段三' && reb.stageRebates && reb.stageRebates[2]) {
+                est = Number(reb.stageRebates[2].rebateAmount || 0);
+            } else if (stage === '阶段四' && reb.stageRebates && reb.stageRebates[3]) {
+                est = Number(reb.stageRebates[3].rebateAmount || 0);
+            }
+            showEstimateDetail(reb, stage, est);
+            $('#r_estimateAmount').val(Number(est || 0).toFixed(2));
+        }).fail(function() {
+            $('#loadingOverlay').hide();
+            RB.toast('获取估算数据失败', 'error');
+        });
+    }
+
+    function showEstimateDetail(reb, stage, est) {
+        var detailHtml = [];
+        detailHtml.push('<h4>📊 估算结果（后端返利计算引擎）</h4>');
+        detailHtml.push('<div class="data-box">');
+        detailHtml.push('<strong>阶段：</strong>' + stage + '<br>');
+        if (stage === '全年合计') {
+            detailHtml.push('<strong>全年合计 = 四阶段累计 + 全年规则：</strong>' + RB.formatMoney(reb.totalRebate || 0) + ' 元<br>');
+            if (reb.stageRebates) {
+                for (var i = 0; i < reb.stageRebates.length; i++) {
+                    var sr = reb.stageRebates[i];
+                    detailHtml.push('&nbsp;&nbsp;· ' + sr.stageName + '：目标 ' + RB.formatMoney(sr.target || 0)
+                        + ' / 实际 ' + RB.formatMoney(sr.actual || 0)
+                        + ' → 返利 <strong>' + RB.formatMoney(sr.rebateAmount || 0) + '</strong> 元<br>');
                 }
-            } else {
-                detailHtml.push('<div class="data-box" style="color:#909399;">暂无上游协议或返利规则</div>');
             }
-            
-            if (!est || isNaN(est)) {
-                est = (rate / 100) * Number(d.expectedRebate || 0) / 4;
-                detailHtml.push('<h4>📝 备用计算方式</h4>');
-                detailHtml.push('<div class="data-box">');
-                detailHtml.push('<strong>预计返利总额：</strong>' + RB.formatMoney(d.expectedRebate || 0) + ' 元<br>');
-                detailHtml.push('<strong>阶段数：</strong>4<br>');
-                detailHtml.push('<strong class="formula">计算：</strong>' + rate + '% × ' + RB.formatMoney(d.expectedRebate || 0) + ' ÷ 4 = ' + RB.formatMoney(est));
-                detailHtml.push('</div>');
+            detailHtml.push('&nbsp;&nbsp;· 全年专属规则（FULL_YEAR）返利：' + RB.formatMoney(reb.fullYearRebate || 0) + ' 元');
+        } else if (reb.stageRebates) {
+            var mapStageIdx = { '阶段一': 0, '阶段二': 1, '阶段三': 2, '阶段四': 3 };
+            var idx = mapStageIdx[stage];
+            if (idx != null && reb.stageRebates[idx]) {
+                var sr = reb.stageRebates[idx];
+                detailHtml.push('<strong>阶段目标：</strong>' + RB.formatMoney(sr.target || 0) + ' 元<br>');
+                detailHtml.push('<strong>阶段实际：</strong>' + RB.formatMoney(sr.actual || 0) + ' 元<br>');
+                var rate = (sr.target && sr.target > 0) ? (sr.actual / sr.target * 100).toFixed(2) : '0.00';
+                detailHtml.push('<strong>达成率：</strong>' + rate + '%');
             }
-            
-            detailHtml.push('<div class="result-row">');
-            detailHtml.push('<strong style="font-size:16px;">💰 最终估算应收：</strong><span class="highlight" style="font-size:20px;">' + RB.formatMoney(est) + '</span> 元');
-            detailHtml.push('</div>');
-            
-            $('#estimateDetailContent').html(detailHtml.join(''));
-            $('#r_estimateAmount').val(est.toFixed(2));
-            RB.openModal('modalEstimateDetail');
-            
-        } catch (e) { 
-            console.error(e);
-            $('#r_estimateAmount').val(''); 
         }
+        detailHtml.push('</div>');
+
+        detailHtml.push('<div class="result-row">');
+        detailHtml.push('<strong style="font-size:16px;">💰 最终估算应收：</strong><span class="highlight" style="font-size:20px;">' + RB.formatMoney(est || 0) + '</span> 元');
+        detailHtml.push('</div>');
+
+        $('#estimateDetailContent').html(detailHtml.join(''));
+        RB.openModal('modalEstimateDetail');
     }
 
     function exportReceivable() {

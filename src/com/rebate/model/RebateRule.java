@@ -16,6 +16,8 @@ public class RebateRule {
     private Long assessGroupId;
     private Integer sortNo;
     private String expression;
+    private String calcMode;       // PROGRESSIVE(递进式) / FLAT(全部计算)
+    private String sharedGroupIds; // 共享考核组ID列表（逗号分隔，多考核组共享目标时使用）
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -37,4 +39,8 @@ public class RebateRule {
     public void setSortNo(Integer sortNo) { this.sortNo = sortNo; }
     public String getExpression() { return expression; }
     public void setExpression(String expression) { this.expression = expression; }
+    public String getCalcMode() { return calcMode; }
+    public void setCalcMode(String calcMode) { this.calcMode = calcMode; }
+    public String getSharedGroupIds() { return sharedGroupIds; }
+    public void setSharedGroupIds(String sharedGroupIds) { this.sharedGroupIds = sharedGroupIds; }
 }

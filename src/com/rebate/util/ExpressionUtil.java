@@ -19,21 +19,29 @@ public class ExpressionUtil {
     private static final MathContext MC = MathContext.DECIMAL128;
 
     /**
-     * 计算表达式，代入变量 X
+     * 计算表达式，代入变量 X 和 Y
      * @param expr 表达式，可为空或纯数字
-     * @param x    变量 X 的值
+     * @param x    变量 X 的值（达成率/增长率/达成额）
+     * @param y    变量 Y 的值（完成的核算数量）
      * @return 计算结果；表达式为空或空白时返回 null
      */
-    public static BigDecimal eval(String expr, BigDecimal x) {
+    public static BigDecimal eval(String expr, BigDecimal x, BigDecimal y) {
         if (expr == null) return null;
         String s = expr.trim();
         if (s.isEmpty()) return null;
-        Parser p = new Parser(s, x == null ? BigDecimal.ZERO : x);
+        Parser p = new Parser(s, x == null ? BigDecimal.ZERO : x, y == null ? BigDecimal.ZERO : y);
         BigDecimal r = p.parseExpression();
         if (p.pos != s.length()) {
             throw new IllegalArgumentException("表达式存在意外字符，位置 " + p.pos + ": " + s);
         }
         return r;
+    }
+
+    /**
+     * 计算表达式，代入变量 X（兼容旧调用，Y 默认为 0）
+     */
+    public static BigDecimal eval(String expr, BigDecimal x) {
+        return eval(expr, x, BigDecimal.ZERO);
     }
 
     /**
@@ -54,11 +62,13 @@ public class ExpressionUtil {
     private static final class Parser {
         private final String src;
         private final BigDecimal x;
+        private final BigDecimal y;
         private int pos;
 
-        Parser(String src, BigDecimal x) {
+        Parser(String src, BigDecimal x, BigDecimal y) {
             this.src = src;
             this.x = x;
+            this.y = y;
             this.pos = 0;
         }
 
@@ -129,6 +139,10 @@ public class ExpressionUtil {
             if (c == 'X' || c == 'x') {
                 pos++;
                 return x;
+            }
+            if (c == 'Y' || c == 'y') {
+                pos++;
+                return y;
             }
             // 数字
             int start = pos;

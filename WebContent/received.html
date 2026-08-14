@@ -27,7 +27,9 @@
 <div class="toolbar">
     <select id="selYear" style="width:120px;">
     </select>
-    <select id="selProject" style="width:300px;"></select>
+    <input type="hidden" id="selProject">
+    <input id="txtProject" readonly placeholder="请选择项目" style="width:300px; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+    <button class="btn" id="btnSelProj">选择项目</button>
     <select id="selStage">
         <option value="">全部阶段</option>
         <option value="全年">全年</option>
@@ -69,8 +71,14 @@
         <div class="modal-header" id="modalRTitle">新增实收<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalR')">×</span></div>
         <div class="modal-body">
             <input type="hidden" id="r_id">
+            <input type="hidden" id="r_projectId">
             <div class="form-row">
-                <div class="form-item col-2"><label>项目 *</label><select id="r_projectId"></select></div>
+                <div class="form-item col-2"><label>项目 *</label>
+                    <div style="display:flex; gap:8px;">
+                        <input id="r_txtProject" readonly placeholder="请选择项目" style="flex:1; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
+                        <button class="btn" id="r_btnSelProj" type="button">选择</button>
+                    </div>
+                </div>
                 <div class="form-item col-2"><label>阶段 *</label>
                     <select id="r_stage">
                         <option value="全年">全年</option>
@@ -217,14 +225,31 @@
 
 <script src="lib/jquery-3.7.1.min.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/project-selector.js"></script>
 <script>
     var editingId = null;
 
     var bpmSelected = null;   // 当前选中的BPM记录
 
     $(function () {
-        RB.checkLogin(function () { loadYears(); });
-        $('#selYear').on('change', function() { loadProjects(); });
+        RB.checkLogin(function () { 
+            loadYears();
+            // 工具栏项目选择器
+            RB.bindProjectSelector({
+                trigger: '#btnSelProj, #txtProject',
+                display: '#txtProject',
+                hidden: '#selProject',
+                coYear: function() { return $('#selYear').val(); },
+                onChange: function() { load(); }
+            });
+            // 新增/编辑弹窗内项目选择器
+            RB.bindProjectSelector({
+                trigger: '#r_btnSelProj, #r_txtProject',
+                display: '#r_txtProject',
+                hidden: '#r_projectId',
+                coYear: function() { return $('#selYear').val(); }
+            });
+        });
         $('#btnSearch').on('click', load);
         $('#btnRefresh').on('click', load);
         $('#btnExport').on('click', exportReceived);
@@ -243,20 +268,6 @@
                 }
                 $('#selYear').html(html);
             }
-            loadProjects();
-        });
-    }
-
-    function loadProjects() {
-        var coYear = $('#selYear').val();
-        var param = coYear ? { coYear: coYear } : {};
-        RB.post('/api/project?op=listByYear', param).done(function (r) {
-            var html = '<option value="">请选择项目</option>';
-            if (r.code === 0) for (var i = 0; i < r.data.length; i++) {
-                html += '<option value="' + r.data[i].id + '">' + r.data[i].projectName + '</option>';
-            }
-            $('#selProject').html(html);
-            $('#r_projectId').html(html);
         });
     }
 
@@ -354,6 +365,7 @@
         $('#modalRTitle').text('新增实收');
         $('#r_id').val('');
         $('#r_projectId').val(pid);
+        $('#r_txtProject').val($('#txtProject').val() || '');
         $('#r_stage').val('阶段一');
         $('#r_rebateType').val('票折');
         $('#r_applyDate,#r_applicant,#r_applyDept,#r_financeCode,#r_invoiceNo').val('');
@@ -371,6 +383,15 @@
             $('#modalRTitle').text('编辑实收');
             $('#r_id').val(x.id);
             $('#r_projectId').val(x.projectId);
+            var projectName = $('#txtProject').val() || '';
+            if (!($('#selProject').val() && String($('#selProject').val()) === String(x.projectId))) {
+                (function(targetId) {
+                    RB.post('/api/project?op=get', { id: targetId }).done(function(pr) {
+                        if (pr.code === 0 && pr.data) $('#r_txtProject').val(pr.data.projectName || '');
+                    });
+                })(x.projectId);
+            }
+            $('#r_txtProject').val(projectName);
             $('#r_stage').val(x.stage);
             $('#r_rebateType').val(x.rebateType);
             $('#r_applyDate').val(x.applyDate);

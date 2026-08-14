@@ -18,32 +18,33 @@ import java.util.Map;
  */
 public class ProjectDao {
 
-    private static final String BASE_SELECT = "SELECT p.*, ou.name AS owner_name, cu.name AS created_by_name FROM prj_project p " +
+    private static final String BASE_SELECT = "SELECT p.*, ou.name AS owner_name, cu.name AS created_by_name, g.name AS project_group_name FROM prj_project p " +
             "LEFT JOIN sys_user ou ON p.owner_user_id=ou.id " +
-            "LEFT JOIN sys_user cu ON p.created_by=cu.id ";
+            "LEFT JOIN sys_user cu ON p.created_by=cu.id " +
+            "LEFT JOIN prj_project_group g ON p.project_group_id = g.id ";
 
     public Long insert(Project p) {
         String sql = "INSERT INTO prj_project(project_code, project_name, brand, co_product, co_mode, co_year, " +
                 "period_start_date, period_end_date, region, target_scale, expected_rebate, expected_cost, " +
                 "description, bpm_process_id, bpm_project_id, bpm_synced, " +
-                "status, owner_user_id, created_by) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "status, owner_user_id, created_by, project_group_id) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql, p.getProjectCode(), p.getProjectName(), p.getBrand(), p.getCoProduct(), p.getCoMode(),
                 p.getCoYear(), p.getPeriodStartDate(), p.getPeriodEndDate(), p.getRegion(), p.getTargetScale(),
                 p.getExpectedRebate(), p.getExpectedCost(),
                 p.getDescription(), p.getBpmProcessId(), p.getBpmProjectId(), p.getBpmSynced(),
-                p.getStatus(), p.getOwnerUserId(), p.getCreatedBy());
+                p.getStatus(), p.getOwnerUserId(), p.getCreatedBy(), p.getProjectGroupId());
     }
 
     public int update(Project p) {
         String sql = "UPDATE prj_project SET project_code=?, project_name=?, brand=?, co_product=?, co_mode=?, " +
                 "co_year=?, period_start_date=?, period_end_date=?, region=?, target_scale=?, " +
                 "expected_rebate=?, expected_cost=?, description=?, " +
-                "status=?, owner_user_id=? WHERE id=?";
+                "status=?, owner_user_id=?, project_group_id=? WHERE id=?";
         return BaseDao.update(sql, p.getProjectCode(), p.getProjectName(), p.getBrand(), p.getCoProduct(), p.getCoMode(),
                 p.getCoYear(), p.getPeriodStartDate(), p.getPeriodEndDate(), p.getRegion(), p.getTargetScale(),
                 p.getExpectedRebate(), p.getExpectedCost(), p.getDescription(),
-                p.getStatus(), p.getOwnerUserId(), p.getId());
+                p.getStatus(), p.getOwnerUserId(), p.getProjectGroupId(), p.getId());
     }
 
     public int updateStatus(long id, String status) {
@@ -62,35 +63,64 @@ public class ProjectDao {
         return BaseDao.queryOne(BASE_SELECT + " WHERE p.bpm_project_id=?", this::map, bpmId);
     }
 
-    public List<Project> page(String keyword, String status, String coYear, int page, int size) {
+    public List<Project> page(String keyword, String status, String coYear, Long projectGroupId, int page, int size) {
         int offset = (page - 1) * size;
         String kw = "%" + (keyword == null ? "" : keyword) + "%";
         String sql = BASE_SELECT + " WHERE (? = '' OR p.project_name LIKE ? OR p.brand LIKE ? OR p.project_code LIKE ?) " +
                 "AND (? = '' OR p.status = ?) " +
-                "AND (? = '' OR p.co_year = ?) ORDER BY p.id DESC LIMIT ? OFFSET ?";
-        return BaseDao.query(sql, this::map, kw, kw, kw, kw, status == null ? "" : status, status == null ? "" : status,
-                coYear == null ? "" : coYear, coYear == null ? "" : coYear, size, offset);
+                "AND (? = '' OR p.co_year = ?) " +
+                "AND (? IS NULL OR p.project_group_id = ?) " +
+                "ORDER BY p.id DESC LIMIT ? OFFSET ?";
+        return BaseDao.query(sql, this::map, kw, kw, kw, kw,
+                status == null ? "" : status, status == null ? "" : status,
+                coYear == null ? "" : coYear, coYear == null ? "" : coYear,
+                projectGroupId, projectGroupId,
+                size, offset);
     }
 
-    public long count(String keyword, String status, String coYear) {
+    public long count(String keyword, String status, String coYear, Long projectGroupId) {
         String kw = "%" + (keyword == null ? "" : keyword) + "%";
         String sql = "SELECT COUNT(*) FROM prj_project p WHERE (? = '' OR p.project_name LIKE ? OR p.brand LIKE ? OR p.project_code LIKE ?) " +
                 "AND (? = '' OR p.status = ?) " +
-                "AND (? = '' OR p.co_year = ?)";
-        return BaseDao.count(sql, kw, kw, kw, kw, status == null ? "" : status, status == null ? "" : status,
-                coYear == null ? "" : coYear, coYear == null ? "" : coYear);
+                "AND (? = '' OR p.co_year = ?) " +
+                "AND (? IS NULL OR p.project_group_id = ?)";
+        return BaseDao.count(sql, kw, kw, kw, kw,
+                status == null ? "" : status, status == null ? "" : status,
+                coYear == null ? "" : coYear, coYear == null ? "" : coYear,
+                projectGroupId, projectGroupId);
     }
 
     public List<Project> listAll() {
-        return BaseDao.query(BASE_SELECT + " ORDER BY id DESC", this::map);
+        return listByFilters(null, null, null, null);
     }
-    
-    public List<Project> listByYear(String coYear) {
-        if (coYear == null || coYear.isEmpty()) {
-            return listAll();
+
+    public List<Project> listByFilters(String coYear, Long projectGroupId, String keyword, String status) {
+        String kw = "%" + (keyword == null ? "" : keyword) + "%";
+        StringBuilder sql = new StringBuilder(BASE_SELECT);
+        List<Object> args = new ArrayList<>();
+        sql.append(" WHERE 1=1 ");
+        if (coYear != null && !coYear.isEmpty()) {
+            sql.append(" AND p.co_year = ? ");
+            args.add(coYear);
         }
-        String sql = BASE_SELECT + " WHERE p.co_year = ? ORDER BY id DESC";
-        return BaseDao.query(sql, this::map, coYear);
+        if (status != null && !status.isEmpty()) {
+            sql.append(" AND p.status = ? ");
+            args.add(status);
+        }
+        if (projectGroupId != null && projectGroupId > 0) {
+            sql.append(" AND p.project_group_id = ? ");
+            args.add(projectGroupId);
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            sql.append(" AND (p.project_name LIKE ? OR p.brand LIKE ? OR p.project_code LIKE ?) ");
+            args.add(kw); args.add(kw); args.add(kw);
+        }
+        sql.append(" ORDER BY p.id DESC");
+        return BaseDao.query(sql.toString(), this::map, args.toArray());
+    }
+
+    public List<Project> listByYear(String coYear) {
+        return listByFilters(coYear, null, null, null);
     }
 
     /**
@@ -112,6 +142,32 @@ public class ProjectDao {
     public Project findByProjectCode(String projectCode) {
         if (projectCode == null || projectCode.isEmpty()) return null;
         return BaseDao.queryOne(BASE_SELECT + " WHERE p.project_code = ?", this::map, projectCode);
+    }
+
+    // ============== 项目分组字典 ==============
+
+    public List<Map<String, Object>> listGroups() {
+        String sql = "SELECT id, name FROM prj_project_group ORDER BY name";
+        return BaseDao.query(sql, (ResultSet rs) -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", rs.getLong("id"));
+            m.put("name", rs.getString("name"));
+            return m;
+        });
+    }
+
+    /**
+     * 如果 name 存在 -> 返回 id；不存在则插入后返回新 id。空串返回 null
+     */
+    public Long ensureGroup(String name, Long userId) {
+        if (name == null) return null;
+        String n = name.trim();
+        if (n.isEmpty()) return null;
+        Long existing = BaseDao.queryOne("SELECT id FROM prj_project_group WHERE name = ?",
+                (ResultSet rs) -> rs.getLong("id"), n);
+        if (existing != null) return existing;
+        return BaseDao.insertReturnId("INSERT INTO prj_project_group(name, created_by) VALUES (?, ?)",
+                n, userId);
     }
 
     /**
@@ -177,8 +233,10 @@ public class ProjectDao {
         p.setCreatedBy(rs.getObject("created_by") == null ? null : rs.getLong("created_by"));
         p.setCreatedAt(rs.getTimestamp("created_at"));
         p.setUpdatedAt(rs.getTimestamp("updated_at"));
+        p.setProjectGroupId(rs.getObject("project_group_id") == null ? null : rs.getLong("project_group_id"));
         try { p.setOwnerName(rs.getString("owner_name")); } catch (Exception ignore) {}
         try { p.setCreatedByName(rs.getString("created_by_name")); } catch (Exception ignore) {}
+        try { p.setProjectGroupName(rs.getString("project_group_name")); } catch (Exception ignore) {}
         return p;
     }
 }

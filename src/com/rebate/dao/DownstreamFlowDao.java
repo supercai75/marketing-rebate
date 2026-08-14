@@ -1,6 +1,7 @@
 package com.rebate.dao;
 
 import com.rebate.model.DownstreamFlowRecord;
+import com.rebate.service.ProjectScaleService;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,7 +14,7 @@ import java.util.Map;
  */
 public class DownstreamFlowDao {
 
-    public List<DownstreamFlowRecord> listRecords(Long projectId, String month, String buyerName, String buyerCity, Integer isValid, Long agreementId) {
+    public List<DownstreamFlowRecord> listRecords(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId) {
         StringBuilder sql = new StringBuilder(
             "SELECT r.*, g.group_name as assessGroupName, b.batch_code as sourceBatchCode " +
             "FROM flow_downstream_record r " +
@@ -36,6 +37,10 @@ public class DownstreamFlowDao {
             sql.append("AND r.buyer_city LIKE ? ");
             params.add("%" + buyerCity + "%");
         }
+        if (customerLevel != null && !customerLevel.isEmpty()) {
+            sql.append("AND r.customer_level = ? ");
+            params.add(customerLevel);
+        }
         if (isValid != null) {
             sql.append("AND r.is_valid = ? ");
             params.add(isValid);
@@ -49,7 +54,7 @@ public class DownstreamFlowDao {
         return BaseDao.query(sql.toString(), this::mapRecordWithGroup, params.toArray());
     }
 
-    public long countRecords(Long projectId, String month, String buyerName, String buyerCity, Integer isValid, Long agreementId) {
+    public long countRecords(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId) {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM flow_downstream_record r WHERE r.project_id = ? ");
         List<Object> params = new ArrayList<>();
         params.add(projectId);
@@ -66,6 +71,10 @@ public class DownstreamFlowDao {
             sql.append("AND r.buyer_city LIKE ? ");
             params.add("%" + buyerCity + "%");
         }
+        if (customerLevel != null && !customerLevel.isEmpty()) {
+            sql.append("AND r.customer_level = ? ");
+            params.add(customerLevel);
+        }
         if (isValid != null) {
             sql.append("AND r.is_valid = ? ");
             params.add(isValid);
@@ -79,7 +88,7 @@ public class DownstreamFlowDao {
         return count != null ? count : 0L;
     }
 
-    public List<DownstreamFlowRecord> listRecordsPage(Long projectId, String month, String buyerName, String buyerCity, Integer isValid, Long agreementId, int page, int pageSize) {
+    public List<DownstreamFlowRecord> listRecordsPage(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId, int page, int pageSize) {
         StringBuilder sql = new StringBuilder(
             "SELECT r.*, g.group_name as assessGroupName, b.batch_code as sourceBatchCode " +
             "FROM flow_downstream_record r " +
@@ -101,6 +110,10 @@ public class DownstreamFlowDao {
         if (buyerCity != null && !buyerCity.isEmpty()) {
             sql.append("AND r.buyer_city LIKE ? ");
             params.add("%" + buyerCity + "%");
+        }
+        if (customerLevel != null && !customerLevel.isEmpty()) {
+            sql.append("AND r.customer_level = ? ");
+            params.add(customerLevel);
         }
         if (isValid != null) {
             sql.append("AND r.is_valid = ? ");
@@ -141,6 +154,10 @@ public class DownstreamFlowDao {
         r.setCalcAmount(BaseDao.toBigDecimal(rs.getObject("calc_amount")));
         r.setBuyerName(rs.getString("buyer_name"));
         r.setBuyerCity(rs.getString("buyer_city"));
+        r.setCustomerLevel(rs.getString("customer_level"));
+        r.setSaleQty(BaseDao.toBigDecimal(rs.getObject("sale_qty")));
+        r.setNoTaxAmount(BaseDao.toBigDecimal(rs.getObject("no_tax_amount")));
+        r.setBidAmount(BaseDao.toBigDecimal(rs.getObject("bid_amount")));
         r.setAssessGroupId(rs.getObject("assess_group_id") == null ? null : rs.getLong("assess_group_id"));
         r.setInvalidReason(rs.getString("invalid_reason"));
         r.setInvalidTime(rs.getTimestamp("invalid_time"));
@@ -160,7 +177,7 @@ public class DownstreamFlowDao {
     }
     
     public List<Map<String, Object>> sumByMonth(Long projectId, String basis, Long assessGroupId, Long agreementId) {
-        String sumCol = "AMT".equalsIgnoreCase(basis) ? "calc_amount" : "quantity";
+        String sumCol = ProjectScaleService.basisToColumn(basis);
         StringBuilder sql = new StringBuilder(
             "SELECT month_yyyymm, SUM(" + sumCol + ") as month_scale, COUNT(*) as cnt " +
             "FROM flow_downstream_record WHERE project_id = ? AND is_valid = 1 "
@@ -197,7 +214,7 @@ public class DownstreamFlowDao {
      * 按下游协议聚合
      */
     public List<Map<String, Object>> sumByAgreement(Long agreementId, String basis) {
-        String sumCol = "AMT".equalsIgnoreCase(basis) ? "calc_amount" : "quantity";
+        String sumCol = ProjectScaleService.basisToColumn(basis);
         String sql = "SELECT r.month_yyyymm, " +
                 "SUM(r.quantity) AS total_qty, " +
                 "SUM(r.calc_amount) AS total_amt, " +
@@ -259,11 +276,14 @@ public class DownstreamFlowDao {
         // 共 1 + N + 3 = N + 4 个
         String insertSql = "INSERT INTO flow_downstream_record(project_id, agreement_id, batch_id, " +
                 "upstream_flow_record_id, month_yyyymm, business_date, product_name, spec, seller_name, " +
-                "seller_city, calc_price, quantity, calc_amount, buyer_name, buyer_city, assess_group_id, is_valid, " +
+                "seller_city, calc_price, quantity, calc_amount, buyer_name, buyer_city, " +
+                "customer_level, sale_qty, no_tax_amount, bid_amount, assess_group_id, is_valid, " +
                 "is_final, raw_row) " +
                 "SELECT u.project_id, ?, u.batch_id, u.id, u.month_yyyymm, u.business_date, " +
                 "u.product_name, u.spec, u.seller_name, u.seller_city, u.calc_price, u.quantity, " +
-                "u.calc_amount, u.buyer_name, u.buyer_city, u.assess_group_id, 1, 0, u.raw_row " +
+                "u.calc_amount, u.buyer_name, u.buyer_city, " +
+                "u.customer_level, u.sale_qty, u.no_tax_amount, u.bid_amount, " +
+                "u.assess_group_id, 1, 0, u.raw_row " +
                 "FROM flow_upstream_record u " +
                 "WHERE u.id IN (" + inClause + ") " +
                 "AND u.project_id = ? " +
@@ -285,7 +305,7 @@ public class DownstreamFlowDao {
     /**
      * 列出下游协议的记录，关联上游流向
      */
-    public List<com.rebate.model.DownstreamFlowRecord> listRecordsWithUpstream(Long projectId, String month, String buyerName, String buyerCity, Integer isValid, Long agreementId) {
+    public List<com.rebate.model.DownstreamFlowRecord> listRecordsWithUpstream(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId) {
         StringBuilder sql = new StringBuilder(
             "SELECT d.id, d.project_id, d.agreement_id, d.batch_id, d.upstream_flow_record_id, " +
             "COALESCE(u.month_yyyymm, d.month_yyyymm) AS month_yyyymm, " +
@@ -299,6 +319,10 @@ public class DownstreamFlowDao {
             "COALESCE(u.calc_amount, d.calc_amount) AS calc_amount, " +
             "COALESCE(u.buyer_name, d.buyer_name) AS buyer_name, " +
             "COALESCE(u.buyer_city, d.buyer_city) AS buyer_city, " +
+            "COALESCE(u.customer_level, d.customer_level) AS customer_level, " +
+            "COALESCE(u.sale_qty, d.sale_qty) AS sale_qty, " +
+            "COALESCE(u.no_tax_amount, d.no_tax_amount) AS no_tax_amount, " +
+            "COALESCE(u.bid_amount, d.bid_amount) AS bid_amount, " +
             "COALESCE(u.assess_group_id, d.assess_group_id) AS assess_group_id, " +
             "COALESCE(u.is_valid, d.is_valid) AS is_valid, " +
             "COALESCE(u.is_final, d.is_final) AS is_final, " +
@@ -324,6 +348,10 @@ public class DownstreamFlowDao {
             sql.append("AND COALESCE(u.buyer_city, d.buyer_city) LIKE ? ");
             params.add("%" + buyerCity + "%");
         }
+        if (customerLevel != null && !customerLevel.isEmpty()) {
+            sql.append("AND COALESCE(u.customer_level, d.customer_level) = ? ");
+            params.add(customerLevel);
+        }
         if (isValid != null) {
             sql.append("AND COALESCE(u.is_valid, d.is_valid) = ? ");
             params.add(isValid);
@@ -337,7 +365,7 @@ public class DownstreamFlowDao {
         return BaseDao.query(sql.toString(), this::mapRecordWithUpstream, params.toArray());
     }
 
-    public long countRecordsWithUpstream(Long projectId, String month, String buyerName, String buyerCity, Integer isValid, Long agreementId) {
+    public long countRecordsWithUpstream(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId) {
         StringBuilder sql = new StringBuilder(
             "SELECT COUNT(*) FROM flow_downstream_record d " +
             "LEFT JOIN flow_upstream_record u ON d.upstream_flow_record_id = u.id " +
@@ -358,6 +386,10 @@ public class DownstreamFlowDao {
             sql.append("AND COALESCE(u.buyer_city, d.buyer_city) LIKE ? ");
             params.add("%" + buyerCity + "%");
         }
+        if (customerLevel != null && !customerLevel.isEmpty()) {
+            sql.append("AND COALESCE(u.customer_level, d.customer_level) = ? ");
+            params.add(customerLevel);
+        }
         if (isValid != null) {
             sql.append("AND COALESCE(u.is_valid, d.is_valid) = ? ");
             params.add(isValid);
@@ -371,7 +403,7 @@ public class DownstreamFlowDao {
         return count != null ? count : 0L;
     }
 
-    public List<com.rebate.model.DownstreamFlowRecord> listRecordsWithUpstreamPage(Long projectId, String month, String buyerName, String buyerCity, Integer isValid, Long agreementId, int page, int pageSize) {
+    public List<com.rebate.model.DownstreamFlowRecord> listRecordsWithUpstreamPage(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId, int page, int pageSize) {
         StringBuilder sql = new StringBuilder(
             "SELECT d.id, d.project_id, d.agreement_id, d.batch_id, d.upstream_flow_record_id, " +
             "COALESCE(u.month_yyyymm, d.month_yyyymm) AS month_yyyymm, " +
@@ -385,6 +417,10 @@ public class DownstreamFlowDao {
             "COALESCE(u.calc_amount, d.calc_amount) AS calc_amount, " +
             "COALESCE(u.buyer_name, d.buyer_name) AS buyer_name, " +
             "COALESCE(u.buyer_city, d.buyer_city) AS buyer_city, " +
+            "COALESCE(u.customer_level, d.customer_level) AS customer_level, " +
+            "COALESCE(u.sale_qty, d.sale_qty) AS sale_qty, " +
+            "COALESCE(u.no_tax_amount, d.no_tax_amount) AS no_tax_amount, " +
+            "COALESCE(u.bid_amount, d.bid_amount) AS bid_amount, " +
             "COALESCE(u.assess_group_id, d.assess_group_id) AS assess_group_id, " +
             "COALESCE(u.is_valid, d.is_valid) AS is_valid, " +
             "COALESCE(u.is_final, d.is_final) AS is_final, " +
@@ -409,6 +445,10 @@ public class DownstreamFlowDao {
         if (buyerCity != null && !buyerCity.isEmpty()) {
             sql.append("AND COALESCE(u.buyer_city, d.buyer_city) LIKE ? ");
             params.add("%" + buyerCity + "%");
+        }
+        if (customerLevel != null && !customerLevel.isEmpty()) {
+            sql.append("AND COALESCE(u.customer_level, d.customer_level) = ? ");
+            params.add(customerLevel);
         }
         if (isValid != null) {
             sql.append("AND COALESCE(u.is_valid, d.is_valid) = ? ");
@@ -442,6 +482,10 @@ public class DownstreamFlowDao {
         r.setCalcAmount(BaseDao.toBigDecimal(rs.getObject("calc_amount")));
         r.setBuyerName(rs.getString("buyer_name"));
         r.setBuyerCity(rs.getString("buyer_city"));
+        r.setCustomerLevel(rs.getString("customer_level"));
+        r.setSaleQty(BaseDao.toBigDecimal(rs.getObject("sale_qty")));
+        r.setNoTaxAmount(BaseDao.toBigDecimal(rs.getObject("no_tax_amount")));
+        r.setBidAmount(BaseDao.toBigDecimal(rs.getObject("bid_amount")));
         r.setAssessGroupId(rs.getObject("assess_group_id") == null ? null : rs.getLong("assess_group_id"));
         r.setIsValid(rs.getInt("is_valid"));
         r.setIsFinal(rs.getInt("is_final"));
