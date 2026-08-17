@@ -270,13 +270,15 @@ public class DownstreamFlowServlet extends BaseServlet {
         String month = WebUtil.getSafeParam(p, "month");
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
+        String customerLevel = WebUtil.getSafeParam(p, "customerLevel");
         Long agreementId = WebUtil.getLong(p, "agreementId", 0L);
         if (agreementId == 0) agreementId = null;
 
-        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, null, 1, agreementId);
+        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, customerLevel, 1, agreementId);
 
         List<String> headers = Arrays.asList("月份", "业务日期", "产品名称", "规格", "销售方", "销售城市",
-                "核算价格", "数量", "核算金额", "采购方", "采购方城市", "客户等级", "销售数量", "无税金额", "中标金额", "考核组");
+                "核算价格", "数量", "销售数量", "核算金额", "中标价金额", "无税金额",
+                "采购方", "采购方城市", "客户等级", "考核组");
         List<List<String>> rows = new ArrayList<>();
         for (DownstreamFlowRecord r : records) {
             List<String> row = new ArrayList<>();
@@ -288,13 +290,13 @@ public class DownstreamFlowServlet extends BaseServlet {
             row.add(r.getSellerCity() != null ? r.getSellerCity() : "");
             row.add(r.getCalcPrice() != null ? r.getCalcPrice().toString() : "");
             row.add(r.getQuantity() != null ? r.getQuantity().toString() : "");
+            row.add(r.getSaleQty() != null ? r.getSaleQty().toString() : "");
             row.add(r.getCalcAmount() != null ? r.getCalcAmount().toString() : "");
+            row.add(r.getBidAmount() != null ? r.getBidAmount().toString() : "");
+            row.add(r.getNoTaxAmount() != null ? r.getNoTaxAmount().toString() : "");
             row.add(r.getBuyerName() != null ? r.getBuyerName() : "");
             row.add(r.getBuyerCity() != null ? r.getBuyerCity() : "");
             row.add(r.getCustomerLevel() != null ? r.getCustomerLevel() : "");
-            row.add(r.getSaleQty() != null ? r.getSaleQty().toString() : "");
-            row.add(r.getNoTaxAmount() != null ? r.getNoTaxAmount().toString() : "");
-            row.add(r.getBidAmount() != null ? r.getBidAmount().toString() : "");
             row.add(r.getAssessGroupName() != null ? r.getAssessGroupName() : "");
             rows.add(row);
         }
@@ -312,13 +314,15 @@ public class DownstreamFlowServlet extends BaseServlet {
         String month = WebUtil.getSafeParam(p, "month");
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
+        String customerLevel = WebUtil.getSafeParam(p, "customerLevel");
         Long agreementId = WebUtil.getLong(p, "agreementId", 0L);
         if (agreementId == 0) agreementId = null;
 
-        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, null, 0, agreementId);
+        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, customerLevel, 0, agreementId);
 
-        List<String> headers = Arrays.asList("月份", "业务日期", "产品名称", "规格", "销售方", "采购方", "采购方城市",
-                "客户等级", "销售数量", "无税金额", "中标金额", "核算价格", "数量", "核算金额");
+        List<String> headers = Arrays.asList("月份", "业务日期", "产品名称", "规格", "销售方", "销售城市",
+                "核算价格", "数量", "销售数量", "核算金额", "中标价金额", "无税金额",
+                "采购方", "采购方城市", "客户等级", "考核组");
         List<List<String>> rows = new ArrayList<>();
         for (DownstreamFlowRecord r : records) {
             List<String> row = new ArrayList<>();
@@ -327,15 +331,17 @@ public class DownstreamFlowServlet extends BaseServlet {
             row.add(r.getProductName() != null ? r.getProductName() : "");
             row.add(r.getSpec() != null ? r.getSpec() : "");
             row.add(r.getSellerName() != null ? r.getSellerName() : "");
+            row.add(r.getSellerCity() != null ? r.getSellerCity() : "");
+            row.add(r.getCalcPrice() != null ? r.getCalcPrice().toString() : "");
+            row.add(r.getQuantity() != null ? r.getQuantity().toString() : "");
+            row.add(r.getSaleQty() != null ? r.getSaleQty().toString() : "");
+            row.add(r.getCalcAmount() != null ? r.getCalcAmount().toString() : "");
+            row.add(r.getBidAmount() != null ? r.getBidAmount().toString() : "");
+            row.add(r.getNoTaxAmount() != null ? r.getNoTaxAmount().toString() : "");
             row.add(r.getBuyerName() != null ? r.getBuyerName() : "");
             row.add(r.getBuyerCity() != null ? r.getBuyerCity() : "");
             row.add(r.getCustomerLevel() != null ? r.getCustomerLevel() : "");
-            row.add(r.getSaleQty() != null ? r.getSaleQty().toString() : "");
-            row.add(r.getNoTaxAmount() != null ? r.getNoTaxAmount().toString() : "");
-            row.add(r.getBidAmount() != null ? r.getBidAmount().toString() : "");
-            row.add(r.getCalcPrice() != null ? r.getCalcPrice().toString() : "");
-            row.add(r.getQuantity() != null ? r.getQuantity().toString() : "");
-            row.add(r.getCalcAmount() != null ? r.getCalcAmount().toString() : "");
+            row.add(r.getAssessGroupName() != null ? r.getAssessGroupName() : "");
             rows.add(row);
         }
 

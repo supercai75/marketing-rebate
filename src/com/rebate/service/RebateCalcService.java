@@ -703,7 +703,7 @@ public class RebateCalcService {
             // 返利计算基数：统一使用 rebateActual（返利计算依据口径的实际值）
             BigDecimal base = nz(rebateActual);
             // actualY（Y变量） = rebateBasis 实际值（完成核算数量/金额）
-            BigDecimal rebateAmt = RebateCalcUtil.calcRebateAmount(typeRules, x, nz(rebateActual), base, calcMode);
+            BigDecimal rebateAmt = RebateCalcUtil.calcRebateAmount(typeRules, x, nz(rebateActual), base, nz(target), calcMode);
             total = total.add(rebateAmt);
 
             // 收集明细

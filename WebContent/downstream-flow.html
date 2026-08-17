@@ -114,8 +114,8 @@
         <table class="table-nowrap">
             <thead><tr>
                 <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
-                <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th><th>客户等级</th>
-                <th>销售数量</th><th>无税金额</th><th>中标价金额</th><th>考核组</th><th width="60">操作</th>
+                <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th>
+                <th>采购方</th><th>采购方城市</th><th>客户等级</th><th>考核组</th><th width="60">操作</th>
             </tr></thead>
             <tbody id="currentBody"></tbody>
         </table>
@@ -144,9 +144,9 @@
     <div class="table-wrap" id="invalidTableWrap">
         <table class="table-nowrap">
             <thead><tr>
-                <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>采购方</th><th>采购方城市</th>
-                <th>客户等级</th><th>销售数量</th><th>无税金额</th><th>中标价金额</th>
-                <th>核算价格</th><th>数量</th><th>核算金额</th>
+                <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
+                <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th>
+                <th>采购方</th><th>采购方城市</th><th>客户等级</th><th>考核组</th>
             </tr></thead>
             <tbody id="invalidBody"></tbody>
         </table>
@@ -176,6 +176,7 @@
                 <input id="filterSeller" placeholder="筛选销售方" style="width:180px;">
                 <button class="btn btn-in" id="btnInSeller" data-field="sellerName" data-input="#filterSeller" data-title="批量筛选销售方">IN</button>
             </span>
+            <input id="filterSellerCity" placeholder="筛选销售城市" style="width:140px;">
             <span class="filter-with-in">
                 <input id="filterBuyer" placeholder="筛选采购方" style="width:180px;">
                 <button class="btn btn-in" id="btnInBuyer" data-field="buyerName" data-input="#filterBuyer" data-title="批量筛选采购方">IN</button>
@@ -184,6 +185,7 @@
                 <input id="filterBuyerCity" placeholder="筛选采购方城市" style="width:180px;">
                 <button class="btn btn-in" id="btnInBuyerCity" data-field="buyerCity" data-input="#filterBuyerCity" data-title="批量筛选采购方城市">IN</button>
             </span>
+            <input id="filterCustomerLevel" placeholder="筛选客户等级" style="width:140px;">
             <button class="btn btn-primary" id="btnLoadSource">查询</button>
             <button class="btn btn-success" id="btnSelectAll">全选</button>
             <button class="btn" id="btnSelectInverse">反选</button>
@@ -196,7 +198,8 @@
                 <thead><tr>
                     <th width="50">选择</th>
                     <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
-                    <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th>
+                    <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th>
+                    <th>采购方</th><th>采购方城市</th><th>客户等级</th><th>考核组</th>
                 </tr></thead>
                 <tbody id="sourceBody"></tbody>
             </table>
@@ -421,10 +424,12 @@
             spec: $('#filterSpec').val(),
             sellerName: $('#filterSeller').val(),
             sellerNameIn: inFilterCache.sellerName || [],
+            sellerCity: $('#filterSellerCity').val(),
             buyerName: $('#filterBuyer').val(),
             buyerNameIn: inFilterCache.buyerName || [],
             buyerCity: $('#filterBuyerCity').val(),
-            buyerCityIn: inFilterCache.buyerCity || []
+            buyerCityIn: inFilterCache.buyerCity || [],
+            customerLevel: $('#filterCustomerLevel').val()
         };
     }
 
@@ -561,13 +566,13 @@
                 '<td>' + (r.sellerCity || '') + '</td>' +
                 '<td>' + (r.calcPrice ?? '') + '</td>' +
                 '<td>' + (r.quantity ?? '') + '</td>' +
+                '<td>' + (r.saleQty ?? '') + '</td>' +
                 '<td>' + (r.calcAmount ?? '') + '</td>' +
+                '<td>' + (r.bidAmount ?? '') + '</td>' +
+                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
                 '<td>' + (r.customerLevel || '') + '</td>' +
-                '<td>' + (r.saleQty ?? '') + '</td>' +
-                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
-                '<td>' + (r.bidAmount ?? '') + '</td>' +
                 '<td>' + (r.assessGroupName || '') + '</td>' +
                 '<td><button class="btn btn-danger btn-sm" onclick="removeCurrentRecord(' + r.id + ')">剔除</button></td>' +
                 '</tr>';
@@ -587,7 +592,7 @@
     function loadInvalid() {
         var pid = $('#projectId').val();
         var aid = $('#agreementId').val();
-        if (!pid) { $('#invalidBody').html('<tr><td colspan="14" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
+        if (!pid) { $('#invalidBody').html('<tr><td colspan="16" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
         $('#loadingOverlay').show();
         RB.post('/api/downstream-flow?op=listRecords', {
             projectId: pid,
@@ -620,18 +625,20 @@
                 '<td>' + (r.productName || '') + '</td>' +
                 '<td>' + (r.spec || '') + '</td>' +
                 '<td>' + (r.sellerName || '') + '</td>' +
+                '<td>' + (r.sellerCity || '') + '</td>' +
+                '<td>' + (r.calcPrice ?? '') + '</td>' +
+                '<td>' + (r.quantity ?? '') + '</td>' +
+                '<td>' + (r.saleQty ?? '') + '</td>' +
+                '<td>' + (r.calcAmount ?? '') + '</td>' +
+                '<td>' + (r.bidAmount ?? '') + '</td>' +
+                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
                 '<td>' + (r.customerLevel || '') + '</td>' +
-                '<td>' + (r.saleQty ?? '') + '</td>' +
-                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
-                '<td>' + (r.bidAmount ?? '') + '</td>' +
-                '<td>' + (r.calcPrice ?? '') + '</td>' +
-                '<td>' + (r.quantity ?? '') + '</td>' +
-                '<td>' + (r.calcAmount ?? '') + '</td>' +
+                '<td>' + (r.assessGroupName || '') + '</td>' +
                 '</tr>';
         }
-        $('#invalidBody').html(html || '<tr><td colspan="14" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        $('#invalidBody').html(html || '<tr><td colspan="16" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
         updateInvalidPagination();
     }
 
@@ -674,14 +681,19 @@
                 '<td>' + (r.spec || '') + '</td>' +
                 '<td>' + (r.sellerName || '') + '</td>' +
                 '<td>' + (r.sellerCity || '') + '</td>' +
-                '<td>' + r.calcPrice + '</td>' +
-                '<td>' + r.quantity + '</td>' +
-                '<td>' + r.calcAmount + '</td>' +
+                '<td>' + (r.calcPrice ?? '') + '</td>' +
+                '<td>' + (r.quantity ?? '') + '</td>' +
+                '<td>' + (r.saleQty ?? '') + '</td>' +
+                '<td>' + (r.calcAmount ?? '') + '</td>' +
+                '<td>' + (r.bidAmount ?? '') + '</td>' +
+                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
+                '<td>' + (r.customerLevel || '') + '</td>' +
+                '<td>' + (r.assessGroupName || '') + '</td>' +
                 '</tr>';
         }
-        $('#sourceBody').html(html || '<tr><td colspan="12" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        $('#sourceBody').html(html || '<tr><td colspan="18" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
         
         $('.row-check').off('change').on('change', function () {
             var id = $(this).data('id');
@@ -708,8 +720,8 @@
 
     function clearTabTables() {
         $('#currentBody').html('<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
-        $('#invalidBody').html('<tr><td colspan="14" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
-        $('#sourceBody').html('<tr><td colspan="11" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        $('#invalidBody').html('<tr><td colspan="16" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        $('#sourceBody').html('<tr><td colspan="18" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
         selectedRows = [];
         updateSelectedCount();
     }
@@ -898,10 +910,14 @@
         $('#loadingOverlay').show();
         var month = $('#filterMonthCurrent').val();
         var buyerName = $('#filterBuyerCurrent').val();
+        var buyerCity = $('#filterBuyerCityCurrent').val();
+        var customerLevel = $('#filterCustomerLevelCurrent').val();
         var agreementId = $('#agreementId').val();
         var url = './api/downstream-flow?op=exportCurrent&projectId=' + curProject.id;
         if (month) url += '&month=' + month;
         if (buyerName) url += '&buyerName=' + encodeURIComponent(buyerName);
+        if (buyerCity) url += '&buyerCity=' + encodeURIComponent(buyerCity);
+        if (customerLevel) url += '&customerLevel=' + encodeURIComponent(customerLevel);
         if (agreementId) url += '&agreementId=' + agreementId;
         
         downloadWithXhr(url, '下游流向_当前生效.xlsx');
@@ -912,10 +928,14 @@
         $('#loadingOverlay').show();
         var month = $('#filterMonthInvalid').val();
         var buyerName = $('#filterBuyerInvalid').val();
+        var buyerCity = $('#filterBuyerCityInvalid').val();
+        var customerLevel = $('#filterCustomerLevelInvalid').val();
         var agreementId = $('#agreementId').val();
         var url = './api/downstream-flow?op=exportInvalid&projectId=' + curProject.id;
         if (month) url += '&month=' + month;
         if (buyerName) url += '&buyerName=' + encodeURIComponent(buyerName);
+        if (buyerCity) url += '&buyerCity=' + encodeURIComponent(buyerCity);
+        if (customerLevel) url += '&customerLevel=' + encodeURIComponent(customerLevel);
         if (agreementId) url += '&agreementId=' + agreementId;
         
         downloadWithXhr(url, '下游流向_已作废.xlsx');

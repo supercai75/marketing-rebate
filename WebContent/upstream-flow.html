@@ -136,8 +136,8 @@
         <table class="table-nowrap">
             <thead><tr>
                 <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
-                <th>核算价格</th><th>数量</th><th>核算金额</th><th>采购方</th><th>采购方城市</th><th>客户等级</th>
-                <th>销售数量</th><th>无税金额</th><th>中标价金额</th><th>考核组</th><th>状态</th>
+                <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th>
+                <th>采购方</th><th>采购方城市</th><th>客户等级</th><th>考核组</th><th>状态</th>
             </tr></thead>
             <tbody id="recordsBody"></tbody>
         </table>
@@ -589,13 +589,13 @@
                 '<td>' + (r.sellerCity || '') + '</td>' +
                 '<td>' + (r.calcPrice ?? '') + '</td>' +
                 '<td>' + (r.quantity ?? '') + '</td>' +
+                '<td>' + (r.saleQty ?? '') + '</td>' +
                 '<td>' + (r.calcAmount ?? '') + '</td>' +
+                '<td>' + (r.bidAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
+                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
                 '<td>' + (r.customerLevel || '') + '</td>' +
-                '<td>' + (r.saleQty ?? '') + '</td>' +
-                '<td>' + (r.noTaxAmount ?? '') + '</td>' +
-                '<td>' + (r.bidAmount ?? '') + '</td>' +
                 '<td>' + groupHtml + '</td>' +
                 '<td>' + state + '</td></tr>';
         }

@@ -237,8 +237,10 @@ public class UpstreamFlowDao {
                                                          String productName, List<String> productNameIn,
                                                          String spec,
                                                          String sellerName, List<String> sellerNameIn,
+                                                         String sellerCity,
                                                          String buyerName, List<String> buyerNameIn,
                                                          String buyerCity, List<String> buyerCityIn,
+                                                         String customerLevel,
                                                          Integer page, Integer pageSize) {
         StringBuilder sb = new StringBuilder("SELECT r.*, g.group_name as assessGroupName FROM flow_upstream_record r " +
                 "LEFT JOIN prj_assess_group g ON r.assess_group_id = g.id WHERE r.project_id=? AND r.is_valid=1 " +
@@ -252,10 +254,12 @@ public class UpstreamFlowDao {
         if (spec != null && !spec.isEmpty()) { sb.append(" AND r.spec LIKE ?"); params.add("%" + spec + "%"); }
         if (sellerName != null && !sellerName.isEmpty()) { sb.append(" AND r.seller_name LIKE ?"); params.add("%" + sellerName + "%"); }
         appendInClause(sb, params, "r.seller_name", sellerNameIn);
+        if (sellerCity != null && !sellerCity.isEmpty()) { sb.append(" AND r.seller_city LIKE ?"); params.add("%" + sellerCity + "%"); }
         if (buyerName != null && !buyerName.isEmpty()) { sb.append(" AND r.buyer_name LIKE ?"); params.add("%" + buyerName + "%"); }
         appendInClause(sb, params, "r.buyer_name", buyerNameIn);
         if (buyerCity != null && !buyerCity.isEmpty()) { sb.append(" AND r.buyer_city LIKE ?"); params.add("%" + buyerCity + "%"); }
         appendInClause(sb, params, "r.buyer_city", buyerCityIn);
+        if (customerLevel != null && !customerLevel.isEmpty()) { sb.append(" AND r.customer_level LIKE ?"); params.add("%" + customerLevel + "%"); }
         sb.append(" ORDER BY r.month_yyyymm, r.id");
         if (page != null && pageSize != null) {
             sb.append(" LIMIT ").append(pageSize).append(" OFFSET ").append((page - 1) * pageSize);
@@ -272,8 +276,10 @@ public class UpstreamFlowDao {
                                     String productName, List<String> productNameIn,
                                     String spec,
                                     String sellerName, List<String> sellerNameIn,
+                                    String sellerCity,
                                     String buyerName, List<String> buyerNameIn,
-                                    String buyerCity, List<String> buyerCityIn) {
+                                    String buyerCity, List<String> buyerCityIn,
+                                    String customerLevel) {
         StringBuilder sb = new StringBuilder("SELECT COUNT(*) FROM flow_upstream_record r WHERE r.project_id=? AND r.is_valid=1 " +
                 "AND r.id NOT IN (SELECT upstream_flow_record_id FROM flow_downstream_record WHERE project_id=?)");
         List<Object> params = new ArrayList<>();
@@ -285,10 +291,12 @@ public class UpstreamFlowDao {
         if (spec != null && !spec.isEmpty()) { sb.append(" AND r.spec LIKE ?"); params.add("%" + spec + "%"); }
         if (sellerName != null && !sellerName.isEmpty()) { sb.append(" AND r.seller_name LIKE ?"); params.add("%" + sellerName + "%"); }
         appendInClause(sb, params, "r.seller_name", sellerNameIn);
+        if (sellerCity != null && !sellerCity.isEmpty()) { sb.append(" AND r.seller_city LIKE ?"); params.add("%" + sellerCity + "%"); }
         if (buyerName != null && !buyerName.isEmpty()) { sb.append(" AND r.buyer_name LIKE ?"); params.add("%" + buyerName + "%"); }
         appendInClause(sb, params, "r.buyer_name", buyerNameIn);
         if (buyerCity != null && !buyerCity.isEmpty()) { sb.append(" AND r.buyer_city LIKE ?"); params.add("%" + buyerCity + "%"); }
         appendInClause(sb, params, "r.buyer_city", buyerCityIn);
+        if (customerLevel != null && !customerLevel.isEmpty()) { sb.append(" AND r.customer_level LIKE ?"); params.add("%" + customerLevel + "%"); }
         Long count = BaseDao.queryOne(sb.toString(), (ResultSet rs) -> rs.getLong(1), params.toArray());
         return count != null ? count.intValue() : 0;
     }
@@ -300,8 +308,10 @@ public class UpstreamFlowDao {
                                       String productName, List<String> productNameIn,
                                       String spec,
                                       String sellerName, List<String> sellerNameIn,
+                                      String sellerCity,
                                       String buyerName, List<String> buyerNameIn,
-                                      String buyerCity, List<String> buyerCityIn) {
+                                      String buyerCity, List<String> buyerCityIn,
+                                      String customerLevel) {
         StringBuilder sb = new StringBuilder("SELECT id FROM flow_upstream_record WHERE project_id=? AND is_valid=1 " +
                 "AND id NOT IN (SELECT upstream_flow_record_id FROM flow_downstream_record WHERE project_id=?)");
         List<Object> params = new ArrayList<>();
@@ -313,10 +323,12 @@ public class UpstreamFlowDao {
         if (spec != null && !spec.isEmpty()) { sb.append(" AND spec LIKE ?"); params.add("%" + spec + "%"); }
         if (sellerName != null && !sellerName.isEmpty()) { sb.append(" AND seller_name LIKE ?"); params.add("%" + sellerName + "%"); }
         appendInClause(sb, params, "seller_name", sellerNameIn);
+        if (sellerCity != null && !sellerCity.isEmpty()) { sb.append(" AND seller_city LIKE ?"); params.add("%" + sellerCity + "%"); }
         if (buyerName != null && !buyerName.isEmpty()) { sb.append(" AND buyer_name LIKE ?"); params.add("%" + buyerName + "%"); }
         appendInClause(sb, params, "buyer_name", buyerNameIn);
         if (buyerCity != null && !buyerCity.isEmpty()) { sb.append(" AND buyer_city LIKE ?"); params.add("%" + buyerCity + "%"); }
         appendInClause(sb, params, "buyer_city", buyerCityIn);
+        if (customerLevel != null && !customerLevel.isEmpty()) { sb.append(" AND customer_level LIKE ?"); params.add("%" + customerLevel + "%"); }
         return BaseDao.query(sb.toString(), (ResultSet rs) -> rs.getLong("id"), params.toArray());
     }
 

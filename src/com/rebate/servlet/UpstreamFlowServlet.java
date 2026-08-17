@@ -205,8 +205,10 @@ public class UpstreamFlowServlet extends BaseServlet {
         String productName = WebUtil.getSafeParam(p, "productName");
         String spec = WebUtil.getSafeParam(p, "spec");
         String sellerName = WebUtil.getSafeParam(p, "sellerName");
+        String sellerCity = WebUtil.getSafeParam(p, "sellerCity");
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
+        String customerLevel = WebUtil.getSafeParam(p, "customerLevel");
         java.util.List<String> productNameIn = WebUtil.getStringList(p, "productNameIn");
         java.util.List<String> sellerNameIn = WebUtil.getStringList(p, "sellerNameIn");
         java.util.List<String> buyerNameIn = WebUtil.getStringList(p, "buyerNameIn");
@@ -214,8 +216,8 @@ public class UpstreamFlowServlet extends BaseServlet {
         Integer page = WebUtil.getInt(p, "page", 1);
         Integer pageSize = WebUtil.getInt(p, "pageSize", 20);
 
-        List<com.rebate.model.UpstreamFlowRecord> records = dao.listCanSplitRecords(pid, month, productName, productNameIn, spec, sellerName, sellerNameIn, buyerName, buyerNameIn, buyerCity, buyerCityIn, page, pageSize);
-        int total = dao.countCanSplitRecords(pid, month, productName, productNameIn, spec, sellerName, sellerNameIn, buyerName, buyerNameIn, buyerCity, buyerCityIn);
+        List<com.rebate.model.UpstreamFlowRecord> records = dao.listCanSplitRecords(pid, month, productName, productNameIn, spec, sellerName, sellerNameIn, sellerCity, buyerName, buyerNameIn, buyerCity, buyerCityIn, customerLevel, page, pageSize);
+        int total = dao.countCanSplitRecords(pid, month, productName, productNameIn, spec, sellerName, sellerNameIn, sellerCity, buyerName, buyerNameIn, buyerCity, buyerCityIn, customerLevel);
 
         Map<String, Object> result = new HashMap<>();
         result.put("list", records);
@@ -233,13 +235,15 @@ public class UpstreamFlowServlet extends BaseServlet {
         String productName = WebUtil.getSafeParam(p, "productName");
         String spec = WebUtil.getSafeParam(p, "spec");
         String sellerName = WebUtil.getSafeParam(p, "sellerName");
+        String sellerCity = WebUtil.getSafeParam(p, "sellerCity");
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
+        String customerLevel = WebUtil.getSafeParam(p, "customerLevel");
         java.util.List<String> productNameIn = WebUtil.getStringList(p, "productNameIn");
         java.util.List<String> sellerNameIn = WebUtil.getStringList(p, "sellerNameIn");
         java.util.List<String> buyerNameIn = WebUtil.getStringList(p, "buyerNameIn");
         java.util.List<String> buyerCityIn = WebUtil.getStringList(p, "buyerCityIn");
-        ResponseUtil.ok(resp, dao.listCanSplitIds(pid, month, productName, productNameIn, spec, sellerName, sellerNameIn, buyerName, buyerNameIn, buyerCity, buyerCityIn));
+        ResponseUtil.ok(resp, dao.listCanSplitIds(pid, month, productName, productNameIn, spec, sellerName, sellerNameIn, sellerCity, buyerName, buyerNameIn, buyerCity, buyerCityIn, customerLevel));
     }
 
     private void doImport(HttpServletRequest req, HttpServletResponse resp, com.rebate.model.UserContext u) throws Exception {

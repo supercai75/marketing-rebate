@@ -94,7 +94,7 @@ public class RebateCalcUtil {
      */
     public static BigDecimal calcRebateAmount(List<RebateRule> rules, BigDecimal actualX,
                                                BigDecimal actualY, BigDecimal baseAmount) {
-        return calcRebateAmount(rules, actualX, actualY, baseAmount, null);
+    	return calcRebateAmount(rules, actualX, actualY, baseAmount, null, null);
     }
 
     /**
@@ -105,11 +105,26 @@ public class RebateCalcUtil {
      */
     public static BigDecimal calcRebateAmount(List<RebateRule> rules, BigDecimal actualX,
                                                BigDecimal actualY, BigDecimal baseAmount, String calcMode) {
-        if (rules == null || rules.isEmpty()) return BigDecimal.ZERO;
+        return calcRebateAmount(rules, actualX, actualY, baseAmount, null, calcMode);
+    }
+ 
+    /**
+     * 计算返利金额（支持递进式和全部计算两种模式），显式传入 calcMode 与目标金额
+     *
+     * @param targetAmount 对应阶段/全年的目标金额。递进式按达成率/增长率分段时，
+     *                     段基数 = 目标金额 × 段宽(百分点) / 100（对应需求：
+     *                     min(目标×阈值上限, 达成额) - 目标×阈值下限）；
+     *                     为 null 时回退使用 baseAmount（兼容旧调用）
+     */
+    public static BigDecimal calcRebateAmount(List<RebateRule> rules, BigDecimal actualX,
+                                               BigDecimal actualY, BigDecimal baseAmount,
+                                               BigDecimal targetAmount, String calcMode) {
+    	if (rules == null || rules.isEmpty()) return BigDecimal.ZERO;
         BigDecimal x = nvl(actualX);
         BigDecimal y = nvl(actualY);
         BigDecimal base = nvl(baseAmount);
-
+        BigDecimal target = targetAmount == null ? base : nvl(targetAmount);
+        
         // 判断计算模式：优先用传入参数，回退到规则字段
         String mode = calcMode;
         if (mode == null || mode.isEmpty()) mode = rules.get(0).getCalcMode();
@@ -143,19 +158,14 @@ public class RebateCalcUtil {
             BigDecimal ratio = calcRatioByRule(r, x, y);
             String rt = r.getRewardType() == null ? "" : r.getRewardType().toUpperCase();
             if ("SCALE".equals(rt)) {
-                // 双口径兼容：按 calcBasis 计算出每段区间占比，再乘以返利基数 base（rebateCalcBasis）
-                // 当 calcBasis == rebateCalcBasis 时，等价于 segWidth * ratio
-                BigDecimal totalX = nvl(actualX);
-                if (totalX.signum() <= 0) continue;
-                BigDecimal rebateSegBase = base.multiply(segWidth, MC).divide(totalX, MC);
-                total = total.add(rebateSegBase.multiply(ratio, MC), MC);
+                // 达成额口径：段基数 = 段内达成金额差（min(达成额, 段上限) - 段下限）
+                total = total.add(segWidth.multiply(ratio, MC), MC);
             } else {
-                // 按达成率/增长率：segWidth 是百分点，需 base × segWidth / 100 × ratio
-                total = total.add(base.multiply(segWidth, MC).multiply(ratio, MC)
+                // 按达成率/增长率：段基数 = 目标金额 × 段宽(百分点) / 100
+                total = total.add(target.multiply(segWidth, MC).multiply(ratio, MC)
                         .divide(BigDecimal.valueOf(100), MC), MC);
             }
-
-            if (!hiOpen) prevHigh = hi;
+             if (!hiOpen) prevHigh = hi;
         }
 
         return total;
