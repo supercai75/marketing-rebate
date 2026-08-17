@@ -114,6 +114,52 @@ public class ReceivablePayableDao {
                 rs -> rs.getBigDecimal(1), projectId);
     }
 
+    /**
+     * 统计指定项目/阶段已保存的依据规模应收金额之和。
+     * stage 为 "全年合计" 或 null 时汇总所有阶段；excludeId 用于排除当前编辑的记录。
+     */
+    public java.math.BigDecimal sumReceivableScaleAmount(long projectId, String stage, Long excludeId) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT COALESCE(SUM(scale_amount),0) FROM prj_receivable WHERE project_id=? " +
+                "AND status IN ('DRAFT','AUDIT','FINAL','CONFIRMED')");
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        params.add(projectId);
+        if (stage != null && !stage.isEmpty() && !stage.equals("全年合计")) {
+            sql.append(" AND stage=?");
+            params.add(stage);
+        }
+        if (excludeId != null && excludeId > 0) {
+            sql.append(" AND id<>?");
+            params.add(excludeId);
+        }
+        return BaseDao.queryOne(sql.toString(), rs -> rs.getBigDecimal(1), params.toArray());
+    }
+
+    /**
+     * 统计指定项目/协议/阶段已保存的依据规模应付金额之和。
+     * stage 为 "全年合计"/"全年" 或 null 时汇总所有阶段；excludeId 用于排除当前编辑的记录。
+     */
+    public java.math.BigDecimal sumPayableScaleAmount(long projectId, Long agreementId, String stage, Long excludeId) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT COALESCE(SUM(scale_amount),0) FROM prj_payable WHERE project_id=? " +
+                "AND status IN ('DRAFT','AUDIT','FINAL','CONFIRMED')");
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        params.add(projectId);
+        if (agreementId != null && agreementId > 0) {
+            sql.append(" AND agreement_id=?");
+            params.add(agreementId);
+        }
+        if (stage != null && !stage.isEmpty() && !stage.equals("全年合计") && !stage.equals("全年")) {
+            sql.append(" AND stage=?");
+            params.add(stage);
+        }
+        if (excludeId != null && excludeId > 0) {
+            sql.append(" AND id<>?");
+            params.add(excludeId);
+        }
+        return BaseDao.queryOne(sql.toString(), rs -> rs.getBigDecimal(1), params.toArray());
+    }
+
     public java.math.BigDecimal sumPayable(long projectId, String distributorTypeInclude) {
         String sql = "SELECT COALESCE(SUM(p.total_amount),0) FROM prj_payable p ";
         if (distributorTypeInclude != null) {

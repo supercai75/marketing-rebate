@@ -64,6 +64,7 @@ public class ReceivablePayableServlet extends BaseServlet {
             case "listPayableAssessItems": doListPayAssessItems(req, resp, p); break;
             case "uploadPayAssessAttach": doUploadPayAssessAttach(req, resp, u); break;
             case "deleteAssessAttach": doDeleteAssessAttach(req, resp, p); break;
+            case "sumScaleAmount": doSumScaleAmount(req, resp, p); break;
             case "exportReceivable": doExportReceivable(req, resp, p); break;
             case "exportPayable": doExportPayable(req, resp, p); break;
             default: ResponseUtil.fail(resp, "未知操作: " + op);
@@ -94,6 +95,8 @@ public class ReceivablePayableServlet extends BaseServlet {
             case "savePayable":
             case "uploadPayAssessAttach":
                 return u.hasPerm("payable:edit");
+            case "sumScaleAmount":
+                return u.hasPerm("receivable:view") || u.hasPerm("payable:view");
             case "auditPayable":
             case "confirmPayable":
                 return u.hasPerm("payable:audit");
@@ -410,6 +413,27 @@ public class ReceivablePayableServlet extends BaseServlet {
     private BigDecimal toBd(Object o) {
         if (o == null) return BigDecimal.ZERO;
         try { return new BigDecimal(String.valueOf(o)); } catch (Exception e) { return BigDecimal.ZERO; }
+    }
+
+    private void doSumScaleAmount(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+        String type = WebUtil.getSafeParam(p, "type");
+        if (type == null || type.isEmpty()) type = "receivable";
+        long pid = WebUtil.getLong(p, "projectId", 0);
+        String stage = WebUtil.getSafeParam(p, "stage");
+        Long excludeId = WebUtil.getLong(p, "excludeId", 0L);
+        if (excludeId == 0) excludeId = null;
+
+        java.math.BigDecimal sum;
+        if ("payable".equalsIgnoreCase(type)) {
+            long aid = WebUtil.getLong(p, "agreementId", 0L);
+            sum = dao.sumPayableScaleAmount(pid, aid > 0 ? aid : null, stage, excludeId);
+        } else {
+            sum = dao.sumReceivableScaleAmount(pid, stage, excludeId);
+        }
+        if (sum == null) sum = java.math.BigDecimal.ZERO;
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("sum", sum);
+        ResponseUtil.ok(resp, result);
     }
 
     private void doExportReceivable(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) throws Exception {

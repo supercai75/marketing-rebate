@@ -679,91 +679,110 @@
                 return;
             }
             var reb = r.data;
-            var est = 0;
+            var rebateAmt = 0;
             if (isFull) {
-                est = Number(reb.totalRebate || 0);
+                rebateAmt = Number(reb.totalRebate || 0);
             } else if (stage === '阶段一' && reb.stageRebates && reb.stageRebates[0]) {
-                est = Number(reb.stageRebates[0].rebateAmount || 0);
+                rebateAmt = Number(reb.stageRebates[0].rebateAmount || 0);
             } else if (stage === '阶段二' && reb.stageRebates && reb.stageRebates[1]) {
-                est = Number(reb.stageRebates[1].rebateAmount || 0);
+                rebateAmt = Number(reb.stageRebates[1].rebateAmount || 0);
             } else if (stage === '阶段三' && reb.stageRebates && reb.stageRebates[2]) {
-                est = Number(reb.stageRebates[2].rebateAmount || 0);
+                rebateAmt = Number(reb.stageRebates[2].rebateAmount || 0);
             } else if (stage === '阶段四' && reb.stageRebates && reb.stageRebates[3]) {
-                est = Number(reb.stageRebates[3].rebateAmount || 0);
+                rebateAmt = Number(reb.stageRebates[3].rebateAmount || 0);
             }
-            $('#p_estimateAmount').val(Number(est || 0).toFixed(2));
-
-            if (showDetail) {
-                var detailHtml = [];
-                var mapStageIdx = { '阶段一': 0, '阶段二': 1, '阶段三': 2, '阶段四': 3 };
-
-                function renderDetailsTable(sr) {
-                    if (!sr.details || sr.details.length === 0) return '';
-                    var h = '<table class="table-compact" style="width:100%; margin-top:10px; font-size:12px;">';
-                    h += '<thead><tr><th>考核组</th><th>奖励类型</th><th>达成率X</th><th>目标</th><th>实际值</th><th>计算基数</th><th>返利比例</th><th>计算模式</th><th>返利金额</th></tr></thead><tbody>';
-                    var subTotal = 0;
-                    for (var j = 0; j < sr.details.length; j++) {
-                        var d = sr.details[j];
-                        subTotal += Number(d.rebateAmount || 0);
-                        var rt = d.rewardType || 'PERSENT';
-                        var rtName = rt === 'PERSENT' ? '达成率' : (rt === 'SCALE' ? '达成额' : '增长率');
-                        var ratioPct = (Number(d.effectiveRatio || 0) * 100).toFixed(2) + '%';
-                        h += '<tr>'
-                            + '<td>' + escAttr(d.groupName) + '</td>'
-                            + '<td>' + rtName + '</td>'
-                            + '<td>' + (rt === 'SCALE' ? RB.formatMoney(d.x) : Number(d.x || 0).toFixed(2) + '%') + '</td>'
-                            + '<td>' + RB.formatMoney(d.target) + '</td>'
-                            + '<td>' + RB.formatMoney(d.calcActual) + '</td>'
-                            + '<td>' + RB.formatMoney(d.base) + '</td>'
-                            + '<td>' + ratioPct + '</td>'
-                            + '<td>' + (d.calcMode === 'FLAT' ? '全部计算' : '递进式') + '</td>'
-                            + '<td><strong>' + RB.formatMoney(d.rebateAmount) + '</strong></td>'
-                            + '</tr>';
-                    }
-                    h += '<tr style="background:#f5f7fa;font-weight:bold;"><td colspan="8" style="text-align:right;">分项合计：</td><td>' + RB.formatMoney(subTotal) + '</td></tr>';
-                    h += '</tbody></table>';
-                    return h;
-                }
-
-                detailHtml.push('<h4>📊 估算结果（后端返利计算引擎 - 下游协议）</h4>');
-                detailHtml.push('<div class="data-box">');
-                detailHtml.push('<strong>阶段：</strong>' + stage + '<br>');
-                if (isFull) {
-                    detailHtml.push('<strong>全年合计 = 四阶段累计 + 全年规则：</strong>' + RB.formatMoney(reb.totalRebate || 0) + ' 元<br>');
-                    if (reb.stageRebates) {
-                        for (var i = 0; i < reb.stageRebates.length; i++) {
-                            var sr = reb.stageRebates[i];
-                            detailHtml.push('<div class="group-section">');
-                            detailHtml.push('<strong>· ' + sr.stageName + '</strong>：目标 ' + RB.formatMoney(sr.target || 0)
-                                + ' / 实际 ' + RB.formatMoney(sr.actual || 0)
-                                + ' → 返利 <strong>' + RB.formatMoney(sr.rebateAmount || 0) + '</strong> 元');
-                            detailHtml.push(renderDetailsTable(sr));
-                            detailHtml.push('</div>');
-                        }
-                    }
-                    detailHtml.push('<div class="group-section"><strong>· 全年专属规则（FULL_YEAR）返利：</strong>' + RB.formatMoney(reb.fullYearRebate || 0) + ' 元</div>');
-                } else if (reb.stageRebates) {
-                    var idx = mapStageIdx[stage];
-                    if (idx != null && reb.stageRebates[idx]) {
-                        var sr = reb.stageRebates[idx];
-                        detailHtml.push('<strong>阶段目标：</strong>' + RB.formatMoney(sr.target || 0) + ' 元<br>');
-                        detailHtml.push('<strong>阶段实际：</strong>' + RB.formatMoney(sr.actual || 0) + ' 元<br>');
-                        var rate = (sr.target && sr.target > 0) ? (sr.actual / sr.target * 100).toFixed(2) : '0.00';
-                        detailHtml.push('<strong>达成率：</strong>' + rate + '%<br>');
-                        detailHtml.push('<strong>返利合计：</strong>' + RB.formatMoney(sr.rebateAmount || 0) + ' 元');
-                        detailHtml.push(renderDetailsTable(sr));
-                    }
-                }
-                detailHtml.push('</div>');
-                detailHtml.push('<div class="result-row">');
-                detailHtml.push('<strong style="font-size:16px;">💰 最终估算应付：</strong><span class="highlight" style="font-size:20px;">' + RB.formatMoney(est || 0) + '</span> 元');
-                detailHtml.push('</div>');
-                $('#pEstimateDetailContent').html(detailHtml.join(''));
-                RB.openModal('modalPEstimateDetail');
-            }
+            // 查询已保存的依据规模应付金额之和，并减去
+            RB.post('/api/receivable-payable?op=sumScaleAmount', {
+                type: 'payable',
+                projectId: projectId,
+                agreementId: agreementId,
+                stage: stage,
+                excludeId: editingId || 0
+            }).done(function(r2) {
+                var savedScale = (r2.code === 0 && r2.data && r2.data.sum) ? Number(r2.data.sum) : 0;
+                var est = rebateAmt - savedScale;
+                $('#p_estimateAmount').val(Number(est || 0).toFixed(2));
+                if (showDetail) renderPayableEstimateDetail(reb, stage, est, rebateAmt, savedScale, isFull);
+            }).fail(function() {
+                var est = rebateAmt;
+                $('#p_estimateAmount').val(Number(est || 0).toFixed(2));
+                if (showDetail) renderPayableEstimateDetail(reb, stage, est, rebateAmt, 0, isFull);
+            });
         }).fail(function() {
             $('#p_estimateAmount').val('');
         });
+    }
+
+    function renderPayableEstimateDetail(reb, stage, est, rebateAmt, savedScale, isFull) {
+        var detailHtml = [];
+        var mapStageIdx = { '阶段一': 0, '阶段二': 1, '阶段三': 2, '阶段四': 3 };
+
+        function renderDetailsTable(sr) {
+            if (!sr.details || sr.details.length === 0) return '';
+            var h = '<table class="table-compact" style="width:100%; margin-top:10px; font-size:12px;">';
+            h += '<thead><tr><th>考核组</th><th>奖励类型</th><th>达成率X</th><th>目标</th><th>实际值</th><th>计算基数</th><th>返利比例</th><th>计算模式</th><th>返利金额</th></tr></thead><tbody>';
+            var subTotal = 0;
+            for (var j = 0; j < sr.details.length; j++) {
+                var d = sr.details[j];
+                subTotal += Number(d.rebateAmount || 0);
+                var rt = d.rewardType || 'PERSENT';
+                var rtName = rt === 'PERSENT' ? '达成率' : (rt === 'SCALE' ? '达成额' : '增长率');
+                var ratioPct = (Number(d.effectiveRatio || 0) * 100).toFixed(2) + '%';
+                h += '<tr>'
+                    + '<td>' + escAttr(d.groupName) + '</td>'
+                    + '<td>' + rtName + '</td>'
+                    + '<td>' + (rt === 'SCALE' ? RB.formatMoney(d.x) : Number(d.x || 0).toFixed(2) + '%') + '</td>'
+                    + '<td>' + RB.formatMoney(d.target) + '</td>'
+                    + '<td>' + RB.formatMoney(d.calcActual) + '</td>'
+                    + '<td>' + RB.formatMoney(d.base) + '</td>'
+                    + '<td>' + ratioPct + '</td>'
+                    + '<td>' + (d.calcMode === 'FLAT' ? '全部计算' : '递进式') + '</td>'
+                    + '<td><strong>' + RB.formatMoney(d.rebateAmount) + '</strong></td>'
+                    + '</tr>';
+            }
+            h += '<tr style="background:#f5f7fa;font-weight:bold;"><td colspan="8" style="text-align:right;">分项合计：</td><td>' + RB.formatMoney(subTotal) + '</td></tr>';
+            h += '</tbody></table>';
+            return h;
+        }
+
+        detailHtml.push('<h4>📊 估算结果（后端返利计算引擎 - 下游协议）</h4>');
+        detailHtml.push('<div class="data-box">');
+        detailHtml.push('<strong>阶段：</strong>' + stage + '<br>');
+        if (isFull) {
+            detailHtml.push('<strong>全年合计 = 四阶段累计 + 全年规则：</strong>' + RB.formatMoney(reb.totalRebate || 0) + ' 元<br>');
+            if (reb.stageRebates) {
+                for (var i = 0; i < reb.stageRebates.length; i++) {
+                    var sr = reb.stageRebates[i];
+                    detailHtml.push('<div class="group-section">');
+                    detailHtml.push('<strong>· ' + sr.stageName + '</strong>：目标 ' + RB.formatMoney(sr.target || 0)
+                        + ' / 实际 ' + RB.formatMoney(sr.actual || 0)
+                        + ' → 返利 <strong>' + RB.formatMoney(sr.rebateAmount || 0) + '</strong> 元');
+                    detailHtml.push(renderDetailsTable(sr));
+                    detailHtml.push('</div>');
+                }
+            }
+            detailHtml.push('<div class="group-section"><strong>· 全年专属规则（FULL_YEAR）返利：</strong>' + RB.formatMoney(reb.fullYearRebate || 0) + ' 元</div>');
+        } else if (reb.stageRebates) {
+            var idx = mapStageIdx[stage];
+            if (idx != null && reb.stageRebates[idx]) {
+                var sr = reb.stageRebates[idx];
+                detailHtml.push('<strong>阶段目标：</strong>' + RB.formatMoney(sr.target || 0) + ' 元<br>');
+                detailHtml.push('<strong>阶段实际：</strong>' + RB.formatMoney(sr.actual || 0) + ' 元<br>');
+                var rate = (sr.target && sr.target > 0) ? (sr.actual / sr.target * 100).toFixed(2) : '0.00';
+                detailHtml.push('<strong>达成率：</strong>' + rate + '%<br>');
+                detailHtml.push('<strong>返利合计：</strong>' + RB.formatMoney(sr.rebateAmount || 0) + ' 元');
+                detailHtml.push(renderDetailsTable(sr));
+            }
+        }
+        detailHtml.push('</div>');
+        detailHtml.push('<div class="result-row" style="border-top:2px dashed #409eff; padding-top:12px; margin-top:12px;">');
+        detailHtml.push('<div style="margin-bottom:6px;"><strong>返利计算金额：</strong>' + RB.formatMoney(rebateAmt || 0) + ' 元</div>');
+        detailHtml.push('<div style="margin-bottom:6px;"><strong>已保存的依据规模应付之和：</strong>' + RB.formatMoney(savedScale || 0) + ' 元' + (isFull ? '（全年所有阶段）' : '') + '</div>');
+        detailHtml.push('<div style="font-size:13px; color:#909399; margin-bottom:6px;">估算应付 = 返利计算金额 - 已保存的依据规模应付之和</div>');
+        detailHtml.push('<strong style="font-size:16px;">💰 最终估算应付：</strong><span class="highlight" style="font-size:20px;">' + RB.formatMoney(est || 0) + '</span> 元');
+        detailHtml.push('</div>');
+        $('#pEstimateDetailContent').html(detailHtml.join(''));
+        RB.openModal('modalPEstimateDetail');
     }
 
     function exportPayable() {

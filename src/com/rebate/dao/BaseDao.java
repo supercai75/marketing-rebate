@@ -42,7 +42,61 @@ public class BaseDao {
         return l.isEmpty() ? null : l.get(0);
     }
 
-    public static long count(String sql, Object... params) {
+    /**
+     * 使用外部Connection执行查询（用于事务）
+     */
+    public static <T> List<T> queryWithConn(java.sql.Connection conn, String sql, RowMapper<T> mapper, Object... params) throws SQLException {
+        List<T> list = new ArrayList<>();
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        try {
+            ps = conn.prepareStatement(sql);
+            bindParams(ps, params);
+            rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(mapper.map(rs));
+            }
+        } finally {
+            if (rs != null) try { rs.close(); } catch (Exception ignore) {}
+            if (ps != null) try { ps.close(); } catch (Exception ignore) {}
+        }
+        return list;
+    }
+ 
+    /**
+     * 使用外部Connection执行单条查询（用于事务）
+     */
+    public static <T> T queryOneWithConn(java.sql.Connection conn, String sql, RowMapper<T> mapper, Object... params) throws SQLException {
+        List<T> list = queryWithConn(conn, sql, mapper, params);
+        return list.isEmpty() ? null : list.get(0);
+    }
+ 
+    /**
+     * 在单个事务中执行回调，统一提交；任一环节异常则整体回滚，不允许部分写入。
+     */
+    public static <T> T executeInTransaction(TransactionCallback<T> callback) {
+        Connection c = null;
+        try {
+            c = DBUtil.getConnection();
+            c.setAutoCommit(false);
+            T result = callback.doInTx(c);
+            c.commit();
+            return result;
+        } catch (Exception e) {
+            if (c != null) try { c.rollback(); } catch (Exception ignore) {}
+            if (e instanceof RuntimeException) throw (RuntimeException) e;
+            throw new RuntimeException(e);
+        } finally {
+            DBUtil.close(c);
+        }
+    }
+ 
+    @FunctionalInterface
+    public interface TransactionCallback<T> {
+        T doInTx(Connection conn) throws Exception;
+    }
+ 
+   public static long count(String sql, Object... params) {
         Connection c = null;
         PreparedStatement ps = null;
         ResultSet rs = null;
