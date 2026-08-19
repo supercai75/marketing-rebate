@@ -80,13 +80,13 @@ public class UpstreamFlowDao {
     public int insertRecord(UpstreamFlowRecord r) {
         return BaseDao.update("INSERT INTO flow_upstream_record(project_id, batch_id, month_yyyymm, business_date, " +
                 "product_name, spec, seller_name, seller_city, calc_price, quantity, calc_amount, buyer_name, buyer_city, " +
-                "customer_level, sale_qty, no_tax_amount, bid_amount, " +
+                "customer_level, sale_qty, no_tax_amount, tax_amount, bid_amount, " +
                 "assess_group_id, is_valid, is_final, raw_row) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)",
                 r.getProjectId(), r.getBatchId(), r.getMonthYyyymm(), r.getBusinessDate(),
                 r.getProductName(), r.getSpec(), r.getSellerName(), r.getSellerCity(),
                 r.getCalcPrice(), r.getQuantity(), r.getCalcAmount(), r.getBuyerName(),
-                r.getBuyerCity(), r.getCustomerLevel(), r.getSaleQty(), r.getNoTaxAmount(), r.getBidAmount(),
+                r.getBuyerCity(), r.getCustomerLevel(), r.getSaleQty(), r.getNoTaxAmount(), r.getTaxAmount(), r.getBidAmount(),
                 r.getAssessGroupId(), r.getRawRow());
     }
 
@@ -96,13 +96,13 @@ public class UpstreamFlowDao {
     public int insertRecordWithConn(java.sql.Connection conn, UpstreamFlowRecord r) throws SQLException {
         return BaseDao.updateWithConn(conn, "INSERT INTO flow_upstream_record(project_id, batch_id, month_yyyymm, business_date, " +
                 "product_name, spec, seller_name, seller_city, calc_price, quantity, calc_amount, buyer_name, buyer_city, " +
-                "customer_level, sale_qty, no_tax_amount, bid_amount, " +
+                "customer_level, sale_qty, no_tax_amount, tax_amount, bid_amount, " +
                 "assess_group_id, is_valid, is_final, raw_row) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)",
                 r.getProjectId(), r.getBatchId(), r.getMonthYyyymm(), r.getBusinessDate(),
                 r.getProductName(), r.getSpec(), r.getSellerName(), r.getSellerCity(),
                 r.getCalcPrice(), r.getQuantity(), r.getCalcAmount(), r.getBuyerName(),
-                r.getBuyerCity(), r.getCustomerLevel(), r.getSaleQty(), r.getNoTaxAmount(), r.getBidAmount(),
+                r.getBuyerCity(), r.getCustomerLevel(), r.getSaleQty(), r.getNoTaxAmount(), r.getTaxAmount(), r.getBidAmount(),
                 r.getAssessGroupId(), r.getRawRow());
     }
 
@@ -442,6 +442,7 @@ public class UpstreamFlowDao {
         r.setCustomerLevel(rs.getString("customer_level"));
         r.setSaleQty(BaseDao.toBigDecimal(rs.getObject("sale_qty")));
         r.setNoTaxAmount(BaseDao.toBigDecimal(rs.getObject("no_tax_amount")));
+        r.setTaxAmount(BaseDao.toBigDecimal(rs.getObject("tax_amount")));
         r.setBidAmount(BaseDao.toBigDecimal(rs.getObject("bid_amount")));
         r.setAssessGroupId(rs.getObject("assess_group_id") == null ? null : rs.getLong("assess_group_id"));
         r.setIsValid(rs.getInt("is_valid"));

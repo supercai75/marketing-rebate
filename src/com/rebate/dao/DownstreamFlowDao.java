@@ -14,7 +14,8 @@ import java.util.Map;
  */
 public class DownstreamFlowDao {
 
-    public List<DownstreamFlowRecord> listRecords(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId) {
+    public List<DownstreamFlowRecord> listRecords(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId,
+                                                   String productName, String spec, String sellerName, String sellerCity) {
         StringBuilder sql = new StringBuilder(
             "SELECT r.*, g.group_name as assessGroupName, b.batch_code as sourceBatchCode " +
             "FROM flow_downstream_record r " +
@@ -24,10 +25,26 @@ public class DownstreamFlowDao {
         );
         List<Object> params = new ArrayList<>();
         params.add(projectId);
-        
+
         if (month != null && !month.isEmpty()) {
             sql.append("AND r.month_yyyymm = ? ");
             params.add(month);
+        }
+        if (productName != null && !productName.isEmpty()) {
+            sql.append("AND r.product_name LIKE ? ");
+            params.add("%" + productName + "%");
+        }
+        if (spec != null && !spec.isEmpty()) {
+            sql.append("AND r.spec LIKE ? ");
+            params.add("%" + spec + "%");
+        }
+        if (sellerName != null && !sellerName.isEmpty()) {
+            sql.append("AND r.seller_name LIKE ? ");
+            params.add("%" + sellerName + "%");
+        }
+        if (sellerCity != null && !sellerCity.isEmpty()) {
+            sql.append("AND r.seller_city LIKE ? ");
+            params.add("%" + sellerCity + "%");
         }
         if (buyerName != null && !buyerName.isEmpty()) {
             sql.append("AND r.buyer_name LIKE ? ");
@@ -50,18 +67,35 @@ public class DownstreamFlowDao {
             params.add(agreementId);
         }
         sql.append("ORDER BY r.created_at DESC");
-        
+
         return BaseDao.query(sql.toString(), this::mapRecordWithGroup, params.toArray());
     }
 
-    public long countRecords(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId) {
+    public long countRecords(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId,
+                              String productName, String spec, String sellerName, String sellerCity) {
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM flow_downstream_record r WHERE r.project_id = ? ");
         List<Object> params = new ArrayList<>();
         params.add(projectId);
-        
+
         if (month != null && !month.isEmpty()) {
             sql.append("AND r.month_yyyymm = ? ");
             params.add(month);
+        }
+        if (productName != null && !productName.isEmpty()) {
+            sql.append("AND r.product_name LIKE ? ");
+            params.add("%" + productName + "%");
+        }
+        if (spec != null && !spec.isEmpty()) {
+            sql.append("AND r.spec LIKE ? ");
+            params.add("%" + spec + "%");
+        }
+        if (sellerName != null && !sellerName.isEmpty()) {
+            sql.append("AND r.seller_name LIKE ? ");
+            params.add("%" + sellerName + "%");
+        }
+        if (sellerCity != null && !sellerCity.isEmpty()) {
+            sql.append("AND r.seller_city LIKE ? ");
+            params.add("%" + sellerCity + "%");
         }
         if (buyerName != null && !buyerName.isEmpty()) {
             sql.append("AND r.buyer_name LIKE ? ");
@@ -83,12 +117,13 @@ public class DownstreamFlowDao {
             sql.append("AND r.agreement_id = ? ");
             params.add(agreementId);
         }
-        
+
         Long count = BaseDao.queryOne(sql.toString(), rs -> rs.getLong(1), params.toArray());
         return count != null ? count : 0L;
     }
 
-    public List<DownstreamFlowRecord> listRecordsPage(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId, int page, int pageSize) {
+    public List<DownstreamFlowRecord> listRecordsPage(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId,
+                                                       String productName, String spec, String sellerName, String sellerCity, int page, int pageSize) {
         StringBuilder sql = new StringBuilder(
             "SELECT r.*, g.group_name as assessGroupName, b.batch_code as sourceBatchCode " +
             "FROM flow_downstream_record r " +
@@ -98,10 +133,26 @@ public class DownstreamFlowDao {
         );
         List<Object> params = new ArrayList<>();
         params.add(projectId);
-        
+
         if (month != null && !month.isEmpty()) {
             sql.append("AND r.month_yyyymm = ? ");
             params.add(month);
+        }
+        if (productName != null && !productName.isEmpty()) {
+            sql.append("AND r.product_name LIKE ? ");
+            params.add("%" + productName + "%");
+        }
+        if (spec != null && !spec.isEmpty()) {
+            sql.append("AND r.spec LIKE ? ");
+            params.add("%" + spec + "%");
+        }
+        if (sellerName != null && !sellerName.isEmpty()) {
+            sql.append("AND r.seller_name LIKE ? ");
+            params.add("%" + sellerName + "%");
+        }
+        if (sellerCity != null && !sellerCity.isEmpty()) {
+            sql.append("AND r.seller_city LIKE ? ");
+            params.add("%" + sellerCity + "%");
         }
         if (buyerName != null && !buyerName.isEmpty()) {
             sql.append("AND r.buyer_name LIKE ? ");
@@ -126,7 +177,7 @@ public class DownstreamFlowDao {
         sql.append("ORDER BY r.created_at DESC LIMIT ? OFFSET ?");
         params.add(pageSize);
         params.add((page - 1) * pageSize);
-        
+
         return BaseDao.query(sql.toString(), this::mapRecordWithGroup, params.toArray());
     }
 
@@ -157,6 +208,7 @@ public class DownstreamFlowDao {
         r.setCustomerLevel(rs.getString("customer_level"));
         r.setSaleQty(BaseDao.toBigDecimal(rs.getObject("sale_qty")));
         r.setNoTaxAmount(BaseDao.toBigDecimal(rs.getObject("no_tax_amount")));
+        r.setTaxAmount(BaseDao.toBigDecimal(rs.getObject("tax_amount")));
         r.setBidAmount(BaseDao.toBigDecimal(rs.getObject("bid_amount")));
         r.setAssessGroupId(rs.getObject("assess_group_id") == null ? null : rs.getLong("assess_group_id"));
         r.setInvalidReason(rs.getString("invalid_reason"));
@@ -259,6 +311,71 @@ public class DownstreamFlowDao {
         }
         return BaseDao.update("DELETE FROM flow_downstream_record WHERE project_id = ? AND agreement_id = ? AND is_valid = 1", projectId, agreementId);
     }
+
+    /** 检查项目是否注册了直接导入下游流向 */
+    public boolean isDirectImportProject(long projectId) {
+        Long count = BaseDao.queryOne("SELECT COUNT(*) FROM proj_flow_set WHERE project_id = ?",
+                (ResultSet rs) -> rs.getLong(1), projectId);
+        return count != null && count > 0;
+    }
+
+    /** 直接插入下游流向记录（不经过上游分解） */
+    public int insertDirectRecord(DownstreamFlowRecord r) {
+        return BaseDao.update("INSERT INTO flow_downstream_record(project_id, agreement_id, batch_id, upstream_flow_record_id, " +
+                "month_yyyymm, business_date, product_name, spec, seller_name, seller_city, calc_price, quantity, " +
+                "calc_amount, buyer_name, buyer_city, customer_level, sale_qty, no_tax_amount, tax_amount, bid_amount, " +
+                "assess_group_id, is_valid, is_final, raw_row) " +
+                "VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)",
+                r.getProjectId(), r.getAgreementId(), r.getBatchId(),
+                r.getMonthYyyymm(), r.getBusinessDate(), r.getProductName(), r.getSpec(),
+                r.getSellerName(), r.getSellerCity(), r.getCalcPrice(), r.getQuantity(),
+                r.getCalcAmount(), r.getBuyerName(), r.getBuyerCity(), r.getCustomerLevel(),
+                r.getSaleQty(), r.getNoTaxAmount(), r.getTaxAmount(), r.getBidAmount(),
+                r.getAssessGroupId(), r.getRawRow());
+    }
+
+    /** 使用外部Connection直接插入下游流向记录（用于事务） */
+    public int insertDirectRecordWithConn(java.sql.Connection conn, DownstreamFlowRecord r) throws SQLException {
+        return BaseDao.updateWithConn(conn, "INSERT INTO flow_downstream_record(project_id, agreement_id, batch_id, upstream_flow_record_id, " +
+                "month_yyyymm, business_date, product_name, spec, seller_name, seller_city, calc_price, quantity, " +
+                "calc_amount, buyer_name, buyer_city, customer_level, sale_qty, no_tax_amount, tax_amount, bid_amount, " +
+                "assess_group_id, is_valid, is_final, raw_row) " +
+                "VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)",
+                r.getProjectId(), r.getAgreementId(), r.getBatchId(),
+                r.getMonthYyyymm(), r.getBusinessDate(), r.getProductName(), r.getSpec(),
+                r.getSellerName(), r.getSellerCity(), r.getCalcPrice(), r.getQuantity(),
+                r.getCalcAmount(), r.getBuyerName(), r.getBuyerCity(), r.getCustomerLevel(),
+                r.getSaleQty(), r.getNoTaxAmount(), r.getTaxAmount(), r.getBidAmount(),
+                r.getAssessGroupId(), r.getRawRow());
+    }
+
+    /** 插入下游流向批次 */
+    public Long insertDownstreamBatch(long projectId, long agreementId, String batchCode, String fileName, String filePath, long importUser, String monthSummary, String remark) {
+        return BaseDao.insertReturnId("INSERT INTO flow_downstream_batch(project_id, agreement_id, batch_code, file_name, file_path, " +
+                "import_user, month_summary, remark) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                projectId, agreementId, batchCode, fileName, filePath, importUser, monthSummary, remark);
+    }
+
+    /** 使用外部Connection插入下游流向批次（用于事务） */
+    public Long insertDownstreamBatchWithConn(java.sql.Connection conn, long projectId, long agreementId, String batchCode, String fileName, String filePath, long importUser, String monthSummary, String remark) throws SQLException {
+        return BaseDao.insertReturnIdWithConn(conn, "INSERT INTO flow_downstream_batch(project_id, agreement_id, batch_code, file_name, file_path, " +
+                "import_user, month_summary, remark) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                projectId, agreementId, batchCode, fileName, filePath, importUser, monthSummary, remark);
+    }
+
+    /** 使用外部Connection失效同项目+协议下指定月份的旧有效下游记录（用于事务） */
+    public int invalidateExistingWithConn(java.sql.Connection conn, long projectId, long agreementId, java.util.List<String> months) throws SQLException {
+        if (months == null || months.isEmpty()) return 0;
+        StringBuilder sb = new StringBuilder("UPDATE flow_downstream_record SET is_valid=0 WHERE project_id=? AND agreement_id=? AND is_final=0 AND month_yyyymm IN (");
+        for (int i = 0; i < months.size(); i++) sb.append(i == 0 ? "?" : ",?");
+        sb.append(")");
+        Object[] params = new Object[months.size() + 2];
+        params[0] = projectId;
+        params[1] = agreementId;
+        for (int i = 0; i < months.size(); i++) params[i + 2] = months.get(i);
+        return BaseDao.updateWithConn(conn, sb.toString(), params);
+    }
+
     
     /**
      * 分解上游流向到下游协议
@@ -277,12 +394,12 @@ public class DownstreamFlowDao {
         String insertSql = "INSERT INTO flow_downstream_record(project_id, agreement_id, batch_id, " +
                 "upstream_flow_record_id, month_yyyymm, business_date, product_name, spec, seller_name, " +
                 "seller_city, calc_price, quantity, calc_amount, buyer_name, buyer_city, " +
-                "customer_level, sale_qty, no_tax_amount, bid_amount, assess_group_id, is_valid, " +
+                "customer_level, sale_qty, no_tax_amount, tax_amount, bid_amount, assess_group_id, is_valid, " +
                 "is_final, raw_row) " +
                 "SELECT u.project_id, ?, u.batch_id, u.id, u.month_yyyymm, u.business_date, " +
                 "u.product_name, u.spec, u.seller_name, u.seller_city, u.calc_price, u.quantity, " +
                 "u.calc_amount, u.buyer_name, u.buyer_city, " +
-                "u.customer_level, u.sale_qty, u.no_tax_amount, u.bid_amount, " +
+                "u.customer_level, u.sale_qty, u.no_tax_amount, u.tax_amount, u.bid_amount, " +
                 "u.assess_group_id, 1, 0, u.raw_row " +
                 "FROM flow_upstream_record u " +
                 "WHERE u.id IN (" + inClause + ") " +
@@ -305,7 +422,8 @@ public class DownstreamFlowDao {
     /**
      * 列出下游协议的记录，关联上游流向
      */
-    public List<com.rebate.model.DownstreamFlowRecord> listRecordsWithUpstream(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId) {
+    public List<com.rebate.model.DownstreamFlowRecord> listRecordsWithUpstream(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId,
+                                                                                String productName, String spec, String sellerName, String sellerCity) {
         StringBuilder sql = new StringBuilder(
             "SELECT d.id, d.project_id, d.agreement_id, d.batch_id, d.upstream_flow_record_id, " +
             "COALESCE(u.month_yyyymm, d.month_yyyymm) AS month_yyyymm, " +
@@ -322,6 +440,7 @@ public class DownstreamFlowDao {
             "COALESCE(u.customer_level, d.customer_level) AS customer_level, " +
             "COALESCE(u.sale_qty, d.sale_qty) AS sale_qty, " +
             "COALESCE(u.no_tax_amount, d.no_tax_amount) AS no_tax_amount, " +
+            "COALESCE(u.tax_amount, d.tax_amount) AS tax_amount, " +
             "COALESCE(u.bid_amount, d.bid_amount) AS bid_amount, " +
             "COALESCE(u.assess_group_id, d.assess_group_id) AS assess_group_id, " +
             "COALESCE(u.is_valid, d.is_valid) AS is_valid, " +
@@ -335,10 +454,26 @@ public class DownstreamFlowDao {
         );
         List<Object> params = new ArrayList<>();
         params.add(projectId);
-        
+
         if (month != null && !month.isEmpty()) {
             sql.append("AND COALESCE(u.month_yyyymm, d.month_yyyymm) = ? ");
             params.add(month);
+        }
+        if (productName != null && !productName.isEmpty()) {
+            sql.append("AND COALESCE(u.product_name, d.product_name) LIKE ? ");
+            params.add("%" + productName + "%");
+        }
+        if (spec != null && !spec.isEmpty()) {
+            sql.append("AND COALESCE(u.spec, d.spec) LIKE ? ");
+            params.add("%" + spec + "%");
+        }
+        if (sellerName != null && !sellerName.isEmpty()) {
+            sql.append("AND COALESCE(u.seller_name, d.seller_name) LIKE ? ");
+            params.add("%" + sellerName + "%");
+        }
+        if (sellerCity != null && !sellerCity.isEmpty()) {
+            sql.append("AND COALESCE(u.seller_city, d.seller_city) LIKE ? ");
+            params.add("%" + sellerCity + "%");
         }
         if (buyerName != null && !buyerName.isEmpty()) {
             sql.append("AND COALESCE(u.buyer_name, d.buyer_name) LIKE ? ");
@@ -361,11 +496,12 @@ public class DownstreamFlowDao {
             params.add(agreementId);
         }
         sql.append("ORDER BY d.created_at DESC");
-        
+
         return BaseDao.query(sql.toString(), this::mapRecordWithUpstream, params.toArray());
     }
 
-    public long countRecordsWithUpstream(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId) {
+    public long countRecordsWithUpstream(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId,
+                                         String productName, String spec, String sellerName, String sellerCity) {
         StringBuilder sql = new StringBuilder(
             "SELECT COUNT(*) FROM flow_downstream_record d " +
             "LEFT JOIN flow_upstream_record u ON d.upstream_flow_record_id = u.id " +
@@ -373,10 +509,26 @@ public class DownstreamFlowDao {
         );
         List<Object> params = new ArrayList<>();
         params.add(projectId);
-        
+
         if (month != null && !month.isEmpty()) {
             sql.append("AND COALESCE(u.month_yyyymm, d.month_yyyymm) = ? ");
             params.add(month);
+        }
+        if (productName != null && !productName.isEmpty()) {
+            sql.append("AND COALESCE(u.product_name, d.product_name) LIKE ? ");
+            params.add("%" + productName + "%");
+        }
+        if (spec != null && !spec.isEmpty()) {
+            sql.append("AND COALESCE(u.spec, d.spec) LIKE ? ");
+            params.add("%" + spec + "%");
+        }
+        if (sellerName != null && !sellerName.isEmpty()) {
+            sql.append("AND COALESCE(u.seller_name, d.seller_name) LIKE ? ");
+            params.add("%" + sellerName + "%");
+        }
+        if (sellerCity != null && !sellerCity.isEmpty()) {
+            sql.append("AND COALESCE(u.seller_city, d.seller_city) LIKE ? ");
+            params.add("%" + sellerCity + "%");
         }
         if (buyerName != null && !buyerName.isEmpty()) {
             sql.append("AND COALESCE(u.buyer_name, d.buyer_name) LIKE ? ");
@@ -398,12 +550,13 @@ public class DownstreamFlowDao {
             sql.append("AND d.agreement_id = ? ");
             params.add(agreementId);
         }
-        
+
         Long count = BaseDao.queryOne(sql.toString(), rs -> rs.getLong(1), params.toArray());
         return count != null ? count : 0L;
     }
 
-    public List<com.rebate.model.DownstreamFlowRecord> listRecordsWithUpstreamPage(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId, int page, int pageSize) {
+    public List<com.rebate.model.DownstreamFlowRecord> listRecordsWithUpstreamPage(Long projectId, String month, String buyerName, String buyerCity, String customerLevel, Integer isValid, Long agreementId,
+                                                                                     String productName, String spec, String sellerName, String sellerCity, int page, int pageSize) {
         StringBuilder sql = new StringBuilder(
             "SELECT d.id, d.project_id, d.agreement_id, d.batch_id, d.upstream_flow_record_id, " +
             "COALESCE(u.month_yyyymm, d.month_yyyymm) AS month_yyyymm, " +
@@ -420,6 +573,7 @@ public class DownstreamFlowDao {
             "COALESCE(u.customer_level, d.customer_level) AS customer_level, " +
             "COALESCE(u.sale_qty, d.sale_qty) AS sale_qty, " +
             "COALESCE(u.no_tax_amount, d.no_tax_amount) AS no_tax_amount, " +
+            "COALESCE(u.tax_amount, d.tax_amount) AS tax_amount, " +
             "COALESCE(u.bid_amount, d.bid_amount) AS bid_amount, " +
             "COALESCE(u.assess_group_id, d.assess_group_id) AS assess_group_id, " +
             "COALESCE(u.is_valid, d.is_valid) AS is_valid, " +
@@ -433,10 +587,26 @@ public class DownstreamFlowDao {
         );
         List<Object> params = new ArrayList<>();
         params.add(projectId);
-        
+
         if (month != null && !month.isEmpty()) {
             sql.append("AND COALESCE(u.month_yyyymm, d.month_yyyymm) = ? ");
             params.add(month);
+        }
+        if (productName != null && !productName.isEmpty()) {
+            sql.append("AND COALESCE(u.product_name, d.product_name) LIKE ? ");
+            params.add("%" + productName + "%");
+        }
+        if (spec != null && !spec.isEmpty()) {
+            sql.append("AND COALESCE(u.spec, d.spec) LIKE ? ");
+            params.add("%" + spec + "%");
+        }
+        if (sellerName != null && !sellerName.isEmpty()) {
+            sql.append("AND COALESCE(u.seller_name, d.seller_name) LIKE ? ");
+            params.add("%" + sellerName + "%");
+        }
+        if (sellerCity != null && !sellerCity.isEmpty()) {
+            sql.append("AND COALESCE(u.seller_city, d.seller_city) LIKE ? ");
+            params.add("%" + sellerCity + "%");
         }
         if (buyerName != null && !buyerName.isEmpty()) {
             sql.append("AND COALESCE(u.buyer_name, d.buyer_name) LIKE ? ");
@@ -461,10 +631,10 @@ public class DownstreamFlowDao {
         sql.append("ORDER BY d.created_at DESC LIMIT ? OFFSET ?");
         params.add(pageSize);
         params.add((page - 1) * pageSize);
-        
+
         return BaseDao.query(sql.toString(), this::mapRecordWithUpstream, params.toArray());
     }
-    
+
     private com.rebate.model.DownstreamFlowRecord mapRecordWithUpstream(ResultSet rs) throws SQLException {
         com.rebate.model.DownstreamFlowRecord r = new com.rebate.model.DownstreamFlowRecord();
         r.setId(rs.getLong("id"));
@@ -485,6 +655,7 @@ public class DownstreamFlowDao {
         r.setCustomerLevel(rs.getString("customer_level"));
         r.setSaleQty(BaseDao.toBigDecimal(rs.getObject("sale_qty")));
         r.setNoTaxAmount(BaseDao.toBigDecimal(rs.getObject("no_tax_amount")));
+        r.setTaxAmount(BaseDao.toBigDecimal(rs.getObject("tax_amount")));
         r.setBidAmount(BaseDao.toBigDecimal(rs.getObject("bid_amount")));
         r.setAssessGroupId(rs.getObject("assess_group_id") == null ? null : rs.getLong("assess_group_id"));
         r.setIsValid(rs.getInt("is_valid"));

@@ -15,6 +15,7 @@ public class Receivable {
     private BigDecimal assessAmount;
     private BigDecimal totalAmount;
     private BigDecimal estimateAmount;
+    private BigDecimal taxRate;
     private String status;
     private Long fillUser;
     private Timestamp fillTime;
@@ -40,6 +41,8 @@ public class Receivable {
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
     public BigDecimal getEstimateAmount() { return estimateAmount; }
     public void setEstimateAmount(BigDecimal estimateAmount) { this.estimateAmount = estimateAmount; }
+    public BigDecimal getTaxRate() { return taxRate; }
+    public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Long getFillUser() { return fillUser; }

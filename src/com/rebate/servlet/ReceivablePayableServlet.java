@@ -151,6 +151,7 @@ public class ReceivablePayableServlet extends BaseServlet {
         r.setAssessAmount(toBd(p.get("assessAmount")));
         r.setTotalAmount(r.getScaleAmount().add(r.getAssessAmount()));
         r.setEstimateAmount(toBd(p.get("estimateAmount")));
+        r.setTaxRate(toBd(p.get("taxRate")));
         r.setStatus("DRAFT");
         r.setFillUser(u.getId());
         r.setFillTime(new Timestamp(System.currentTimeMillis()));
@@ -346,6 +347,7 @@ public class ReceivablePayableServlet extends BaseServlet {
         r.setAssessAmount(toBd(p.get("assessAmount")));
         r.setTotalAmount(r.getScaleAmount().add(r.getAssessAmount()));
         r.setEstimateAmount(toBd(p.get("estimateAmount")));
+        r.setTaxRate(toBd(p.get("taxRate")));
         r.setStatus("DRAFT");
         r.setFillUser(u.getId());
         r.setFillTime(new Timestamp(System.currentTimeMillis()));
@@ -441,14 +443,21 @@ public class ReceivablePayableServlet extends BaseServlet {
         List<Receivable> list = dao.listReceivableByProject(pid);
 
         List<String> headers = Arrays.asList("阶段", "依据规模应收", "依据考核应收", "合计应收",
-                "系统估算", "状态", "填报人", "填报时间", "审核人", "审核时间", "备注");
+                "税率", "无税金额", "系统估算", "状态", "填报人", "填报时间", "审核人", "审核时间", "备注");
         List<List<String>> rows = new ArrayList<>();
         for (Receivable r : list) {
+            java.math.BigDecimal rate = r.getTaxRate() != null ? r.getTaxRate() : java.math.BigDecimal.ZERO;
+            java.math.BigDecimal total = r.getTotalAmount() != null ? r.getTotalAmount() : java.math.BigDecimal.ZERO;
+            java.math.BigDecimal taxEx = (rate != null && rate.compareTo(java.math.BigDecimal.ZERO) > 0)
+                ? total.divide(java.math.BigDecimal.ONE.add(rate.divide(new java.math.BigDecimal(100), 4, java.math.BigDecimal.ROUND_HALF_UP)), 2, java.math.BigDecimal.ROUND_HALF_UP)
+                : total;
             rows.add(Arrays.asList(
                 r.getStage() != null ? r.getStage() : "",
                 r.getScaleAmount() != null ? r.getScaleAmount().toString() : "",
                 r.getAssessAmount() != null ? r.getAssessAmount().toString() : "",
                 r.getTotalAmount() != null ? r.getTotalAmount().toString() : "",
+                rate != null ? rate.toString() : "",
+                taxEx != null ? taxEx.toString() : "",
                 r.getEstimateAmount() != null ? r.getEstimateAmount().toString() : "",
                 r.getStatus() != null ? r.getStatus() : "",
                 r.getFillUser() != null ? r.getFillUser().toString() : "",
@@ -472,14 +481,21 @@ public class ReceivablePayableServlet extends BaseServlet {
         List<Payable> list = dao.listPayableByProject(pid, null, null, null);
 
         List<String> headers = Arrays.asList("阶段", "依据规模应付", "依据考核应付", "合计应付",
-                "系统估算", "状态", "填报人", "填报时间", "审核人", "审核时间", "备注");
+                "税率", "无税金额", "系统估算", "状态", "填报人", "填报时间", "审核人", "审核时间", "备注");
         List<List<String>> rows = new ArrayList<>();
         for (Payable r : list) {
+            java.math.BigDecimal rate = r.getTaxRate() != null ? r.getTaxRate() : java.math.BigDecimal.ZERO;
+            java.math.BigDecimal total = r.getTotalAmount() != null ? r.getTotalAmount() : java.math.BigDecimal.ZERO;
+            java.math.BigDecimal taxEx = (rate != null && rate.compareTo(java.math.BigDecimal.ZERO) > 0)
+                ? total.divide(java.math.BigDecimal.ONE.add(rate.divide(new java.math.BigDecimal(100), 4, java.math.BigDecimal.ROUND_HALF_UP)), 2, java.math.BigDecimal.ROUND_HALF_UP)
+                : total;
             rows.add(Arrays.asList(
                 r.getStage() != null ? r.getStage() : "",
                 r.getScaleAmount() != null ? r.getScaleAmount().toString() : "",
                 r.getAssessAmount() != null ? r.getAssessAmount().toString() : "",
                 r.getTotalAmount() != null ? r.getTotalAmount().toString() : "",
+                rate != null ? rate.toString() : "",
+                taxEx != null ? taxEx.toString() : "",
                 r.getEstimateAmount() != null ? r.getEstimateAmount().toString() : "",
                 r.getStatus() != null ? r.getStatus() : "",
                 r.getFillUser() != null ? r.getFillUser().toString() : "",

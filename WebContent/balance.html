@@ -48,6 +48,8 @@
 </div>
 <div class="toolbar">
     <select id="selYear" style="width:120px;"></select>
+    <select id="selUndertakingDept" style="width:140px;"><option value="">全部部门</option></select>
+    <select id="selProjectGroup" style="width:140px;"><option value="">全部分组</option></select>
     <input type="hidden" id="selProject">
     <input id="txtProject" readonly placeholder="全部项目（点击选择单个项目筛选）" style="width:280px; background:#fff; cursor:pointer; padding:6px 10px; border:1px solid #dcdfe6; border-radius:4px;">
     <button class="btn" id="btnSelProj">选择项目</button>
@@ -121,7 +123,8 @@
         adjustTableHeight();
 
         RB.checkLogin(function () {
-            loadYears(); 
+            loadYears();
+            loadFilters();
             RB.bindProjectSelector({
                 trigger: '#btnSelProj, #txtProject',
                 display: '#txtProject',
@@ -183,18 +186,51 @@
         });
     }
 
+    function loadFilters() {
+        RB.post('/api/project?op=listUndertakingDepts', {}).done(function (r) {
+            if (r.code === 0 && r.data) {
+                var html = '<option value="">全部部门</option>';
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i] + '">' + r.data[i] + '</option>';
+                }
+                $('#selUndertakingDept').html(html);
+            }
+        });
+        RB.post('/api/project?op=groups', {}).done(function (r) {
+            if (r.code === 0 && r.data) {
+                var html = '<option value="">全部分组</option>';
+                for (var i = 0; i < r.data.length; i++) {
+                    html += '<option value="' + r.data[i].id + '">' + r.data[i].name + '</option>';
+                }
+                $('#selProjectGroup').html(html);
+            }
+        });
+    }
+
     function load() {
         $('#loadingOverlay').show();
         RB.post('/api/overview?op=balanceTable', { coYear: $('#selYear').val() }).done(function (r) {
             if (r.code !== 0) { RB.toast(r.msg, 'error'); $('#loadingOverlay').hide(); return; }
             var projectId = $('#selProject').val();
-            var filteredData = r.data;
+            var dept = $('#selUndertakingDept').val();
+            var groupId = $('#selProjectGroup').val();
+            var filteredData = r.data || [];
             if (projectId) {
-                filteredData = (r.data || []).filter(function(item) {
+                filteredData = filteredData.filter(function(item) {
                     return String(item.projectId) === String(projectId);
                 });
             }
-            render(filteredData || []);
+            if (dept) {
+                filteredData = filteredData.filter(function(item) {
+                    return String(item.undertakingDept || '') === String(dept);
+                });
+            }
+            if (groupId) {
+                filteredData = filteredData.filter(function(item) {
+                    return String(item.projectGroupId || '') === String(groupId);
+                });
+            }
+            render(filteredData);
             $('#loadingOverlay').hide();
         }).fail(function() {
             $('#loadingOverlay').hide();

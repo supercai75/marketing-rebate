@@ -1,8 +1,10 @@
 package com.rebate.service;
 
+import com.rebate.dao.DownstreamFlowDao;
 import com.rebate.dao.UpstreamFlowDao;
 import com.rebate.dao.RebateRuleDao;
 import com.rebate.model.AssessGroup;
+import com.rebate.model.DownstreamFlowRecord;
 import com.rebate.model.UpstreamFlowBatch;
 import com.rebate.model.UpstreamFlowRecord;
 import com.rebate.util.DBUtil;
@@ -26,6 +28,7 @@ import java.util.*;
 public class FlowImportService {
 
     private final UpstreamFlowDao flowDao = new UpstreamFlowDao();
+    private final DownstreamFlowDao downstreamFlowDao = new DownstreamFlowDao();
     private final RebateRuleDao ruleDao = new RebateRuleDao();
 
     private static final String[] REQUIRED_HEADERS = {
@@ -35,7 +38,7 @@ public class FlowImportService {
 
     /** 数值列：非空时必须是数字 */
     private static final String[] NUMERIC_COLUMNS = {
-            "核算价格", "数量", "核算金额", "销售数量", "中标金额", "无税金额"
+            "核算价格", "数量", "核算金额", "销售数量", "中标金额", "无税金额", "含税金额"
     };
 
     /** 文本列与数据库定义长度：超出则报错 */
@@ -159,6 +162,7 @@ public class FlowImportService {
             }
             r.setSaleQty(safeBd(row.get("销售数量")));
             r.setNoTaxAmount(safeBd(row.get("无税金额")));
+            r.setTaxAmount(safeBd(row.get("含税金额")));
             r.setBidAmount(safeBd(row.get("中标金额")));
             
             // 处理考核组列（从内存Map获取）
@@ -201,6 +205,186 @@ public class FlowImportService {
                 flowDao.insertRecordWithConn(conn, r);
             }
             
+            // 提交事务
+            conn.commit();
+        } catch (Exception e) {
+            // 回滚事务
+            if (conn != null) {
+                try { conn.rollback(); } catch (Exception ignore) {}
+            }
+            throw new RuntimeException("导入失败，已整体回滚，未写入任何数据: " + e.getMessage(), e);
+        } finally {
+            // 关闭连接
+            if (conn != null) {
+                try { conn.close(); } catch (Exception ignore) {}
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("batchId", batchId);
+        result.put("totalCount", validRecords.size());
+        result.put("monthSummary", String.join(",", months));
+        result.put("errorRows", errs);
+        return result;
+    }
+
+    /**
+     * 直接导入下游流向（不经过上游分解）。
+     * 逻辑与 importUpstream 类似，但写入 flow_downstream_record 表，并携带 agreementId。
+     *
+     * @param projectId      项目ID
+     * @param agreementId    下游协议ID
+     * @param userId         导入用户ID
+     * @param fileName       原始文件名
+     * @param in             Excel 文件输入流
+     * @param selectedMonths 仅导入这些月份（可为 null/空表示全部）
+     * @return 导入结果（batchId, totalCount, monthSummary, errorRows）
+     */
+    public Map<String, Object> importDirectDownstream(long projectId, long agreementId, long userId, String fileName, InputStream in, List<String> selectedMonths) throws Exception {
+        // 将 InputStream 读取为 byte[]，以便多次使用
+        byte[] fileBytes = in.readAllBytes();
+
+        // 1) 保存文件
+        String subDir = "flow/downstream/" + projectId;
+        String relPath = FileUtil.save(new ByteArrayInputStream(fileBytes), subDir, fileName);
+
+        // 2) 解析 Excel
+        List<Map<String, String>> rows = ExcelUtil.readSheetAsMap(new ByteArrayInputStream(fileBytes));
+        if (rows.isEmpty()) throw new RuntimeException("Excel 文件为空");
+
+        // 3) 校验必填列
+        Set<String> headers = rows.get(0).keySet();
+        List<String> missing = new ArrayList<>();
+        for (String req : REQUIRED_HEADERS) {
+            boolean found = false;
+            for (String h : headers) if (req.equals(h) || req.equals(h.trim())) { found = true; break; }
+            if (!found) missing.add(req);
+        }
+        if (!missing.isEmpty()) {
+            throw new RuntimeException("Excel 缺少必填列: " + String.join(",", missing));
+        }
+
+        // 4) 逐行严格校验（先于任何数据库操作），收集所有错误行
+        List<String> errs = new ArrayList<>();
+        List<Map<String, String>> validRows = new ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, String> row = rows.get(i);
+            String rowMonth = row.get("月份") == null ? null : row.get("月份").trim();
+            // 如果指定了月份，则只校验并处理指定月份的数据
+            if (selectedMonths != null && !selectedMonths.isEmpty()) {
+                String m = normalizeMonthStrict(rowMonth);
+                if (m == null || !selectedMonths.contains(m)) {
+                    continue;
+                }
+            }
+            validRows.add(row);
+            validateRow(i + 2, row, errs);
+        }
+        // 5) 任意一行校验不通过：整体失败，不写入任何数据
+        if (!errs.isEmpty()) {
+            StringBuilder sb = new StringBuilder("导入数据存在错误，已取消导入，共 " + errs.size() + " 处：\n");
+            for (String e : errs) sb.append(e).append("\n");
+            throw new RuntimeException(sb.toString().trim());
+        }
+
+        // 6) 抽取月份集合（此时所有有效行月份均为合法 yyyyMM）
+        Set<String> months;
+        if (selectedMonths != null && !selectedMonths.isEmpty()) {
+            months = new TreeSet<>(selectedMonths);
+        } else {
+            months = new TreeSet<>();
+            for (Map<String, String> row : validRows) {
+                months.add(normalizeMonthStrict(row.get("月份")));
+            }
+        }
+        if (months.isEmpty()) throw new RuntimeException("未解析到任何有效月份");
+
+        // 7) 加载考核组（提前加载，不在事务中执行）
+        Map<String, Long> assessGroupMap = new HashMap<>();
+        List<AssessGroup> assessGroups = ruleDao.listAssessGroups(projectId);
+        for (AssessGroup ag : assessGroups) {
+            assessGroupMap.put(ag.getGroupName().trim(), ag.getId());
+        }
+
+        // 8) 准备要导入的数据（校验已通过，直接转换为 DownstreamFlowRecord）
+        List<DownstreamFlowRecord> validRecords = new ArrayList<>();
+        SimpleDateFormat ymd = new SimpleDateFormat("yyyy-MM-dd");
+
+        for (int i = 0; i < rows.size(); i++) {
+            Map<String, String> row = rows.get(i);
+            String rowMonth = row.get("月份") == null ? null : row.get("月份").trim();
+            if (selectedMonths != null && !selectedMonths.isEmpty()) {
+                String m = normalizeMonthStrict(rowMonth);
+                if (m == null || !selectedMonths.contains(m)) {
+                    continue;
+                }
+            }
+
+            DownstreamFlowRecord r = new DownstreamFlowRecord();
+            r.setProjectId(projectId);
+            r.setAgreementId(agreementId);
+            r.setMonthYyyymm(normalizeMonthStrict(rowMonth));
+            String bd = row.get("业务日期");
+            if (bd != null && !bd.isEmpty()) {
+                try { r.setBusinessDate(new Date(ymd.parse(bd.trim()).getTime())); } catch (Exception e) { /* 已在校验阶段拦截 */ }
+            }
+            r.setProductName(row.get("产品名称"));
+            r.setSpec(row.get("规格"));
+            r.setSellerName(row.get("销售方名称"));
+            r.setSellerCity(row.get("销售方城市"));
+            r.setCalcPrice(safeBd(row.get("核算价格")));
+            r.setQuantity(safeBd(row.get("数量")));
+            r.setCalcAmount(safeBd(row.get("核算金额")));
+            r.setBuyerName(row.get("采购方名称"));
+            String buyerCity = row.get("采购方城市");
+            if (buyerCity != null && !buyerCity.trim().isEmpty()) {
+                r.setBuyerCity(buyerCity.trim());
+            }
+            String customerLevel = row.get("客户等级");
+            if (customerLevel != null && !customerLevel.trim().isEmpty()) {
+                r.setCustomerLevel(customerLevel.trim());
+            }
+            r.setSaleQty(safeBd(row.get("销售数量")));
+            r.setNoTaxAmount(safeBd(row.get("无税金额")));
+            r.setTaxAmount(safeBd(row.get("含税金额")));
+            r.setBidAmount(safeBd(row.get("中标金额")));
+
+            // 处理考核组列（从内存Map获取）
+            String assessGroupName = row.get("考核组");
+            if (assessGroupName != null && !assessGroupName.trim().isEmpty()) {
+                Long groupId = assessGroupMap.get(assessGroupName.trim());
+                if (groupId != null) {
+                    r.setAssessGroupId(groupId);
+                }
+            }
+
+            // rawRow 存所有列
+            r.setRawRow(new com.google.gson.Gson().toJson(row));
+            validRecords.add(r);
+        }
+
+        // 9) 在事务中执行数据库操作，统一提交，失败整体回滚
+        //    直接导入下游流向：失效旧记录 + 创建下游批次 + 逐条插入 flow_downstream_record
+        Connection conn = null;
+        Long batchId = null;
+        try {
+            conn = DBUtil.getConnection();
+            conn.setAutoCommit(false);
+
+            // 失效同项目+协议下同月份的旧有效下游记录（非终版），避免重复累计
+            downstreamFlowDao.invalidateExistingWithConn(conn, projectId, agreementId, new ArrayList<>(months));
+
+            // 写入下游批次
+            batchId = downstreamFlowDao.insertDownstreamBatchWithConn(conn, projectId, agreementId,
+                    "B" + System.currentTimeMillis(), fileName, relPath, userId,
+                    String.join(",", months), null);
+
+            // 写入明细
+            for (DownstreamFlowRecord r : validRecords) {
+                r.setBatchId(batchId);
+                downstreamFlowDao.insertDirectRecordWithConn(conn, r);
+            }
+
             // 提交事务
             conn.commit();
         } catch (Exception e) {
@@ -277,7 +461,7 @@ public class FlowImportService {
     private String briefRow(Map<String, String> row) {
         StringBuilder sb = new StringBuilder();
         String[] keys = {"月份", "业务日期", "产品名称", "规格", "销售方名称", "销售方城市",
-                "核算价格", "数量", "核算金额", "采购方名称", "采购方城市", "客户等级", "销售数量", "无税金额", "中标金额", "考核组"};
+                "核算价格", "数量", "核算金额", "采购方名称", "采购方城市", "客户等级", "销售数量", "无税金额", "含税金额", "中标金额", "考核组"};
         for (String k : keys) {
             String v = row.get(k);
             if (v != null && !v.trim().isEmpty()) {

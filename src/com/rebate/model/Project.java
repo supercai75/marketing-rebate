@@ -33,6 +33,7 @@ public class Project {
     private String createdByName;
     private Long projectGroupId;
     private String projectGroupName;
+    private String undertakingDept;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -86,4 +87,6 @@ public class Project {
     public void setProjectGroupId(Long projectGroupId) { this.projectGroupId = projectGroupId; }
     public String getProjectGroupName() { return projectGroupName; }
     public void setProjectGroupName(String projectGroupName) { this.projectGroupName = projectGroupName; }
+    public String getUndertakingDept() { return undertakingDept; }
+    public void setUndertakingDept(String undertakingDept) { this.undertakingDept = undertakingDept; }
 }

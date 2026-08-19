@@ -531,6 +531,7 @@ CREATE TABLE IF NOT EXISTS prj_receivable (
     assess_amount       NUMERIC(18,2) DEFAULT 0,      -- 依据考核
     total_amount        NUMERIC(18,2) DEFAULT 0,
     estimate_amount     NUMERIC(18,2) DEFAULT 0,      -- 系统估算
+    tax_rate            NUMERIC(5,2) DEFAULT 0,        -- 税率(百分比)
     status              VARCHAR(32) DEFAULT 'DRAFT',  -- DRAFT/AUDIT/FINAL
     fill_user           BIGINT,
     fill_time           TIMESTAMP,
@@ -550,6 +551,7 @@ CREATE TABLE IF NOT EXISTS prj_payable (
     assess_amount       NUMERIC(18,2) DEFAULT 0,
     total_amount        NUMERIC(18,2) DEFAULT 0,
     estimate_amount     NUMERIC(18,2) DEFAULT 0,
+    tax_rate            NUMERIC(5,2) DEFAULT 0,        -- 税率(百分比)
     status              VARCHAR(32) DEFAULT 'DRAFT',
     fill_user           BIGINT,
     fill_time           TIMESTAMP,

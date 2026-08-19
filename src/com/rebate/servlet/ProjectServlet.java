@@ -37,6 +37,7 @@ public class ProjectServlet extends BaseServlet {
             case "page": doPage(req, resp, p); break;
             case "list": doList(req, resp); break;
             case "listYears": doListYears(req, resp); break;
+            case "listUndertakingDepts": doListUndertakingDepts(req, resp); break;
             case "listByYear": doListByYear(req, resp, p); break;
             case "listFilters": doListFilters(req, resp, p); break;
             case "groups": doListGroups(req, resp); break;
@@ -57,6 +58,7 @@ public class ProjectServlet extends BaseServlet {
             case "page":
             case "list":
             case "listYears":
+            case "listUndertakingDepts":
             case "listByYear":
             case "listFilters":
             case "groups":
@@ -96,7 +98,8 @@ public class ProjectServlet extends BaseServlet {
         Long gid = (gId == null || gId == 0) ? null : gId;
         ResponseUtil.ok(resp, projectDao.listByFilters(
                 WebUtil.getSafeParam(p, "coYear"), gid,
-                WebUtil.getSafeParam(p, "keyword"), WebUtil.getSafeParam(p, "status")));
+                WebUtil.getSafeParam(p, "keyword"), WebUtil.getSafeParam(p, "status"),
+                WebUtil.getSafeParam(p, "undertakingDept")));
     }
 
     private void doListGroups(HttpServletRequest req, HttpServletResponse resp) {
@@ -105,6 +108,10 @@ public class ProjectServlet extends BaseServlet {
     
     private void doListYears(HttpServletRequest req, HttpServletResponse resp) {
         ResponseUtil.ok(resp, projectDao.listAllYears());
+    }
+
+    private void doListUndertakingDepts(HttpServletRequest req, HttpServletResponse resp) {
+        ResponseUtil.ok(resp, projectDao.listAllUndertakingDepts());
     }
     
     private void doListByYear(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
@@ -253,6 +260,7 @@ public class ProjectServlet extends BaseServlet {
         po.setDescription(WebUtil.getSafeParam(p, "description"));
         po.setOwnerUserId(WebUtil.getLong(p, "ownerUserId", 0) == 0 ? null : WebUtil.getLong(p, "ownerUserId", 0));
         po.setStatus(WebUtil.getSafeParam(p, "status"));
+        po.setUndertakingDept(WebUtil.getSafeParam(p, "undertakingDept"));
 
         // 分组：优先用 projectGroupId（已有分组）；如果前端传的是 projectGroupName（文本或新建），走懒创建
         Long gId = WebUtil.getLong(p, "projectGroupId", 0);

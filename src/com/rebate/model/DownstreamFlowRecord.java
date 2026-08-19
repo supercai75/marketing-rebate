@@ -27,6 +27,7 @@ public class DownstreamFlowRecord {
     private String customerLevel;
     private BigDecimal saleQty;
     private BigDecimal noTaxAmount;
+    private BigDecimal taxAmount;
     private BigDecimal bidAmount;
     private Long assessGroupId;
     private String assessGroupName;
@@ -76,6 +77,8 @@ public class DownstreamFlowRecord {
     public void setSaleQty(BigDecimal saleQty) { this.saleQty = saleQty; }
     public BigDecimal getNoTaxAmount() { return noTaxAmount; }
     public void setNoTaxAmount(BigDecimal noTaxAmount) { this.noTaxAmount = noTaxAmount; }
+    public BigDecimal getTaxAmount() { return taxAmount; }
+    public void setTaxAmount(BigDecimal taxAmount) { this.taxAmount = taxAmount; }
     public BigDecimal getBidAmount() { return bidAmount; }
     public void setBidAmount(BigDecimal bidAmount) { this.bidAmount = bidAmount; }
     public Long getAssessGroupId() { return assessGroupId; }

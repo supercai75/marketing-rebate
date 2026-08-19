@@ -3,14 +3,17 @@ package com.rebate.servlet;
 import com.rebate.dao.DownstreamFlowDao;
 import com.rebate.dao.RebateRuleDao;
 import com.rebate.model.DownstreamFlowRecord;
+import com.rebate.service.FlowImportService;
 import com.rebate.util.ExcelUtil;
 import com.rebate.util.ResponseUtil;
 import com.rebate.util.TokenUtil;
 import com.rebate.util.WebUtil;
 import org.apache.poi.ss.usermodel.Workbook;
 
+import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -19,10 +22,33 @@ import java.math.BigDecimal;
 /**
  * 下游流向管理
  */
+@MultipartConfig
 public class DownstreamFlowServlet extends BaseServlet {
 
     private final DownstreamFlowDao dao = new DownstreamFlowDao();
     private final RebateRuleDao ruleDao = new RebateRuleDao();
+    private final FlowImportService importService = new FlowImportService();
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+        try {
+            // 检查是否是 multipart 请求
+            String contentType = req.getContentType();
+            Map<String, Object> params;
+            if (contentType != null && contentType.toLowerCase().contains("multipart/form-data")) {
+                // multipart 请求：使用 request.getParameter() 获取参数
+                params = new HashMap<>();
+                req.getParameterMap().forEach((k, v) -> params.put(k, v.length > 0 ? v[0] : ""));
+            } else {
+                // 普通 JSON 请求
+                params = com.rebate.util.JsonUtil.readRequestMap(req);
+            }
+            doAction(req, resp, params);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ResponseUtil.error(resp, "服务器异常: " + e.getMessage());
+        }
+    }
 
     @Override
     protected void doAction(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) throws Exception {
@@ -30,12 +56,12 @@ public class DownstreamFlowServlet extends BaseServlet {
         if (u == null) { ResponseUtil.unauthorized(resp); return; }
         String op = WebUtil.getSafeParam(p, "op");
         if (op == null) op = "listRecords";
-        
+
         if (!checkPerm(u, op)) {
             ResponseUtil.forbidden(resp);
             return;
         }
-        
+
         switch (op) {
             case "listRecords": doListRecords(req, resp, p); break;
             case "listAssessGroups": doListAssessGroups(req, resp); break;
@@ -47,6 +73,8 @@ public class DownstreamFlowServlet extends BaseServlet {
             case "agreementOverview": doAgreementOverview(req, resp, p); break;
             case "exportCurrent": doExportCurrent(req, resp, p); break;
             case "exportInvalid": doExportInvalid(req, resp, p); break;
+            case "isDirectImport": doIsDirectImport(req, resp, p); break;
+            case "importDirect": doImportDirect(req, resp, p, u); break;
             default: ResponseUtil.fail(resp, "未知操作: " + op);
         }
     }
@@ -60,12 +88,14 @@ public class DownstreamFlowServlet extends BaseServlet {
             case "agreementOverview":
             case "exportCurrent":
             case "exportInvalid":
+            case "isDirectImport":
                 return u.hasPerm("flow:view");
             case "updateRecordAssessGroup":
                 return u.hasPerm("flow:view");
             case "decompose":
             case "removeRecord":
             case "removeAllValid":
+            case "importDirect":
                 return u.hasPerm("flow:split");
             default:
                 return true;
@@ -78,6 +108,10 @@ public class DownstreamFlowServlet extends BaseServlet {
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
         String customerLevel = WebUtil.getSafeParam(p, "customerLevel");
+        String productName = WebUtil.getSafeParam(p, "productName");
+        String spec = WebUtil.getSafeParam(p, "spec");
+        String sellerName = WebUtil.getSafeParam(p, "sellerName");
+        String sellerCity = WebUtil.getSafeParam(p, "sellerCity");
         String isValidStr = WebUtil.getSafeParam(p, "isValid");
         Integer isValid = null;
         if (isValidStr != null && !isValidStr.isEmpty()) {
@@ -95,22 +129,24 @@ public class DownstreamFlowServlet extends BaseServlet {
         if (agreementId == 0) agreementId = null;
         Integer page = WebUtil.getInt(p, "page", 1);
         Integer pageSize = WebUtil.getInt(p, "pageSize", 20);
-        
+
         List<DownstreamFlowRecord> pageRecords;
         long total;
-        
-        total = dao.countRecordsWithUpstream(projectId, month, buyerName, buyerCity, customerLevel, isValid, agreementId);
-        pageRecords = dao.listRecordsWithUpstreamPage(projectId, month, buyerName, buyerCity, customerLevel, isValid, agreementId, page, pageSize);
-        
+
+        total = dao.countRecordsWithUpstream(projectId, month, buyerName, buyerCity, customerLevel, isValid, agreementId,
+                productName, spec, sellerName, sellerCity);
+        pageRecords = dao.listRecordsWithUpstreamPage(projectId, month, buyerName, buyerCity, customerLevel, isValid, agreementId,
+                productName, spec, sellerName, sellerCity, page, pageSize);
+
         int totalPages = (int) ((total + pageSize - 1) / pageSize);
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("list", pageRecords);
         result.put("total", total);
         result.put("totalPages", totalPages);
         result.put("page", page);
         result.put("pageSize", pageSize);
-        
+
         ResponseUtil.ok(resp, result);
     }
     
@@ -161,7 +197,8 @@ public class DownstreamFlowServlet extends BaseServlet {
         boolean useQuantity = "QTY".equalsIgnoreCase(calcBasis);
         
         // 获取记录并聚合
-        List<DownstreamFlowRecord> allRecords = dao.listRecordsWithUpstream(agreement.getProjectId(), null, null, null, null, 1, agreementId);
+        List<DownstreamFlowRecord> allRecords = dao.listRecordsWithUpstream(agreement.getProjectId(), null, null, null, null, 1, agreementId,
+                null, null, null, null);
         
         java.math.BigDecimal totalActual = java.math.BigDecimal.ZERO;
         java.math.BigDecimal stage1Actual = java.math.BigDecimal.ZERO;
@@ -271,13 +308,18 @@ public class DownstreamFlowServlet extends BaseServlet {
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
         String customerLevel = WebUtil.getSafeParam(p, "customerLevel");
+        String productName = WebUtil.getSafeParam(p, "productName");
+        String spec = WebUtil.getSafeParam(p, "spec");
+        String sellerName = WebUtil.getSafeParam(p, "sellerName");
+        String sellerCity = WebUtil.getSafeParam(p, "sellerCity");
         Long agreementId = WebUtil.getLong(p, "agreementId", 0L);
         if (agreementId == 0) agreementId = null;
 
-        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, customerLevel, 1, agreementId);
+        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, customerLevel, 1, agreementId,
+                productName, spec, sellerName, sellerCity);
 
         List<String> headers = Arrays.asList("月份", "业务日期", "产品名称", "规格", "销售方", "销售城市",
-                "核算价格", "数量", "销售数量", "核算金额", "中标价金额", "无税金额",
+                "核算价格", "数量", "销售数量", "核算金额", "中标价金额", "无税金额", "含税金额",
                 "采购方", "采购方城市", "客户等级", "考核组");
         List<List<String>> rows = new ArrayList<>();
         for (DownstreamFlowRecord r : records) {
@@ -294,6 +336,7 @@ public class DownstreamFlowServlet extends BaseServlet {
             row.add(r.getCalcAmount() != null ? r.getCalcAmount().toString() : "");
             row.add(r.getBidAmount() != null ? r.getBidAmount().toString() : "");
             row.add(r.getNoTaxAmount() != null ? r.getNoTaxAmount().toString() : "");
+            row.add(r.getTaxAmount() != null ? r.getTaxAmount().toString() : "");
             row.add(r.getBuyerName() != null ? r.getBuyerName() : "");
             row.add(r.getBuyerCity() != null ? r.getBuyerCity() : "");
             row.add(r.getCustomerLevel() != null ? r.getCustomerLevel() : "");
@@ -315,13 +358,18 @@ public class DownstreamFlowServlet extends BaseServlet {
         String buyerName = WebUtil.getSafeParam(p, "buyerName");
         String buyerCity = WebUtil.getSafeParam(p, "buyerCity");
         String customerLevel = WebUtil.getSafeParam(p, "customerLevel");
+        String productName = WebUtil.getSafeParam(p, "productName");
+        String spec = WebUtil.getSafeParam(p, "spec");
+        String sellerName = WebUtil.getSafeParam(p, "sellerName");
+        String sellerCity = WebUtil.getSafeParam(p, "sellerCity");
         Long agreementId = WebUtil.getLong(p, "agreementId", 0L);
         if (agreementId == 0) agreementId = null;
 
-        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, customerLevel, 0, agreementId);
+        List<DownstreamFlowRecord> records = dao.listRecordsWithUpstream(projectId, month, buyerName, buyerCity, customerLevel, 0, agreementId,
+                productName, spec, sellerName, sellerCity);
 
         List<String> headers = Arrays.asList("月份", "业务日期", "产品名称", "规格", "销售方", "销售城市",
-                "核算价格", "数量", "销售数量", "核算金额", "中标价金额", "无税金额",
+                "核算价格", "数量", "销售数量", "核算金额", "中标价金额", "无税金额", "含税金额",
                 "采购方", "采购方城市", "客户等级", "考核组");
         List<List<String>> rows = new ArrayList<>();
         for (DownstreamFlowRecord r : records) {
@@ -338,6 +386,7 @@ public class DownstreamFlowServlet extends BaseServlet {
             row.add(r.getCalcAmount() != null ? r.getCalcAmount().toString() : "");
             row.add(r.getBidAmount() != null ? r.getBidAmount().toString() : "");
             row.add(r.getNoTaxAmount() != null ? r.getNoTaxAmount().toString() : "");
+            row.add(r.getTaxAmount() != null ? r.getTaxAmount().toString() : "");
             row.add(r.getBuyerName() != null ? r.getBuyerName() : "");
             row.add(r.getBuyerCity() != null ? r.getBuyerCity() : "");
             row.add(r.getCustomerLevel() != null ? r.getCustomerLevel() : "");
@@ -351,5 +400,34 @@ public class DownstreamFlowServlet extends BaseServlet {
         resp.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         resp.setHeader("Content-Disposition", "attachment;filename=" + java.net.URLEncoder.encode(fileName, "UTF-8"));
         wb.write(resp.getOutputStream());
+    }
+
+    /** 检查项目是否注册了直接导入下游流向 */
+    private void doIsDirectImport(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
+        long projectId = WebUtil.getLong(p, "projectId", 0L);
+        ResponseUtil.ok(resp, java.util.Collections.singletonMap("isDirectImport", dao.isDirectImportProject(projectId)));
+    }
+
+    /** 直接导入下游流向 Excel（不经过上游分解） */
+    private void doImportDirect(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) throws Exception {
+        long projectId = 0;
+        try { projectId = Long.parseLong(req.getParameter("projectId")); } catch (Exception ignore) {}
+        if (projectId <= 0) { ResponseUtil.fail(resp, "projectId 必填"); return; }
+        long agreementId = 0;
+        try { agreementId = Long.parseLong(req.getParameter("agreementId")); } catch (Exception ignore) {}
+        if (agreementId <= 0) { ResponseUtil.fail(resp, "agreementId 必填"); return; }
+        Part file = req.getPart("file");
+        if (file == null) { ResponseUtil.fail(resp, "请选择 Excel 文件"); return; }
+
+        // 获取选中的月份列表
+        String monthsStr = req.getParameter("selectedMonths");
+        List<String> selectedMonths = null;
+        if (monthsStr != null && !monthsStr.isEmpty()) {
+            selectedMonths = Arrays.asList(monthsStr.split(","));
+        }
+
+        Map<String, Object> r = importService.importDirectDownstream(projectId, agreementId, u.getId(),
+                file.getSubmittedFileName(), file.getInputStream(), selectedMonths);
+        ResponseUtil.ok(resp, r);
     }
 }

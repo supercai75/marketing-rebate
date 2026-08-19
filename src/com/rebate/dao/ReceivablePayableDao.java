@@ -16,18 +16,18 @@ public class ReceivablePayableDao {
     /* 应收 */
     public Long insertReceivable(Receivable r) {
         return BaseDao.insertReturnId("INSERT INTO prj_receivable(project_id, stage, scale_amount, assess_amount, " +
-                "total_amount, estimate_amount, status, fill_user, fill_time, remark) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "total_amount, estimate_amount, tax_rate, status, fill_user, fill_time, remark) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 r.getProjectId(), r.getStage(), r.getScaleAmount(), r.getAssessAmount(),
-                r.getTotalAmount(), r.getEstimateAmount(), r.getStatus(), r.getFillUser(),
+                r.getTotalAmount(), r.getEstimateAmount(), r.getTaxRate(), r.getStatus(), r.getFillUser(),
                 r.getFillTime(), r.getRemark());
     }
 
     public int updateReceivable(Receivable r) {
         return BaseDao.update("UPDATE prj_receivable SET stage=?, scale_amount=?, assess_amount=?, " +
-                "total_amount=?, estimate_amount=?, status=?, fill_user=?, fill_time=?, remark=? WHERE id=?",
+                "total_amount=?, estimate_amount=?, tax_rate=?, status=?, fill_user=?, fill_time=?, remark=? WHERE id=?",
                 r.getStage(), r.getScaleAmount(), r.getAssessAmount(), r.getTotalAmount(), r.getEstimateAmount(),
-                r.getStatus(), r.getFillUser(), r.getFillTime(), r.getRemark(), r.getId());
+                r.getTaxRate(), r.getStatus(), r.getFillUser(), r.getFillTime(), r.getRemark(), r.getId());
     }
 
     public int auditReceivable(long id, long auditUser, String newStatus) {
@@ -56,17 +56,17 @@ public class ReceivablePayableDao {
     /* 应付 */
     public Long insertPayable(Payable p) {
         return BaseDao.insertReturnId("INSERT INTO prj_payable(project_id, agreement_id, stage, scale_amount, assess_amount, " +
-                "total_amount, estimate_amount, status, fill_user, fill_time, remark) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "total_amount, estimate_amount, tax_rate, status, fill_user, fill_time, remark) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 p.getProjectId(), p.getAgreementId(), p.getStage(), p.getScaleAmount(), p.getAssessAmount(),
-                p.getTotalAmount(), p.getEstimateAmount(), p.getStatus(), p.getFillUser(), p.getFillTime(), p.getRemark());
+                p.getTotalAmount(), p.getEstimateAmount(), p.getTaxRate(), p.getStatus(), p.getFillUser(), p.getFillTime(), p.getRemark());
     }
 
     public int updatePayable(Payable p) {
         return BaseDao.update("UPDATE prj_payable SET stage=?, scale_amount=?, assess_amount=?, " +
-                "total_amount=?, estimate_amount=?, status=?, fill_user=?, fill_time=?, remark=? WHERE id=?",
+                "total_amount=?, estimate_amount=?, tax_rate=?, status=?, fill_user=?, fill_time=?, remark=? WHERE id=?",
                 p.getStage(), p.getScaleAmount(), p.getAssessAmount(), p.getTotalAmount(), p.getEstimateAmount(),
-                p.getStatus(), p.getFillUser(), p.getFillTime(), p.getRemark(), p.getId());
+                p.getTaxRate(), p.getStatus(), p.getFillUser(), p.getFillTime(), p.getRemark(), p.getId());
     }
 
     public int auditPayable(long id, long auditUser, String newStatus) {
@@ -181,6 +181,7 @@ public class ReceivablePayableDao {
         r.setAssessAmount(BaseDao.toBigDecimal(rs.getObject("assess_amount")));
         r.setTotalAmount(BaseDao.toBigDecimal(rs.getObject("total_amount")));
         r.setEstimateAmount(BaseDao.toBigDecimal(rs.getObject("estimate_amount")));
+        try { r.setTaxRate(BaseDao.toBigDecimal(rs.getObject("tax_rate"))); } catch (Exception ignore) {}
         r.setStatus(rs.getString("status"));
         r.setFillUser(rs.getObject("fill_user") == null ? null : rs.getLong("fill_user"));
         r.setFillTime(rs.getTimestamp("fill_time"));
@@ -203,6 +204,7 @@ public class ReceivablePayableDao {
         p.setAssessAmount(BaseDao.toBigDecimal(rs.getObject("assess_amount")));
         p.setTotalAmount(BaseDao.toBigDecimal(rs.getObject("total_amount")));
         p.setEstimateAmount(BaseDao.toBigDecimal(rs.getObject("estimate_amount")));
+        try { p.setTaxRate(BaseDao.toBigDecimal(rs.getObject("tax_rate"))); } catch (Exception ignore) {}
         p.setStatus(rs.getString("status"));
         p.setFillUser(rs.getObject("fill_user") == null ? null : rs.getLong("fill_user"));
         p.setFillTime(rs.getTimestamp("fill_time"));

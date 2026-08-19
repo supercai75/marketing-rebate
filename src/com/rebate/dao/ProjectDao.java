@@ -27,24 +27,24 @@ public class ProjectDao {
         String sql = "INSERT INTO prj_project(project_code, project_name, brand, co_product, co_mode, co_year, " +
                 "period_start_date, period_end_date, region, target_scale, expected_rebate, expected_cost, " +
                 "description, bpm_process_id, bpm_project_id, bpm_synced, " +
-                "status, owner_user_id, created_by, project_group_id) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "status, owner_user_id, created_by, project_group_id, undertaking_dept) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql, p.getProjectCode(), p.getProjectName(), p.getBrand(), p.getCoProduct(), p.getCoMode(),
                 p.getCoYear(), p.getPeriodStartDate(), p.getPeriodEndDate(), p.getRegion(), p.getTargetScale(),
                 p.getExpectedRebate(), p.getExpectedCost(),
                 p.getDescription(), p.getBpmProcessId(), p.getBpmProjectId(), p.getBpmSynced(),
-                p.getStatus(), p.getOwnerUserId(), p.getCreatedBy(), p.getProjectGroupId());
+                p.getStatus(), p.getOwnerUserId(), p.getCreatedBy(), p.getProjectGroupId(), p.getUndertakingDept());
     }
 
     public int update(Project p) {
         String sql = "UPDATE prj_project SET project_code=?, project_name=?, brand=?, co_product=?, co_mode=?, " +
                 "co_year=?, period_start_date=?, period_end_date=?, region=?, target_scale=?, " +
                 "expected_rebate=?, expected_cost=?, description=?, " +
-                "status=?, owner_user_id=?, project_group_id=? WHERE id=?";
+                "status=?, owner_user_id=?, project_group_id=?, undertaking_dept=? WHERE id=?";
         return BaseDao.update(sql, p.getProjectCode(), p.getProjectName(), p.getBrand(), p.getCoProduct(), p.getCoMode(),
                 p.getCoYear(), p.getPeriodStartDate(), p.getPeriodEndDate(), p.getRegion(), p.getTargetScale(),
                 p.getExpectedRebate(), p.getExpectedCost(), p.getDescription(),
-                p.getStatus(), p.getOwnerUserId(), p.getProjectGroupId(), p.getId());
+                p.getStatus(), p.getOwnerUserId(), p.getProjectGroupId(), p.getUndertakingDept(), p.getId());
     }
 
     public int updateStatus(long id, String status) {
@@ -91,10 +91,10 @@ public class ProjectDao {
     }
 
     public List<Project> listAll() {
-        return listByFilters(null, null, null, null);
+        return listByFilters(null, null, null, null, null);
     }
 
-    public List<Project> listByFilters(String coYear, Long projectGroupId, String keyword, String status) {
+    public List<Project> listByFilters(String coYear, Long projectGroupId, String keyword, String status, String undertakingDept) {
         String kw = "%" + (keyword == null ? "" : keyword) + "%";
         StringBuilder sql = new StringBuilder(BASE_SELECT);
         List<Object> args = new ArrayList<>();
@@ -111,6 +111,10 @@ public class ProjectDao {
             sql.append(" AND p.project_group_id = ? ");
             args.add(projectGroupId);
         }
+        if (undertakingDept != null && !undertakingDept.isEmpty()) {
+            sql.append(" AND p.undertaking_dept = ? ");
+            args.add(undertakingDept);
+        }
         if (keyword != null && !keyword.isEmpty()) {
             sql.append(" AND (p.project_name LIKE ? OR p.brand LIKE ? OR p.project_code LIKE ?) ");
             args.add(kw); args.add(kw); args.add(kw);
@@ -120,7 +124,7 @@ public class ProjectDao {
     }
 
     public List<Project> listByYear(String coYear) {
-        return listByFilters(coYear, null, null, null);
+        return listByFilters(coYear, null, null, null, null);
     }
 
     /**
@@ -129,6 +133,14 @@ public class ProjectDao {
     public java.util.List<String> listAllYears() {
         String sql = "SELECT DISTINCT co_year FROM prj_project WHERE co_year IS NOT NULL AND co_year != '' ORDER BY co_year DESC";
         return BaseDao.query(sql, (ResultSet rs) -> rs.getString("co_year"));
+    }
+
+    /**
+     * 获取所有承接部门（去重，按名称排序）
+     */
+    public java.util.List<String> listAllUndertakingDepts() {
+        String sql = "SELECT DISTINCT undertaking_dept FROM prj_project WHERE undertaking_dept IS NOT NULL AND undertaking_dept != '' ORDER BY undertaking_dept";
+        return BaseDao.query(sql, (ResultSet rs) -> rs.getString("undertaking_dept"));
     }
 
     public List<Project> findByNameAndYear(String projectName, String coYear) {
@@ -234,6 +246,7 @@ public class ProjectDao {
         p.setCreatedAt(rs.getTimestamp("created_at"));
         p.setUpdatedAt(rs.getTimestamp("updated_at"));
         p.setProjectGroupId(rs.getObject("project_group_id") == null ? null : rs.getLong("project_group_id"));
+        p.setUndertakingDept(rs.getString("undertaking_dept"));
         try { p.setOwnerName(rs.getString("owner_name")); } catch (Exception ignore) {}
         try { p.setCreatedByName(rs.getString("created_by_name")); } catch (Exception ignore) {}
         try { p.setProjectGroupName(rs.getString("project_group_name")); } catch (Exception ignore) {}

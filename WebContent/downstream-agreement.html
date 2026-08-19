@@ -468,6 +468,7 @@
                         thresholdLow: rr.thresholdLow || 0,
                         thresholdHigh: rr.thresholdHigh || 0,
                         rebateRatio: rr.rebateRatio || 0,  // 克隆时直接保存原始值，渲染时再转换
+                        expression: rr.expression || null,
                         rewardType: rr.rewardType || 'PERCENT'
                     });
                 }
@@ -702,6 +703,8 @@
         var ratioVal = data ? (data.rebateRatio || 0) : 0;
         var ratioDisplay = ratioVal > 1 ? ratioVal : ratioVal * 100;
         html += '<td><input type="number" class="rebate-ratio" value="' + ratioDisplay + '" step="0.01"></td>';
+        var exprVal = (data && data.expression != null && data.expression !== '') ? data.expression : '';
+        html += '<td><input type="text" class="rule-expression" placeholder="如 0.125*(X-60)+2" value="' + exprVal + '"></td>';
         html += '<td><select class="reward-type"><option value="PERCENT">按完成百分比</option><option value="AMOUNT">按完成金额</option></select></td>';
         html += '<td><button class="btn btn-sm btn-danger" onclick="deleteRuleRow(' + idx + ')">删除</button></td></tr>';
         $('#rebateRuleBody_' + currentAssessGroupId).append(html);
@@ -728,6 +731,7 @@
                     thresholdLow: parseFloat(row.find('.threshold-low').val()) || 0,
                     thresholdHigh: parseFloat(row.find('.threshold-high').val()) || 0,
                     rebateRatio: (parseFloat(row.find('.rebate-ratio').val()) || 0) / 100,
+                    expression: (row.find('.rule-expression').val() || '').trim() || null,
                     rewardType: row.find('.reward-type').val()
                 });
             });
@@ -744,7 +748,7 @@
             currentAssessGroupId = 0;
             // 不显示标签页，直接显示规则内容
             html = '<div style="margin-bottom:8px;color:#909399;font-size:12px;">当前项目暂无考核组，使用默认组</div>';
-            html += '<table class="rule-table"><thead><tr><th>阶段</th><th>达成规模下限</th><th>达成规模上限(0表示无上限)</th><th>返利比例(%)</th><th>计算类型</th><th>操作</th></tr></thead><tbody id="rebateRuleBody_0"></tbody></table>';
+            html += '<table class="rule-table"><thead><tr><th>阶段</th><th>达成规模下限</th><th>达成规模上限(0表示无上限)</th><th>返利比例(%)</th><th>表达式</th><th>计算类型</th><th>操作</th></tr></thead><tbody id="rebateRuleBody_0"></tbody></table>';
             $('#rebateRuleTabs').html('');
             $('#rebateRuleContainer').html(html);
             // 如果有已保存的无考核组规则（assessGroupId为null或0），渲染它们；否则添加一行空白规则
@@ -768,7 +772,7 @@
             currentAssessGroupId = assessGroups[0].id;
         }
         // 显示当前组的规则表格
-        var tableHtml = '<table class="rule-table"><thead><tr><th>阶段</th><th>达成规模下限</th><th>达成规模上限(0表示无上限)</th><th>返利比例(%)</th><th>计算类型</th><th>操作</th></tr></thead><tbody id="rebateRuleBody_' + currentAssessGroupId + '"></tbody></table>';
+        var tableHtml = '<table class="rule-table"><thead><tr><th>阶段</th><th>达成规模下限</th><th>达成规模上限(0表示无上限)</th><th>返利比例(%)</th><th>表达式</th><th>计算类型</th><th>操作</th></tr></thead><tbody id="rebateRuleBody_' + currentAssessGroupId + '"></tbody></table>';
         $('#rebateRuleContainer').html(tableHtml);
         // 填充已保存的规则
         if (rebateRulesMap[currentAssessGroupId]) {
@@ -794,7 +798,7 @@
             }
         });
         // 重建当前组对应的表格
-        var tableHtml = '<table class="rule-table"><thead><tr><th>阶段</th><th>达成规模下限</th><th>达成规模上限(0表示无上限)</th><th>返利比例(%)</th><th>计算类型</th><th>操作</th></tr></thead><tbody id="rebateRuleBody_' + currentAssessGroupId + '"></tbody></table>';
+        var tableHtml = '<table class="rule-table"><thead><tr><th>阶段</th><th>达成规模下限</th><th>达成规模上限(0表示无上限)</th><th>返利比例(%)</th><th>表达式</th><th>计算类型</th><th>操作</th></tr></thead><tbody id="rebateRuleBody_' + currentAssessGroupId + '"></tbody></table>';
         $('#rebateRuleContainer').html(tableHtml);
         if (rebateRulesMap[currentAssessGroupId]) {
             for (var j = 0; j < rebateRulesMap[currentAssessGroupId].length; j++) {
@@ -1051,6 +1055,7 @@
                         thresholdLow: parseFloat(row.find('.threshold-low').val()) || 0,
                         thresholdHigh: parseFloat(row.find('.threshold-high').val()) || 0,
                         rebateRatio: (parseFloat(row.find('.rebate-ratio').val()) || 0) / 100,
+                        expression: (row.find('.rule-expression').val() || '').trim() || null,
                         rewardType: row.find('.reward-type').val()
                     });
                     rebateRulesMap[gid] = groupRules;

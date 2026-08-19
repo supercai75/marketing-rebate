@@ -122,7 +122,7 @@
     <table>
         <thead><tr>
             <th>阶段</th><th>依据规模应收</th><th>依据考核应收</th><th>合计应收</th>
-            <th>系统估算</th><th>状态</th><th>填报人</th><th>填报时间</th>
+            <th>税率</th><th>无税金额</th><th>系统估算</th><th>状态</th><th>填报人</th><th>填报时间</th>
             <th>审核人</th><th>审核时间</th><th>备注</th><th width="160">操作</th>
         </tr></thead>
         <tbody id="body"></tbody>
@@ -154,7 +154,7 @@
                         <button class="btn" id="r_btnSelProj" type="button">选择项目</button>
                     </div>
                 </div>
-                <!-- 三项金额同一行 -->
+                <!-- 金额、税率、无税金额同一行 -->
                 <div class="form-item col-full">
                     <div style="display:flex; gap:20px; align-items:flex-end;">
                         <div class="form-item narrow-input" style="flex:1; margin:0;"><label>依据规模应收(元)</label><input id="r_scaleAmount" type="number" step="0.01"></div>
@@ -162,6 +162,10 @@
                         <div class="form-item" style="flex:1; margin:0;"><label>依据考核应收(元)</label>
                             <div id="r_assessAmountDisplay" class="assess-amount-display">0.00</div>
                             <input type="hidden" id="r_assessAmount">
+                        </div>
+                        <div class="form-item narrow-input" style="flex:0.6; margin:0;"><label>税率(%)</label><input id="r_taxRate" type="number" step="0.01" placeholder="如13"></div>
+                        <div class="form-item" style="flex:1; margin:0;"><label>无税金额(元)</label>
+                            <div id="r_taxExcludedAmount" class="assess-amount-display" style="background:#f0f9eb;color:#67c23a;">0.00</div>
                         </div>
                     </div>
                 </div>
@@ -272,6 +276,7 @@
         $('#r_stage').on('change', function() {
             $('#r_estimateAmount').val('');
         });
+        $('#r_scaleAmount, #r_taxRate').on('input change', refreshTaxExcludedAmount);
         $('#r_addAssessRow').on('click', function() { addRAssessRow(null); });
     });
 
@@ -285,6 +290,16 @@
         }
         $('#r_assessAmountDisplay').text(Number(total || 0).toFixed(2));
         $('#r_assessAmount').val(total);
+        refreshTaxExcludedAmount();
+    }
+
+    function refreshTaxExcludedAmount() {
+        var scale = Number($('#r_scaleAmount').val() || 0);
+        var assess = Number($('#r_assessAmount').val() || 0);
+        var total = scale + assess;
+        var rate = Number($('#r_taxRate').val() || 0);
+        var ex = rate > 0 ? total / (1 + rate / 100) : total;
+        $('#r_taxExcludedAmount').text(Number(ex || 0).toFixed(2));
     }
 
     function addRAssessRow(data) {
@@ -462,19 +477,24 @@
         RB.post('/api/receivable-payable?op=listReceivable', { projectId: pid, stage: stage, status: status }).done(function(r) {
             if (r.code === 0) {
                 var rows = r.data;
-                var html = '', totalScale = 0, totalAssess = 0, totalSum = 0, totalEst = 0;
+                var html = '', totalScale = 0, totalAssess = 0, totalSum = 0, totalEst = 0, totalTaxEx = 0;
                 for (var i = 0; i < rows.length; i++) {
                     var x = rows[i];
                     totalScale += Number(x.scaleAmount || 0);
                     totalAssess += Number(x.assessAmount || 0);
                     totalSum += Number(x.totalAmount || 0);
                     totalEst += Number(x.estimateAmount || 0);
+                    var rate = Number(x.taxRate || 0);
+                    var taxEx = rate > 0 ? Number(x.totalAmount || 0) / (1 + rate / 100) : Number(x.totalAmount || 0);
+                    totalTaxEx += taxEx;
                     var st = x.status || 'DRAFT';
                     html += '<tr>' +
                         '<td style="white-space:nowrap;"><strong>' + (x.stage || '') + '</strong></td>' +
                         '<td style="white-space:nowrap;">' + RB.formatMoney(x.scaleAmount) + '</td>' +
                         '<td style="white-space:nowrap;">' + RB.formatMoney(x.assessAmount) + '</td>' +
                         '<td style="white-space:nowrap;"><strong>' + RB.formatMoney(x.totalAmount) + '</strong></td>' +
+                        '<td style="white-space:nowrap;">' + (rate > 0 ? rate.toFixed(2) + '%' : '-') + '</td>' +
+                        '<td style="white-space:nowrap;color:#67c23a;">' + RB.formatMoney(taxEx) + '</td>' +
                         '<td style="white-space:nowrap;color:#909399;">' + RB.formatMoney(x.estimateAmount) + '</td>' +
                         '<td style="white-space:nowrap;"><span class="status-tag st-' + st + '">' + formatStatus(st) + '</span></td>' +
                         '<td style="white-space:nowrap;">' + (x.fillUserName || '-') + '</td>' +
@@ -490,9 +510,11 @@
                     '<td style="white-space:nowrap;">' + RB.formatMoney(totalScale) + '</td>' +
                     '<td style="white-space:nowrap;">' + RB.formatMoney(totalAssess) + '</td>' +
                     '<td style="white-space:nowrap;">' + RB.formatMoney(totalSum) + '</td>' +
+                    '<td style="white-space:nowrap;"></td>' +
+                    '<td style="white-space:nowrap;color:#67c23a;">' + RB.formatMoney(totalTaxEx) + '</td>' +
                     '<td style="white-space:nowrap;color:#909399;">' + RB.formatMoney(totalEst) + '</td>' +
-                    '<td colspan="7" style="white-space:nowrap;"></td></tr>';
-                if (rows.length === 0) html = '<tr><td colspan="12" style="text-align:center;color:#999;padding:30px;">暂无应收记录</td></tr>';
+                    '<td colspan="8" style="white-space:nowrap;"></td></tr>';
+                if (rows.length === 0) html = '<tr><td colspan="14" style="text-align:center;color:#999;padding:30px;">暂无应收记录</td></tr>';
                 $('#body').html(html);
             }
         });
@@ -546,6 +568,7 @@
         setProjectEditable(true);
         $('#r_stage').val('阶段一');
         $('#r_scaleAmount').val('');
+        $('#r_taxRate').val('');
         $('#r_assessBody').empty();
         $('#r_estimateAmount').val('');
         $('#r_remark').val('');
@@ -579,6 +602,7 @@
                 $('#r_txtProject').val(projectName);
                 $('#r_stage').val(x.stage);
                 $('#r_scaleAmount').val(x.scaleAmount || '');
+                $('#r_taxRate').val(x.taxRate || '');
                 $('#r_assessBody').empty();
                 // 加载明细 + 附件
                 RB.post('/api/receivable-payable?op=listReceivableAssessItems', { receivableId: id }).done(function(r2) {
@@ -588,6 +612,7 @@
                     // 合计显示
                     $('#r_assessAmountDisplay').text(Number(x.assessAmount || 0).toFixed(2));
                     $('#r_assessAmount').val(x.assessAmount || 0);
+                    refreshTaxExcludedAmount();
                 });
                 $('#r_estimateAmount').val(x.estimateAmount || '');
                 $('#r_remark').val(x.remark || '');
@@ -640,6 +665,7 @@
             assessItems: JSON.stringify(assessItems),
             rowAttachMap: JSON.stringify(rowAttachMap),
             estimateAmount: $('#r_estimateAmount').val() || 0,
+            taxRate: $('#r_taxRate').val() || 0,
             remark: $('#r_remark').val()
         };
         if (!p.projectId || !p.stage) { RB.toast('请选择项目、阶段', 'error'); return; }
