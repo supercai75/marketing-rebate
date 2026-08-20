@@ -2,6 +2,9 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>项目实收</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
@@ -126,99 +129,58 @@
     </div>
 </div>
 
-<!-- BPM引入 - 第一步：选择BPM记录 -->
-<div class="modal-mask" id="modalBpmList">
-    <div class="modal" style="width:980px;max-height:80vh;">
-        <div class="modal-header">从BPM引入实收 - 选择记录<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalBpmList')">×</span></div>
-        <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
-            <div id="bpmListTip" style="margin-bottom:10px;padding:8px 12px;background:#e3f2fd;color:#1565c0;border-radius:4px;">
-                请选择一条BPM数据引入（点击行中的"引入"按钮进入阶段分配）
+<!-- BPM引入弹窗 -->
+<div class="modal-mask" id="modalBpm">
+    <div class="modal" style="width:1200px; max-height:90vh;">
+        <div class="modal-header">从BPM引入实收<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalBpm')">×</span></div>
+        <div class="modal-body" style="max-height:72vh; overflow-y:auto;">
+            <!-- 查询条件区 -->
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; padding:10px; background:#f5f7fa; border-radius:4px;">
+                <label>时间区间：</label>
+                <input type="date" id="bpmStartDate" style="padding:4px 8px; border:1px solid #dcdfe6; border-radius:4px;">
+                <span>至</span>
+                <input type="date" id="bpmEndDate" style="padding:4px 8px; border:1px solid #dcdfe6; border-radius:4px;">
+                <label style="margin-left:12px;">发票号码（可选）：</label>
+                <input type="text" id="bpmInvoiceNo" placeholder="部分匹配" style="width:180px; padding:4px 8px; border:1px solid #dcdfe6; border-radius:4px;">
+                <button class="btn btn-primary" id="btnBpmQuery">查询</button>
+                <span id="bpmQueryTip" style="color:#909399; font-size:12px; margin-left:8px;"></span>
             </div>
-            <div class="table-wrap" style="margin:0;">
-                <table>
+            <!-- 结果列表 -->
+            <style>
+            #bpmTable { border-collapse: collapse; min-width: 1300px; }
+            #bpmTable th, #bpmTable td { white-space: nowrap; }
+            #bpmTable thead th { position: sticky; top: 0; z-index: 2; background: #f0f3f7; }
+            #bpmTable tbody td.fix-left { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 2px 0 0 -1px #dcdfe6; }
+            #bpmTable thead th.fix-left { position: sticky; top: 0; left: 0; z-index: 3; background: #f0f3f7; }
+            #bpmTable tbody tr:hover td { background: #fafbfc; }
+            #bpmTable tbody tr.bpm-checked td { background: #ecf5ff; }
+            </style>
+            <div class="table-wrap" style="margin:0; max-height:52vh; overflow:auto;">
+                <table id="bpmTable" style="font-size:12px;">
                     <thead><tr>
-                        <th>选择</th>
-                        <th>返利类型</th>
-                        <th>记账日期</th>
+                        <th class="fix-left"><input type="checkbox" id="bpmSelectAll"></th>
+                        <th>申请人</th>
+                        <th>申请部门</th>
+                        <th>申请日期</th>
                         <th>财务编码</th>
-                        <th>发票号码</th>
+                        <th>所属期间</th>
+                        <th>应返利金额</th>
                         <th>返利金额</th>
-                        <th>销售税率</th>
-                        <th>价税合计</th>
-                        <th>部门应得</th>
-                        <th>收款部门</th>
-                        <th>状态</th>
+                        <th>税率</th>
+                        <th>本部门应得</th>
+                        <th>返利类型</th>
+                        <th>供应商名称</th>
+                        <th>返利项目</th>
+                        <th>发票号码</th>
                     </tr></thead>
                     <tbody id="bpmBody"></tbody>
                 </table>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn" onclick="RB.closeModal('modalBpmList')">关闭</button>
-        </div>
-    </div>
-</div>
-
-<!-- BPM引入 - 第二步：阶段分配 -->
-<div class="modal-mask" id="modalBpmSplit">
-    <div class="modal" style="width:760px;">
-        <div class="modal-header">从BPM引入 - 分配到阶段<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalBpmSplit')">×</span></div>
-        <div class="modal-body">
-            <div style="padding:8px 12px;background:#fff3e0;color:#e65100;border-radius:4px;margin-bottom:12px;" id="bpmSplitTip">
-                BPM部门应得：<strong id="bpmDeptShare">0.00</strong> 元，请分配到四个阶段（各阶段之和必须等于此金额）。
-                引入后数据将直接为"终稿"状态。
-            </div>
-            <div style="margin-bottom:10px;padding:10px;background:#f5f5f5;border-radius:4px;font-size:13px;">
-                <div style="display:flex;flex-wrap:wrap;gap:8px;line-height:2;">
-                    <span>类型：<strong id="spRebateType"></strong></span>
-                    <span>日期：<strong id="spApplyDate"></strong></span>
-                    <span>财务编码：<strong id="spFinanceCode"></strong></span>
-                    <span>发票：<strong id="spInvoiceNo"></strong></span>
-                    <span>收款部门：<strong id="spReceiveDept"></strong></span>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-item col-2"><label>阶段一金额</label>
-                    <input id="sp_stage1" type="number" step="0.01" value="0" oninput="checkStageSum()">
-                </div>
-                <div class="form-item col-2"><label>阶段二金额</label>
-                    <input id="sp_stage2" type="number" step="0.01" value="0" oninput="checkStageSum()">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-item col-2"><label>阶段三金额</label>
-                    <input id="sp_stage3" type="number" step="0.01" value="0" oninput="checkStageSum()">
-                </div>
-                <div class="form-item col-2"><label>阶段四金额</label>
-                    <input id="sp_stage4" type="number" step="0.01" value="0" oninput="checkStageSum()">
-                </div>
-            </div>
-            <div class="form-row" style="margin-top:10px;">
-                <div class="form-item col-1" style="width:100%;">
-                    <label>合计校验</label>
-                    <div style="padding:8px 12px;background:#fafafa;border-radius:4px;">
-                        当前合计：<strong id="spSum" style="font-size:16px;color:#333;">0.00</strong> /
-                        目标：<strong id="spTarget" style="font-size:16px;color:#333;">0.00</strong>
-                        <span id="spMatch" style="margin-left:12px;"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-item col-1" style="width:100%;">
-                    <label>快捷分配</label>
-                    <div style="display:flex;gap:6px;">
-                        <button class="btn" style="padding:4px 10px;font-size:12px;" onclick="autoFillStage(1)">全部放阶段一</button>
-                        <button class="btn" style="padding:4px 10px;font-size:12px;" onclick="autoFillStage(2)">全部放阶段二</button>
-                        <button class="btn" style="padding:4px 10px;font-size:12px;" onclick="autoFillStage(3)">全部放阶段三</button>
-                        <button class="btn" style="padding:4px 10px;font-size:12px;" onclick="autoFillStage(4)">全部放阶段四</button>
-                        <button class="btn" style="padding:4px 10px;font-size:12px;" onclick="autoFillStage(0)">平均分配到四个阶段</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn" onclick="RB.closeModal('modalBpmSplit')">取消</button>
-            <button class="btn btn-primary" id="btnConfirmBpm">确认引入（终稿）</button>
+            <span id="bpmSelectedCount" style="margin-right:auto; color:#606266; font-size:13px;">已选 0 条</span>
+            <button class="btn" onclick="RB.closeModal('modalBpm')">取消</button>
+            <button class="btn btn-primary" id="btnBpmImport">确定引入</button>
         </div>
     </div>
 </div>
@@ -228,8 +190,6 @@
 <script src="js/project-selector.js"></script>
 <script>
     var editingId = null;
-
-    var bpmSelected = null;   // 当前选中的BPM记录
 
     $(function () {
         RB.checkLogin(function () { 
@@ -256,7 +216,9 @@
         $('#btnAdd').on('click', function() { RB.withPerm('received:edit', openAdd, '权限不足，无法编辑实收'); });
         $('#btnSaveR').on('click', function() { RB.withPerm('received:edit', saveR, '权限不足，无法编辑实收'); });
         $('#btnBpm').on('click', function() { RB.withPerm('received:edit', loadBpmList, '权限不足，无法从BPM引入'); });
-        $('#btnConfirmBpm').on('click', confirmBpmImport);
+        $('#btnBpmQuery').on('click', queryBpm);
+        $('#btnBpmImport').on('click', function() { RB.withPerm('received:edit', confirmBpmImport, '权限不足'); });
+        $('#bpmSelectAll').on('change', bpmSelectAll);
     });
 
     function loadYears() {
@@ -511,158 +473,190 @@
         xhr.send();
     }
 
-    // ==================== BPM引入相关 ====================
+    // ==================== 从BPM引入 ====================
+    var bpmRows = [];       // 查询结果
+    var bpmSelectedSet = {}; // 选中行的 bpmProcessId -> true
+
+    function initBpmDates() {
+        var today = new Date();
+        var oneMonthAgo = new Date(today);
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        $('#bpmStartDate').val(fmtDate(oneMonthAgo));
+        $('#bpmEndDate').val(fmtDate(today));
+    }
+
+    function fmtDate(d) {
+        var y = d.getFullYear();
+        var m = ('0' + (d.getMonth() + 1)).slice(-2);
+        var dd = ('0' + d.getDate()).slice(-2);
+        return y + '-' + m + '-' + dd;
+    }
 
     function loadBpmList() {
         var pid = $('#selProject').val();
         if (!pid) { RB.toast('请先选择项目', 'error'); return; }
-        RB.post('/api/received-paid?op=listBpmReceived', { projectId: pid }).done(function (r) {
+        initBpmDates();
+        bpmRows = [];
+        bpmSelectedSet = {};
+        $('#bpmBody').html('<tr><td colspan="14" style="text-align:center;color:#999;padding:20px;">请输入时间区间后点击查询</td></tr>');
+        $('#bpmSelectedCount').text('已选 0 条');
+        RB.openModal('modalBpm');
+    }
+
+    function queryBpm() {
+        var startDate = $('#bpmStartDate').val();
+        var endDate = $('#bpmEndDate').val();
+        if (!startDate || !endDate) { RB.toast('请填写时间区间', 'error'); return; }
+        // 校验：起止时间差不超过3个月
+        var s = new Date(startDate), e = new Date(endDate);
+        var diffDays = (e - s) / (1000 * 60 * 60 * 24);
+        if (diffDays > 93) { RB.toast('起止时间差不能超过3个月', 'error'); return; }
+        if (diffDays < 0) { RB.toast('起始日期不能晚于截止日期', 'error'); return; }
+        var invoiceNo = $('#bpmInvoiceNo').val().trim();
+        $('#btnBpmQuery').prop('disabled', true).text('查询中...');
+        $('#bpmQueryTip').text('');
+        RB.post('/api/received-paid?op=listBpmReceived', {
+            startDate: startDate,
+            endDate: endDate,
+            invoiceNo: invoiceNo
+        }).done(function (r) {
+            $('#btnBpmQuery').prop('disabled', false).text('查询');
             if (r.code !== 0) { RB.toast(r.msg || '获取BPM数据失败', 'error'); return; }
-            renderBpmList(r.data || []);
-            RB.openModal('modalBpmList');
+            bpmRows = r.data || [];
+            bpmSelectedSet = {};
+            renderBpmRows();
+            $('#bpmQueryTip').text('共 ' + bpmRows.length + ' 条可引入记录');
+        }).fail(function () {
+            $('#btnBpmQuery').prop('disabled', false).text('查询');
+            RB.toast('网络错误', 'error');
         });
     }
 
-    function renderBpmList(rows) {
+    function renderBpmRows() {
         var html = '';
-        if (!rows || rows.length === 0) {
-            html = '<tr><td colspan="11" style="text-align:center;color:#999;padding:30px;">BPM中暂无该项目的实收数据</td></tr>';
+        if (bpmRows.length === 0) {
+            html = '<tr><td colspan="14" style="text-align:center;color:#999;padding:20px;">无可用数据</td></tr>';
         } else {
-            for (var i = 0; i < rows.length; i++) {
-                var x = rows[i];
-                var imported = x.isImported;
-                var actionBtn = imported
-                    ? '<span style="color:#999;font-size:12px;">已引入</span>'
-                    : '<a class="op" data-act="importRow" data-idx="' + i + '">引入</a>';
-                html += '<tr' + (imported ? ' style="background:#f5f5f5;color:#999;"' : '') + '>' +
-                    '<td>' + (imported ? '' : '<input type="radio" name="bpmRow" value="' + i + '">') + '</td>' +
-                    '<td>' + (x.rebateType || '-') + '</td>' +
-                    '<td>' + (x.applyDate || '-') + '</td>' +
-                    '<td>' + (x.financeCode || '-') + '</td>' +
-                    '<td>' + (x.invoiceNo || '-') + '</td>' +
-                    '<td>' + RB.formatMoney(x.rebateAmount) + '</td>' +
-                    '<td>' + (x.taxRate || 0) + '</td>' +
-                    '<td>' + RB.formatMoney(x.totalPriceTax) + '</td>' +
-                    '<td><strong>' + RB.formatMoney(x.deptShare) + '</strong></td>' +
-                    '<td>' + (x.receiveDept || '-') + '</td>' +
-                    '<td>' + actionBtn + '</td>' +
+            for (var i = 0; i < bpmRows.length; i++) {
+                var x = bpmRows[i];
+                var chkId = 'bpmChk_' + i;
+                html += '<tr data-idx="' + i + '">' +
+                    '<td class="fix-left"><input type="checkbox" class="bpm-chk" id="' + chkId + '" data-idx="' + i + '"></td>' +
+                    '<td>' + esc(x.applicant) + '</td>' +
+                    '<td>' + esc(x.applyDept) + '</td>' +
+                    '<td>' + esc(x.applyDate) + '</td>' +
+                    '<td>' + esc(x.financeCode) + '</td>' +
+                    '<td>' + esc(x.belongToYear) + '</td>' +
+                    '<td>' + RB.formatMoney(x.secondaryRebateAmount) + '</td>' +
+                    '<td><strong>' + RB.formatMoney(x.rebateAmount) + '</strong></td>' +
+                    '<td><input type="number" step="0.0001" class="bpm-input bpm-tax-rate" value="0.13" style="width:70px; padding:2px 4px; border:1px solid #dcdfe6; border-radius:3px;" disabled></td>' +
+                    '<td><input type="number" step="0.01" class="bpm-input bpm-dept-share" value="' + (x.rebateAmount || 0) + '" style="width:100px; padding:2px 4px; border:1px solid #dcdfe6; border-radius:3px;" disabled></td>' +
+                    '<td><select class="bpm-input bpm-rebate-type" style="padding:2px 4px; border:1px solid #dcdfe6; border-radius:3px;" disabled>' +
+                        '<option value="票折">票折</option>' +
+                        '<option value="服务费">服务费</option>' +
+                    '</select></td>' +
+                    '<td>' + esc(x.supplier) + '</td>' +
+                    '<td>' + esc(x.rebateProject) + '</td>' +
+                    '<td>' + esc(x.invoiceNo) + '</td>' +
                     '</tr>';
             }
         }
         $('#bpmBody').html(html);
-        // 绑定行内"引入"按钮
-        $('#bpmBody').find('a.op[data-act="importRow"]').off('click').on('click', function () {
+        // 绑定 checkbox 事件
+        $('.bpm-chk').off('change').on('change', function () {
             var idx = $(this).data('idx');
-            openStageSplit(rows[idx]);
+            var row = bpmRows[idx];
+            var pid = row.bpmProcessId;
+            var inputs = $(this).closest('tr').find('.bpm-input');
+            if ($(this).is(':checked')) {
+                bpmSelectedSet[pid] = true;
+                inputs.prop('disabled', false);
+                $(this).closest('tr').addClass('bpm-checked');
+            } else {
+                delete bpmSelectedSet[pid];
+                inputs.prop('disabled', true);
+                $(this).closest('tr').removeClass('bpm-checked');
+            }
+            updateBpmSelectedCount();
         });
     }
 
-    function openStageSplit(row) {
-        bpmSelected = row;
-        var deptShare = Number(row.deptShare || 0);
-        $('#bpmDeptShare').text(RB.formatMoney(row.deptShare));
-        $('#spRebateType').text(row.rebateType || '-');
-        $('#spApplyDate').text(row.applyDate || '-');
-        $('#spFinanceCode').text(row.financeCode || '-');
-        $('#spInvoiceNo').text(row.invoiceNo || '-');
-        $('#spReceiveDept').text(row.receiveDept || '-');
-        $('#spTarget').text(RB.formatMoney(row.deptShare));
-        // 默认将全部金额放在阶段一
-        $('#sp_stage1').val(deptShare.toFixed(2));
-        $('#sp_stage2').val('0');
-        $('#sp_stage3').val('0');
-        $('#sp_stage4').val('0');
-        checkStageSum();
-        RB.closeModal('modalBpmList');
-        RB.openModal('modalBpmSplit');
+    function esc(s) {
+        if (s == null) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function checkStageSum() {
-        var s1 = Number($('#sp_stage1').val() || 0);
-        var s2 = Number($('#sp_stage2').val() || 0);
-        var s3 = Number($('#sp_stage3').val() || 0);
-        var s4 = Number($('#sp_stage4').val() || 0);
-        var sum = s1 + s2 + s3 + s4;
-        var target = Number(bpmSelected ? (bpmSelected.deptShare || 0) : 0);
-        $('#spSum').text(sum.toFixed(2));
-        $('#spTarget').text(target.toFixed(2));
-        var diff = Math.abs(sum - target);
-        if (diff < 0.005) {
-            $('#spMatch').html('<span style="color:#2e7d32;font-weight:bold;">✓ 匹配</span>');
-        } else {
-            var delta = (sum - target).toFixed(2);
-            var color = delta > 0 ? '#c62828' : '#ef6c00';
-            $('#spMatch').html('<span style="color:' + color + ';font-weight:bold;">' + (delta > 0 ? '超出 ' : '缺少 ') + Math.abs(delta).toFixed(2) + ' 元</span>');
-        }
+    function updateBpmSelectedCount() {
+        var cnt = Object.keys(bpmSelectedSet).length;
+        $('#bpmSelectedCount').text('已选 ' + cnt + ' 条');
     }
 
-    function autoFillStage(which) {
-        var target = Number(bpmSelected ? (bpmSelected.deptShare || 0) : 0);
-        $('#sp_stage1').val('0');
-        $('#sp_stage2').val('0');
-        $('#sp_stage3').val('0');
-        $('#sp_stage4').val('0');
-        if (which === 0) {
-            // 平均分配
-            var avg = (target / 4).toFixed(2);
-            var remain = (target - 4 * Number(avg)).toFixed(2);
-            $('#sp_stage1').val((Number(avg) + Number(remain)).toFixed(2));
-            $('#sp_stage2').val(avg);
-            $('#sp_stage3').val(avg);
-            $('#sp_stage4').val(avg);
-        } else {
-            $('#sp_stage' + which).val(target.toFixed(2));
-        }
-        checkStageSum();
+    function bpmSelectAll() {
+        var checked = $(this).is(':checked');
+        $('.bpm-chk').each(function () {
+            $(this).prop('checked', checked);
+            var idx = $(this).data('idx');
+            var row = bpmRows[idx];
+            var pid = row.bpmProcessId;
+            var inputs = $(this).closest('tr').find('.bpm-input');
+            if (checked) {
+                bpmSelectedSet[pid] = true;
+                inputs.prop('disabled', false);
+                $(this).closest('tr').addClass('bpm-checked');
+            } else {
+                delete bpmSelectedSet[pid];
+                inputs.prop('disabled', true);
+                $(this).closest('tr').removeClass('bpm-checked');
+            }
+        });
+        updateBpmSelectedCount();
     }
 
     function confirmBpmImport() {
-        var s1 = Number($('#sp_stage1').val() || 0);
-        var s2 = Number($('#sp_stage2').val() || 0);
-        var s3 = Number($('#sp_stage3').val() || 0);
-        var s4 = Number($('#sp_stage4').val() || 0);
-        var sum = s1 + s2 + s3 + s4;
-        var target = Number(bpmSelected ? (bpmSelected.deptShare || 0) : 0);
-        if (Math.abs(sum - target) >= 0.005) {
-            RB.toast('各阶段金额之和必须等于BPM部门应得金额(' + target.toFixed(2) + ')', 'error');
-            return;
-        }
-        if (sum <= 0) {
-            RB.toast('金额合计不能为0', 'error');
-            return;
-        }
         var pid = $('#selProject').val();
-        if (!pid) { RB.toast('请选择项目', 'error'); return; }
-        var payload = {
+        if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+        var selectedIdx = [];
+        $('.bpm-chk:checked').each(function () { selectedIdx.push($(this).data('idx')); });
+        if (selectedIdx.length === 0) { RB.toast('请至少选择一条记录', 'error'); return; }
+        var items = [];
+        for (var i = 0; i < selectedIdx.length; i++) {
+            var idx = selectedIdx[i];
+            var row = bpmRows[idx];
+            var tr = $('#bpmBody tr[data-idx="' + idx + '"]');
+            items.push({
+                bpmProcessId: row.bpmProcessId,
+                applicant: row.applicant,
+                applyDept: row.applyDept,
+                applyDate: row.applyDate,
+                financeCode: row.financeCode,
+                belongToYear: row.belongToYear,
+                secondaryRebateAmount: row.secondaryRebateAmount,
+                rebateAmount: row.rebateAmount,
+                supplier: row.supplier,
+                rebateProject: row.rebateProject,
+                invoiceNo: row.invoiceNo,
+                taxRate: tr.find('.bpm-tax-rate').val() || 0,
+                deptShare: tr.find('.bpm-dept-share').val() || 0,
+                rebateType: tr.find('.bpm-rebate-type').val() || '票折'
+            });
+        }
+        $('#btnBpmImport').prop('disabled', true).text('引入中...');
+        RB.post('/api/received-paid?op=importFromBpm', {
             projectId: pid,
-            rebateType: bpmSelected.rebateType,
-            applyDate: bpmSelected.applyDate,
-            financeCode: bpmSelected.financeCode,
-            invoiceNo: bpmSelected.invoiceNo,
-            rebateAmount: bpmSelected.rebateAmount,
-            taxRate: bpmSelected.taxRate,
-            totalPriceTax: bpmSelected.totalPriceTax,
-            deptShare: bpmSelected.deptShare,
-            receiveDept: bpmSelected.receiveDept,
-            stageOne: s1.toFixed(2),
-            stageTwo: s2.toFixed(2),
-            stageThree: s3.toFixed(2),
-            stageFour: s4.toFixed(2)
-        };
-        $('#btnConfirmBpm').prop('disabled', true).text('提交中...');
-        RB.post('/api/received-paid?op=importFromBpm', payload).done(function (r) {
-            $('#btnConfirmBpm').prop('disabled', false).text('确认引入（终稿）');
+            items: JSON.stringify(items)
+        }).done(function (r) {
+            $('#btnBpmImport').prop('disabled', false).text('确定引入');
             if (r.code === 0) {
                 var cnt = (r.data && r.data.insertedCount) ? r.data.insertedCount : 0;
-                RB.toast('成功引入 ' + cnt + ' 条实收记录（终稿状态）', 'success');
-                RB.closeModal('modalBpmSplit');
+                RB.toast('成功引入 ' + cnt + ' 条实收记录（FINAL状态）', 'success');
+                RB.closeModal('modalBpm');
                 load();
             } else {
                 RB.toast(r.msg || '引入失败', 'error');
             }
         }).fail(function () {
-            $('#btnConfirmBpm').prop('disabled', false).text('确认引入（终稿）');
-            RB.toast('网络错误，请稍后重试', 'error');
+            $('#btnBpmImport').prop('disabled', false).text('确定引入');
+            RB.toast('网络错误', 'error');
         });
     }
 </script>

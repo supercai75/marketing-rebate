@@ -306,7 +306,13 @@
         var itemTypes = [
             {value: 'STAFF_COUNT', label: '作业人数'},
             {value: 'VISIT_COUNT', label: '拜访次数'},
-            {value: 'MEETING', label: '会议活动'},
+            {value: 'MEETING', label: '会议场次'},
+            {value: 'EDUCATING', label: '学术活动'},
+            {value: 'TECH_RULE', label: '合规培训'},
+            {value: 'TECH_PROD', label: '产品培训'},
+            {value: 'TESTING', label: '月度考试'},
+            {value: 'SUPP_FILE', label: '支持文件'},
+            {value: 'INCUST_CNT', label: '准入家数'},
             {value: 'OTHER', label: '其它'}
         ];
         var typeOpts = '';
@@ -758,7 +764,7 @@
                 subTotal += Number(d.rebateAmount || 0);
                 var rt = d.rewardType || 'PERSENT';
                 var rtName = rt === 'PERSENT' ? '达成率' : (rt === 'SCALE' ? '达成额' : '增长率');
-                var ratioPct = (Number(d.effectiveRatio || 0) * 100).toFixed(2) + '%';
+                var ratioPct = d.qtyBased ? Number(d.effectiveRatio || 0).toFixed(2) + '元/单位' : (Number(d.effectiveRatio || 0) * 100).toFixed(2) + '%';
                 h += '<tr>'
                     + '<td>' + esc(d.groupName) + '</td>'
                     + '<td>' + rtName + '</td>'
@@ -776,7 +782,7 @@
             return h;
         }
 
-        detailHtml.push('<h4>📊 估算结果（后端返利计算引擎）</h4>');
+        detailHtml.push('<h4>📊 估算结果</h4>');
         detailHtml.push('<div class="data-box">');
         detailHtml.push('<strong>阶段：</strong>' + stage + '<br>');
         if (stage === '全年合计') {

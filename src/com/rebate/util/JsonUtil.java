@@ -9,6 +9,8 @@ import com.google.gson.reflect.TypeToken;
 
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
+
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.sql.Timestamp;
@@ -39,6 +41,12 @@ public class JsonUtil {
 
     public static <T> T fromJson(String json, Type type) {
         return GSON.fromJson(json, type);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static java.util.List<Map<String, Object>> parseList(String json) {
+        if (json == null || json.isEmpty()) return new java.util.ArrayList<>();
+        return GSON.fromJson(json, new TypeToken<java.util.List<Map<String, Object>>>() {}.getType());
     }
 
     public static Map<String, Object> readRequestMap(HttpServletRequest req) throws IOException {
@@ -90,30 +98,22 @@ public class JsonUtil {
     }
 
     /**
-     * 按 Content-Length 精确读取请求体（字符模式），避免 readLine() 等不到换行符而阻塞。
+     * 读取请求体。
+     * 完全依赖 Tomcat 自己管理 body 边界（Content-Length / chunked）。
+     * 不检查 Content-Length 是否 > 0 —— 如果检查后跳过读取，body 会在 keep-alive
+     * 连接上"污染"下一个请求，导致后续请求解析混乱和超时。
+     * 如果 body 为空，read() 会立即返回 -1。
      */
     private static String readRequestBody(HttpServletRequest req) throws IOException {
-        int len = req.getContentLength();
-        String encoding = req.getCharacterEncoding();
-        if (encoding == null || encoding.isEmpty()) encoding = "UTF-8";
-        try (ServletInputStream in = req.getInputStream()) {
-            byte[] buf;
-            if (len > 0) {
-                buf = new byte[len];
-                int off = 0;
-                while (off < len) {
-                    int n = in.read(buf, off, len - off);
-                    if (n < 0) break;
-                    off += n;
-                }
-                return new String(buf, 0, off, encoding);
-            }
-            // Content-Length < 0（chunked）：读到 EOF
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-            byte[] tmp = new byte[8192];
+        try (BufferedReader r = req.getReader()) {
+            StringBuilder sb = new StringBuilder();
+            char[] buf = new char[8192];
             int n;
-            while ((n = in.read(tmp)) > 0) baos.write(tmp, 0, n);
-            return new String(baos.toByteArray(), encoding);
+            while ((n = r.read(buf)) != -1) {
+                sb.append(buf, 0, n);
+                if (sb.length() > 50 * 1024 * 1024) break; // 50MB 保护
+            }
+            return sb.toString();
         }
     }
 

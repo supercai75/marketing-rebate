@@ -37,6 +37,17 @@ public class RebateCalcUtil {
     }
 
     /**
+     * 根据规则列表与实际达成值 X、Y，匹配区间并计算返利比例。
+     * qtyBased=true（返利计算依据为 数量/销售数量）时，比例视同"每数量单位的金额"，
+     * 将百分比小数还原为单位金额（×100）。
+     */
+    public static BigDecimal calcRebateRatio(List<RebateRule> rules, BigDecimal actualX, BigDecimal actualY, boolean qtyBased) {
+        RebateRule matched = matchRule(rules, actualX);
+        if (matched == null) return BigDecimal.ZERO;
+        return calcRatioByRule(matched, actualX, actualY, qtyBased);
+    }
+
+    /**
      * 根据规则列表与实际达成值 X，按阶段 + 达成值 区间匹配
      */
     public static RebateRule matchRule(List<RebateRule> rules, BigDecimal actualX) {
@@ -84,6 +95,16 @@ public class RebateCalcUtil {
     }
 
     /**
+     * 按照给定规则与实际 X、Y，计算返利比例（含 X 上限封顶 + 表达式优先 / 纯数字回退 rebate_ratio）。
+     * qtyBased=true 时（返利计算依据为 数量/销售数量），返利比例视同"每数量单位的金额"，
+     * 而非数量的百分比，故将百分比小数（已 /100）还原为单位金额（×100）。
+     */
+    public static BigDecimal calcRatioByRule(RebateRule rule, BigDecimal actualX, BigDecimal actualY, boolean qtyBased) {
+        BigDecimal ratio = calcRatioByRule(rule, actualX, actualY);
+        return qtyBased ? ratio.multiply(BigDecimal.valueOf(100), MC) : ratio;
+    }
+
+    /**
      * 计算返利金额（支持递进式和全部计算两种模式）
      *
      * @param rules      规则列表（已按 sortNo 排序）
@@ -119,12 +140,29 @@ public class RebateCalcUtil {
     public static BigDecimal calcRebateAmount(List<RebateRule> rules, BigDecimal actualX,
                                                BigDecimal actualY, BigDecimal baseAmount,
                                                BigDecimal targetAmount, String calcMode) {
+        return calcRebateAmount(rules, actualX, actualY, baseAmount, targetAmount, calcMode, false);
+    }
+
+    /**
+     * 计算返利金额（支持递进式和全部计算两种模式），显式传入 calcMode、目标金额与数量口径标记
+     *
+     * @param targetAmount 对应阶段/全年的目标金额。递进式按达成率/增长率分段时，
+     *                     段基数 = 目标金额 × 段宽(百分点) / 100（对应需求：
+     *                     min(目标×阈值上限, 达成额) - 目标×阈值下限）；
+     *                     为 null 时回退使用 baseAmount（兼容旧调用）
+     * @param qtyBased     返利计算依据为 数量/销售数量 时为 true。
+     *                     此时返利比例（或表达式计算出来的比例）视同"每数量单位的金额"，
+     *                     而非数量的百分比：比例按 ×100 还原为单位金额，返利 = 数量 × 单位金额。
+     */
+    public static BigDecimal calcRebateAmount(List<RebateRule> rules, BigDecimal actualX,
+                                               BigDecimal actualY, BigDecimal baseAmount,
+                                               BigDecimal targetAmount, String calcMode, boolean qtyBased) {
     	if (rules == null || rules.isEmpty()) return BigDecimal.ZERO;
         BigDecimal x = nvl(actualX);
         BigDecimal y = nvl(actualY);
         BigDecimal base = nvl(baseAmount);
         BigDecimal target = targetAmount == null ? base : nvl(targetAmount);
-        
+
         // 判断计算模式：优先用传入参数，回退到规则字段
         String mode = calcMode;
         if (mode == null || mode.isEmpty()) mode = rules.get(0).getCalcMode();
@@ -134,7 +172,7 @@ public class RebateCalcUtil {
             // 全部计算：找到匹配区间的比例，用整体基数 × 比例
             RebateRule matched = matchRule(rules, x);
             if (matched == null) return BigDecimal.ZERO;
-            BigDecimal ratio = calcRatioByRule(matched, x, y);
+            BigDecimal ratio = calcRatioByRule(matched, x, y, qtyBased);
             return base.multiply(ratio, MC);
         }
 
@@ -155,7 +193,7 @@ public class RebateCalcUtil {
             }
 
             BigDecimal segWidth = effEnd.subtract(effStart, MC);
-            BigDecimal ratio = calcRatioByRule(r, x, y);
+            BigDecimal ratio = calcRatioByRule(r, x, y, qtyBased);
             String rt = r.getRewardType() == null ? "" : r.getRewardType().toUpperCase();
             if ("SCALE".equals(rt)) {
                 // 达成额口径：段基数 = 段内达成金额差（min(达成额, 段上限) - 段下限）

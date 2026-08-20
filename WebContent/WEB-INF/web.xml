@@ -99,12 +99,12 @@
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>projectPersonServlet</servlet-name>
-        <servlet-class>com.rebate.servlet.ProjectPersonServlet</servlet-class>
+        <servlet-name>projectStaffServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.ProjectStaffServlet</servlet-class>
     </servlet>
     <servlet-mapping>
-        <servlet-name>projectPersonServlet</servlet-name>
-        <url-pattern>/api/project-person</url-pattern>
+        <servlet-name>projectStaffServlet</servlet-name>
+        <url-pattern>/api/project-staff</url-pattern>
     </servlet-mapping>
 
     <servlet>

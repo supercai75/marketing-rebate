@@ -8,6 +8,7 @@ import org.apache.poi.ss.usermodel.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 项目概览 / 平衡表 服务
@@ -127,24 +128,43 @@ public class OverviewService {
         }
         
         // 获取当前项目的考核组流向数据
-        // 单考核组时使用整体流向，多考核组时按考核组分别计算
+        // 单考核组（或无考核组）时使用整体流向，多考核组时按考核组分别计算
         List<Map<String, Object>> currentGroupFlows = new ArrayList<>();
-        for (AssessGroup ag : assessGroups) {
+        // 无考核组时：模拟一条"默认组"记录，使用项目整体流向（与前端生成的默认组 id=0 对齐）
+        if (assessGroups.isEmpty()) {
             Map<String, Object> groupFlow = new HashMap<>();
-            groupFlow.put("groupId", ag.getId());
-            groupFlow.put("groupName", ag.getGroupName());
-            groupFlow.put("stage1Target", ag.getStage1Target());
-            groupFlow.put("stage2Target", ag.getStage2Target());
-            groupFlow.put("stage3Target", ag.getStage3Target());
-            groupFlow.put("stage4Target", ag.getStage4Target());
-            // 单考核组使用整体流向（不按考核组过滤），多考核组按考核组过滤
-            Long groupIdForQuery = singleGroup ? null : ag.getId();
-            Map<String, BigDecimal> stageFlows = getAllStageFlows(projectId, groupIdForQuery);
+            groupFlow.put("groupId", 0L);
+            groupFlow.put("groupName", "默认组");
+            if (upstream != null) {
+                groupFlow.put("stage1Target", upstream.getStage1Target());
+                groupFlow.put("stage2Target", upstream.getStage2Target());
+                groupFlow.put("stage3Target", upstream.getStage3Target());
+                groupFlow.put("stage4Target", upstream.getStage4Target());
+            }
+            Map<String, BigDecimal> stageFlows = getAllStageFlows(projectId, null);
             groupFlow.put("stage1Actual", stageFlows.get("S1"));
             groupFlow.put("stage2Actual", stageFlows.get("S2"));
             groupFlow.put("stage3Actual", stageFlows.get("S3"));
             groupFlow.put("stage4Actual", stageFlows.get("S4"));
             currentGroupFlows.add(groupFlow);
+        } else {
+            for (AssessGroup ag : assessGroups) {
+                Map<String, Object> groupFlow = new HashMap<>();
+                groupFlow.put("groupId", ag.getId());
+                groupFlow.put("groupName", ag.getGroupName());
+                groupFlow.put("stage1Target", ag.getStage1Target());
+                groupFlow.put("stage2Target", ag.getStage2Target());
+                groupFlow.put("stage3Target", ag.getStage3Target());
+                groupFlow.put("stage4Target", ag.getStage4Target());
+                // 单考核组使用整体流向（不按考核组过滤），多考核组按考核组过滤
+                Long groupIdForQuery = singleGroup ? null : ag.getId();
+                Map<String, BigDecimal> stageFlows = getAllStageFlows(projectId, groupIdForQuery);
+                groupFlow.put("stage1Actual", stageFlows.get("S1"));
+                groupFlow.put("stage2Actual", stageFlows.get("S2"));
+                groupFlow.put("stage3Actual", stageFlows.get("S3"));
+                groupFlow.put("stage4Actual", stageFlows.get("S4"));
+                currentGroupFlows.add(groupFlow);
+            }
         }
 
         // 规模
@@ -162,11 +182,11 @@ public class OverviewService {
         BigDecimal totalTarget = upstream == null ? BigDecimal.ZERO : upstream.getTargetScale();
         BigDecimal totalRate = ProjectScaleService.rate(scale.get("totalActual"), totalTarget);
 
-        // 达成数量和达成金额（独立于 calcBasis，始终返回两个口径）
-        BigDecimal totalActualQty = ProjectScaleService.sumMonthScale(
-                ProjectScaleService.loadMonthScale(projectId, "QTY"));
-        BigDecimal totalActualAmt = ProjectScaleService.sumMonthScale(
-                ProjectScaleService.loadMonthScale(projectId, "AMT"));
+        // 达成数量和达成金额（单条SQL获取所有口径）
+        Map<String, BigDecimal> scaleAll = ProjectScaleService.batchSumScale(
+                java.util.Collections.singletonList(projectId)).get(projectId);
+        BigDecimal totalActualQty = ProjectScaleService.pickByBasis(scaleAll, "QTY");
+        BigDecimal totalActualAmt = ProjectScaleService.pickByBasis(scaleAll, "AMT");
 
         BigDecimal s1a = scale.getOrDefault("stage1Actual", BigDecimal.ZERO);
         BigDecimal s2a = scale.getOrDefault("stage2Actual", BigDecimal.ZERO);
@@ -621,13 +641,30 @@ public class OverviewService {
 
     /**
      * 平衡表：所有项目一行（优化版，使用批量查询）
+     * undertakingDept / projectGroupId 后端过滤；导出也走这套过滤，保证导出与列表一致。
      */
-    public List<Map<String, Object>> balanceTable(String coYear) {
+    public List<Map<String, Object>> balanceTable(String coYear, String undertakingDept, String projectGroupId) {
         List<Project> projects = (coYear == null || coYear.isEmpty()) ? projectDao.listAll() : projectDao.listByYear(coYear);
+        if (projects.isEmpty()) return Collections.emptyList();
+
+        // 后端过滤：undertakingDept（文本相等）/ projectGroupId（数值相等）
+        if (undertakingDept != null && !undertakingDept.isEmpty()) {
+            projects = projects.stream()
+                    .filter(p -> undertakingDept.equals(p.getUndertakingDept()))
+                    .collect(Collectors.toList());
+        }
+        if (projectGroupId != null && !projectGroupId.isEmpty()) {
+            Long gid = null;
+            try { gid = Long.parseLong(projectGroupId); } catch (Exception ignore) {}
+            final Long gid2 = gid;
+            projects = projects.stream()
+                    .filter(p -> gid2 != null && gid2.equals(p.getProjectGroupId()))
+                    .collect(Collectors.toList());
+        }
         if (projects.isEmpty()) return Collections.emptyList();
         
         // 提取项目ID列表
-        List<Long> projectIds = projects.stream().map(Project::getId).collect(java.util.stream.Collectors.toList());
+        List<Long> projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
         
         // 批量查询应收总额（从应收台账表）
         Map<Long, Map<String, BigDecimal>> receivableMap = rpDao.sumReceivableBatch(projectIds);
@@ -651,20 +688,22 @@ public class OverviewService {
             targetMap.put(up.getProjectId(), up.getTargetScale());
         }
         
-        // 批量查询流向汇总（用于 totalActual / totalActualQty / totalActualAmt / totalRate）
+        // 批量查询流向汇总（单条SQL获取所有项目的数量/金额/各口径）
+        Map<Long, Map<String, BigDecimal>> scaleMap = ProjectScaleService.batchSumScale(projectIds);
         Map<Long, BigDecimal> actualMap = new HashMap<>();
         Map<Long, BigDecimal> actualQtyMap = new HashMap<>();
         Map<Long, BigDecimal> actualAmtMap = new HashMap<>();
+        Map<Long, UpstreamAgreement> upstreamByPid = new HashMap<>();
+        for (UpstreamAgreement up : upstreamList) {
+            upstreamByPid.put(up.getProjectId(), up);
+        }
         for (Long pid : projectIds) {
-            UpstreamAgreement up = upstreamList.stream().filter(u -> pid.equals(u.getProjectId())).findFirst().orElse(null);
+            Map<String, BigDecimal> sm = scaleMap.get(pid);
+            UpstreamAgreement up = upstreamByPid.get(pid);
             String basis = (up != null && up.getCalcBasis() != null) ? up.getCalcBasis() : "AMT";
-            BigDecimal totalActual = ProjectScaleService.sumMonthScale(
-                    ProjectScaleService.loadMonthScale(pid, basis, null));
-            actualMap.put(pid, totalActual);
-            actualQtyMap.put(pid, ProjectScaleService.sumMonthScale(
-                    ProjectScaleService.loadMonthScale(pid, "QTY", null)));
-            actualAmtMap.put(pid, ProjectScaleService.sumMonthScale(
-                    ProjectScaleService.loadMonthScale(pid, "AMT", null)));
+            actualMap.put(pid, ProjectScaleService.pickByBasis(sm, basis));
+            actualQtyMap.put(pid, ProjectScaleService.pickByBasis(sm, "QTY"));
+            actualAmtMap.put(pid, ProjectScaleService.pickByBasis(sm, "AMT"));
         }
         
         // 组装结果
@@ -712,6 +751,9 @@ public class OverviewService {
             row.put("projectId", pid);
             row.put("projectName", p.getProjectName());
             row.put("coYear", p.getCoYear());
+            row.put("undertakingDept", p.getUndertakingDept());
+            row.put("projectGroupId", p.getProjectGroupId());
+            row.put("projectGroupName", p.getProjectGroupName());
             row.put("totalTarget", totalTarget);
             row.put("totalActual", totalActual);
             row.put("totalActualQty", actualQtyMap.getOrDefault(pid, BigDecimal.ZERO));
@@ -1002,8 +1044,9 @@ public class OverviewService {
     
     /**
      * 导出项目平衡表为Excel
+     * undertakingDept / projectGroupId：导出"所有项目"时使用的过滤条件（与列表一致）
      */
-    public Workbook exportBalance(String coYear, String projectId) {
+    public Workbook exportBalance(String coYear, String projectId, String undertakingDept, String projectGroupId) {
         List<Map<String, Object>> data;
         if (projectId != null && !projectId.isEmpty()) {
             // 导出单个项目
@@ -1052,8 +1095,8 @@ public class OverviewService {
                     : receivedTotal.multiply(BigDecimal.valueOf(100)).divide(receivableTotal, 2, RoundingMode.HALF_UP));
             data.add(row);
         } else {
-            // 导出所有项目
-            data = balanceTable(coYear);
+            // 导出所有项目（按 undertakingDept/projectGroupId 过滤，与列表保持一致）
+            data = balanceTable(coYear, undertakingDept, projectGroupId);
         }
         
         List<List<String>> sheet = new ArrayList<>();

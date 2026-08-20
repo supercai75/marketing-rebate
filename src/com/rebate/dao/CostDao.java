@@ -3,6 +3,7 @@ package com.rebate.dao;
 import com.rebate.model.ProjectExpense;
 import com.rebate.model.ProjectLabor;
 
+import java.sql.Connection;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -21,6 +22,17 @@ public class CostDao {
     /* 项目费用 */
     public Long insertExpense(ProjectExpense e) {
         return BaseDao.insertReturnId("INSERT INTO fin_project_expense(project_id, reimburse_date, expense_type, " +
+                "work_no, name, description, amount, allocated_amount, source, raw_project_name, doc_no, " +
+                "matched_type, import_user, remark) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                e.getProjectId(), e.getReimburseDate(), e.getExpenseType(), e.getWorkNo(), e.getName(),
+                e.getDescription(), e.getAmount(), e.getAllocatedAmount() == null ? e.getAmount() : e.getAllocatedAmount(),
+                e.getSource(), e.getRawProjectName(), e.getDocNo(), e.getMatchedType(),
+                e.getImportUser(), e.getRemark());
+    }
+
+    public Long insertExpenseWithConn(Connection conn, ProjectExpense e) throws SQLException {
+        return BaseDao.insertReturnIdWithConn(conn, "INSERT INTO fin_project_expense(project_id, reimburse_date, expense_type, " +
                 "work_no, name, description, amount, allocated_amount, source, raw_project_name, doc_no, " +
                 "matched_type, import_user, remark) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -88,6 +100,18 @@ public class CostDao {
     /* 项目人工 */
     public Long insertLabor(ProjectLabor l) {
         return BaseDao.insertReturnId("INSERT INTO fin_project_labor(project_id, month_yyyymm, work_no, name, work_type, " +
+                "salary, welfare, other_cost, total_cost, allocated_amount, alloc_ratio, " +
+                "source, matched_type, import_user, remark) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                l.getProjectId(), l.getMonthYyyymm(), l.getWorkNo(), l.getName(), l.getWorkType(),
+                l.getSalary(), l.getWelfare(), l.getOtherCost(), l.getTotalCost(),
+                l.getAllocatedAmount() == null ? l.getTotalCost() : l.getAllocatedAmount(),
+                l.getAllocRatio(),
+                l.getSource(), l.getMatchedType(), l.getImportUser(), l.getRemark());
+    }
+
+    public Long insertLaborWithConn(Connection conn, ProjectLabor l) throws SQLException {
+        return BaseDao.insertReturnIdWithConn(conn, "INSERT INTO fin_project_labor(project_id, month_yyyymm, work_no, name, work_type, " +
                 "salary, welfare, other_cost, total_cost, allocated_amount, alloc_ratio, " +
                 "source, matched_type, import_user, remark) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

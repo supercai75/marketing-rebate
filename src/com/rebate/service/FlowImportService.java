@@ -38,7 +38,7 @@ public class FlowImportService {
 
     /** 数值列：非空时必须是数字 */
     private static final String[] NUMERIC_COLUMNS = {
-            "核算价格", "数量", "核算金额", "销售数量", "中标金额", "无税金额", "含税金额"
+            "核算价格", "数量", "核算金额", "销售数量", "中标价金额", "无税金额", "含税金额"
     };
 
     /** 文本列与数据库定义长度：超出则报错 */
@@ -163,7 +163,7 @@ public class FlowImportService {
             r.setSaleQty(safeBd(row.get("销售数量")));
             r.setNoTaxAmount(safeBd(row.get("无税金额")));
             r.setTaxAmount(safeBd(row.get("含税金额")));
-            r.setBidAmount(safeBd(row.get("中标金额")));
+            r.setBidAmount(safeBd(row.get("中标价金额")));
             
             // 处理考核组列（从内存Map获取）
             String assessGroupName = row.get("考核组");
@@ -347,7 +347,7 @@ public class FlowImportService {
             r.setSaleQty(safeBd(row.get("销售数量")));
             r.setNoTaxAmount(safeBd(row.get("无税金额")));
             r.setTaxAmount(safeBd(row.get("含税金额")));
-            r.setBidAmount(safeBd(row.get("中标金额")));
+            r.setBidAmount(safeBd(row.get("中标价金额")));
 
             // 处理考核组列（从内存Map获取）
             String assessGroupName = row.get("考核组");
@@ -432,10 +432,8 @@ public class FlowImportService {
                 errs.add("第" + rowNo + "行：业务日期必须为yyyy-MM-dd格式（当前值：" + bd.trim() + "）；该行内容：" + brief);
             } else {
                 Date d = parseDate(bd.trim());
-                if (d == null) {
-                    errs.add("第" + rowNo + "行：业务日期不是合法日期（当前值：" + bd.trim() + "）；该行内容：" + brief);
-                } else if (!d.after(new Date(System.currentTimeMillis()))) {
-                    errs.add("第" + rowNo + "行：业务日期必须在操作日期（今天）之后（当前值：" + bd.trim() + "）；该行内容：" + brief);
+                if (!d.before(new Date(System.currentTimeMillis()))) {
+                    errs.add("第" + rowNo + "行：业务日期必须在操作日期（今天）之前（当前值：" + bd.trim() + "）；该行内容：" + brief);
                 }
             }
         }
@@ -461,7 +459,7 @@ public class FlowImportService {
     private String briefRow(Map<String, String> row) {
         StringBuilder sb = new StringBuilder();
         String[] keys = {"月份", "业务日期", "产品名称", "规格", "销售方名称", "销售方城市",
-                "核算价格", "数量", "核算金额", "采购方名称", "采购方城市", "客户等级", "销售数量", "无税金额", "含税金额", "中标金额", "考核组"};
+                "核算价格", "数量", "核算金额", "采购方名称", "采购方城市", "客户等级", "销售数量", "无税金额", "含税金额", "中标价金额", "考核组"};
         for (String k : keys) {
             String v = row.get(k);
             if (v != null && !v.trim().isEmpty()) {

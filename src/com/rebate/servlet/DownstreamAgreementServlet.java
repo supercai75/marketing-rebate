@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.rebate.dao.AgreementSubDao;
 import com.rebate.dao.AssessDownstreamTargetDao;
+import com.rebate.dao.BaseDao;
 import com.rebate.dao.DownstreamAgreementDao;
 import com.rebate.dao.RebateRuleDao;
 import com.rebate.model.AssessDownstreamTarget;
@@ -23,7 +24,9 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.Date;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -115,25 +118,33 @@ public class DownstreamAgreementServlet extends BaseServlet {
     private List<AttachFile> fillUrl(HttpServletRequest req, List<AttachFile> files) {
         if (files == null) return null;
         String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
-        for (AttachFile f : files) f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+        for (AttachFile f : files) f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath() + "&fileName=" + (f.getFileName() == null ? "" : java.net.URLEncoder.encode(f.getFileName(), java.nio.charset.StandardCharsets.UTF_8)));
         return files;
     }
 
     private void doAdd(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) {
         DownstreamAgreement a = parse(p);
+        String mode = a.getCalcMode() == null || a.getCalcMode().isEmpty() ? "PROGRESSIVE" : a.getCalcMode();
+        if ("PROGRESSIVE".equalsIgnoreCase(mode) && !com.rebate.service.RebateCalcService.sameBasis(a.getCalcBasis(), a.getRebateCalcBasis())) {
+            ResponseUtil.fail(resp, "递进式计算返利要求指标核算依据与返利计算依据一致（金额与核算金额视为相同）");
+            return;
+        }
         a.setCreatedBy(u.getId());
         // 记录旧的生效版本ID（新版本创建前的 current 版本）—— 插入前查，因为 markNotCurrent 会把旧的设为 0
         Long oldCurrentId = dao.findCurrentId(a.getProjectId(), a.getAgreementNo());
         int maxVersion = dao.findMaxVersion(a.getProjectId(), a.getAgreementNo());
         a.setVersion(maxVersion + 1);
         a.setIsCurrent(1);
-        Long id = dao.insert(a);
-        if (id != null) dao.markNotCurrent(a.getProjectId(), a.getAgreementNo(), id);
-        saveSubTables(id, p);
-        // 将旧 current 版本下的业务数据（流向/应付/实付/分解/定案等）迁移到新版本
-        if (oldCurrentId != null && oldCurrentId > 0 && id != null && !oldCurrentId.equals(id)) {
-            dao.migrateAssociatedData(oldCurrentId, id);
-        }
+        Long id = BaseDao.executeInTransaction(conn -> {
+            Long newId = dao.insertWithConn(conn, a);
+            if (newId != null) dao.markNotCurrentWithConn(conn, a.getProjectId(), a.getAgreementNo(), newId);
+            saveSubTables(conn, newId, p, true);
+            // 将旧 current 版本下的业务数据（流向/应付/实付/分解/定案等）迁移到新版本
+            if (oldCurrentId != null && oldCurrentId > 0 && newId != null && !oldCurrentId.equals(newId)) {
+                dao.migrateAssociatedDataWithConn(conn, oldCurrentId, newId);
+            }
+            return newId;
+        });
         ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", id));
     }
 
@@ -143,10 +154,18 @@ public class DownstreamAgreementServlet extends BaseServlet {
         if (a == null) { ResponseUtil.fail(resp, "协议不存在"); return; }
         DownstreamAgreement upd = parse(p);
         upd.setId(id);
+        String mode = upd.getCalcMode() == null || upd.getCalcMode().isEmpty() ? "PROGRESSIVE" : upd.getCalcMode();
+        if ("PROGRESSIVE".equalsIgnoreCase(mode) && !com.rebate.service.RebateCalcService.sameBasis(upd.getCalcBasis(), upd.getRebateCalcBasis())) {
+            ResponseUtil.fail(resp, "递进式计算返利要求指标核算依据与返利计算依据一致（金额与核算金额视为相同）");
+            return;
+        }
         dao.update(upd);
         subDao.clearDownstreamTeamTargets(id);
         ruleDao.deleteDownstreamRebateRules(id);
-        saveSubTables(id, p);
+        BaseDao.<Void>executeInTransaction((Connection conn) -> {
+            saveSubTables(conn, id, p, false);
+            return null;
+        });
         ResponseUtil.ok(resp);
     }
 
@@ -175,7 +194,7 @@ public class DownstreamAgreementServlet extends BaseServlet {
             id = subDao.insertDownstreamAttach(f);
             f.setId(id);
             String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
-            f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+            f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath() + "&fileName=" + (f.getFileName() == null ? "" : java.net.URLEncoder.encode(f.getFileName(), java.nio.charset.StandardCharsets.UTF_8)));
             ResponseUtil.ok(resp, f);
         } else {
             f.setFileType(attachType);
@@ -203,7 +222,7 @@ public class DownstreamAgreementServlet extends BaseServlet {
         ResponseUtil.ok(resp, ruleDao.listDownstreamRebateRules(agreementId));
     }
 
-    private void saveSubTables(long agreementId, Map<String, Object> p) {
+    private void saveSubTables(Connection conn, long agreementId, Map<String, Object> p, boolean isNew) throws SQLException {
         Object teamObj = p.get("teamTargets");
         if (teamObj != null) {
             String json = new Gson().toJson(teamObj);
@@ -212,7 +231,7 @@ public class DownstreamAgreementServlet extends BaseServlet {
             if (list != null) {
                 for (TeamTarget tt : list) {
                     tt.setAgreementId(agreementId);
-                    subDao.insertDownstreamTeamTarget(tt);
+                    subDao.insertDownstreamTeamTargetWithConn(conn, tt);
                 }
             }
         }
@@ -231,11 +250,33 @@ public class DownstreamAgreementServlet extends BaseServlet {
                             // 考核组ID为0时设为null（默认组）
                             if (t.getAssessGroupId() != null && t.getAssessGroupId() == 0) {
                                 t.setAssessGroupId(null);
-                            }
-                            targetDao.upsert(t);
+                        }
+                        targetDao.upsertWithConn(conn, t);
                         }
                     }
                 } catch (Exception ignore) {}
+            }
+        } else if (isNew) {
+            // 新建协议时，若未显式传入考核目标，从项目级考核组同步到协议专属目标表
+            long projId = WebUtil.getLong(p, "projectId", 0);
+            if (projId > 0) {
+                List<AssessGroup> projGroups = ruleDao.listAssessGroups(projId);
+                if (projGroups != null) {
+                    for (AssessGroup ag : projGroups) {
+                        AssessDownstreamTarget t = new AssessDownstreamTarget();
+                        t.setAgreementId(agreementId);
+                        t.setAssessGroupId(ag.getId());
+                        t.setGroupName(ag.getGroupName());
+                        t.setGroupCode(ag.getGroupCode());
+                        t.setTotalTarget(ag.getTargetScale());
+                        t.setStage1Target(ag.getStage1Target());
+                        t.setStage2Target(ag.getStage2Target());
+                        t.setStage3Target(ag.getStage3Target());
+                        t.setStage4Target(ag.getStage4Target());
+                        t.setRemark(ag.getDescription());
+                        targetDao.upsertWithConn(conn, t);
+                    }
+                }
             }
         }
 
@@ -266,7 +307,7 @@ public class DownstreamAgreementServlet extends BaseServlet {
                             rule.setAssessGroupId(assessGroupId);
                             rule.setSortNo(i + 1);
                             rule.setSharedGroupIds(normalizeSharedGroupIds(rule.getSharedGroupIds()));
-                            ruleDao.insertDownstreamRebateRule(rule);
+                            ruleDao.insertDownstreamRebateRuleWithConn(conn, rule);
                         }
                     }
                 }
@@ -286,7 +327,7 @@ public class DownstreamAgreementServlet extends BaseServlet {
                         if (assessGroupId != null && assessGroupId > 0) {
                             rule.setAssessGroupId(assessGroupId);
                         }
-                        ruleDao.insertDownstreamRebateRule(rule);
+                        ruleDao.insertDownstreamRebateRuleWithConn(conn, rule);
                     }
                 }
             } catch (Exception ignore) {}
@@ -373,8 +414,8 @@ public class DownstreamAgreementServlet extends BaseServlet {
         long agreementId = WebUtil.getLong(p, "agreementId", 0);
         List<AssessGroup> groups = ruleDao.listAssessGroups(projectId);
         
-        // 先清空所有考核组的目标数据，避免显示项目级考核组的默认目标（可能是上游协议设置的）
-        if (groups != null) {
+        // 有协议ID时清空项目级考核组目标，改为从协议专属目标表加载（避免显示其他协议的目标）
+        if (agreementId > 0 && groups != null) {
             for (AssessGroup g : groups) {
                 g.setTargetScale(null);
                 g.setStage1Target(null);
@@ -455,16 +496,26 @@ public class DownstreamAgreementServlet extends BaseServlet {
         Long groupId;
         if (existing != null) {
             groupId = existing.getId();
-            // 更新共享组（已存在组时也同步更新）
+            // 更新共享组及目标（已存在组时也同步更新）
             existing.setSharedGroupIds(sharedGroupIds);
+            existing.setTargetScale(toBd(p.get("targetScale")));
+            existing.setStage1Target(toBd(p.get("stage1Target")));
+            existing.setStage2Target(toBd(p.get("stage2Target")));
+            existing.setStage3Target(toBd(p.get("stage3Target")));
+            existing.setStage4Target(toBd(p.get("stage4Target")));
             ruleDao.updateAssessGroup(existing);
         } else {
-            // 创建组定义（只存名称/编码/描述，不存目标字段）
+            // 创建组定义（含目标字段，作为项目级默认目标，新建协议时同步到协议专属目标表）
             AssessGroup g = new AssessGroup();
             g.setProjectId(projectId);
             g.setGroupCode(groupCode);
             g.setGroupName(groupName);
             g.setDescription(description);
+            g.setTargetScale(toBd(p.get("targetScale")));
+            g.setStage1Target(toBd(p.get("stage1Target")));
+            g.setStage2Target(toBd(p.get("stage2Target")));
+            g.setStage3Target(toBd(p.get("stage3Target")));
+            g.setStage4Target(toBd(p.get("stage4Target")));
             g.setSharedGroupIds(sharedGroupIds);
             g.setCreatedBy(u.getId());
             groupId = ruleDao.insertAssessGroup(g);
@@ -506,6 +557,11 @@ public class DownstreamAgreementServlet extends BaseServlet {
                 grp.setGroupName(groupName);
                 grp.setDescription(description);
                 grp.setSharedGroupIds(sharedGroupIds);
+                grp.setTargetScale(toBd(p.get("targetScale")));
+                grp.setStage1Target(toBd(p.get("stage1Target")));
+                grp.setStage2Target(toBd(p.get("stage2Target")));
+                grp.setStage3Target(toBd(p.get("stage3Target")));
+                grp.setStage4Target(toBd(p.get("stage4Target")));
                 ruleDao.updateAssessGroup(grp);
             }
 

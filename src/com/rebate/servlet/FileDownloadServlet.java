@@ -27,7 +27,10 @@ public class FileDownloadServlet extends BaseServlet {
         if (!f.exists() || !f.isFile()) { ResponseUtil.fail(resp, "文件不存在"); return; }
         resp.setContentType("application/octet-stream");
         resp.setContentLengthLong(f.length());
-        resp.setHeader("Content-Disposition", "attachment; filename=\"" + URLEncoder.encode(f.getName(), "UTF-8") + "\"");
+        // 优先使用传入的原始附件名，没有则回退到磁盘文件名
+        String fileName = req.getParameter("fileName");
+        String downloadName = (fileName != null && !fileName.isEmpty()) ? fileName : f.getName();
+        resp.setHeader("Content-Disposition", "attachment; filename=\"" + URLEncoder.encode(downloadName, "UTF-8") + "\"");
         try (FileInputStream in = new FileInputStream(f); OutputStream out = resp.getOutputStream()) {
             byte[] buf = new byte[8192];
             int len;

@@ -3,6 +3,7 @@ package com.rebate.dao;
 import com.rebate.model.TeamTarget;
 import com.rebate.model.AttachFile;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -18,6 +19,12 @@ public class AgreementSubDao {
                 t.getCalcStandard(), t.getRewardStandard(), t.getSortNo());
     }
 
+    public void insertTeamTargetWithConn(Connection conn, TeamTarget t) throws SQLException {
+        BaseDao.updateWithConn(conn, "INSERT INTO prj_upstream_team_target(agreement_id, target_name, owner, requirement, calc_standard, reward_standard, sort_no) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)", t.getAgreementId(), t.getTargetName(), t.getOwner(), t.getRequirement(),
+                t.getCalcStandard(), t.getRewardStandard(), t.getSortNo());
+    }
+
     public void clearUpstreamTeamTargets(long agreementId) {
         BaseDao.update("DELETE FROM prj_upstream_team_target WHERE agreement_id=?", agreementId);
     }
@@ -28,6 +35,12 @@ public class AgreementSubDao {
 
     public void insertDownstreamTeamTarget(TeamTarget t) {
         BaseDao.update("INSERT INTO prj_downstream_team_target(agreement_id, target_name, owner, requirement, calc_standard, reward_standard, sort_no) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)", t.getAgreementId(), t.getTargetName(), t.getOwner(), t.getRequirement(),
+                t.getCalcStandard(), t.getRewardStandard(), t.getSortNo());
+    }
+
+    public void insertDownstreamTeamTargetWithConn(Connection conn, TeamTarget t) throws SQLException {
+        BaseDao.updateWithConn(conn, "INSERT INTO prj_downstream_team_target(agreement_id, target_name, owner, requirement, calc_standard, reward_standard, sort_no) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?)", t.getAgreementId(), t.getTargetName(), t.getOwner(), t.getRequirement(),
                 t.getCalcStandard(), t.getRewardStandard(), t.getSortNo());
     }

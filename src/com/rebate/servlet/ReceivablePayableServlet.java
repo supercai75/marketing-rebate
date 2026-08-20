@@ -3,6 +3,7 @@ package com.rebate.servlet;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.rebate.dao.AssessItemDetailDao;
+import com.rebate.dao.BaseDao;
 import com.rebate.dao.ProjectDao;
 import com.rebate.dao.ReceivablePayableDao;
 import com.rebate.dao.UpstreamFlowDao;
@@ -23,6 +24,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -109,7 +112,7 @@ public class ReceivablePayableServlet extends BaseServlet {
     private List<AttachFile> fillUrl(HttpServletRequest req, List<AttachFile> files) {
         if (files == null) return null;
         String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
-        for (AttachFile f : files) f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+        for (AttachFile f : files) f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath() + "&fileName=" + (f.getFileName() == null ? "" : java.net.URLEncoder.encode(f.getFileName(), java.nio.charset.StandardCharsets.UTF_8)));
         return files;
     }
 
@@ -156,29 +159,30 @@ public class ReceivablePayableServlet extends BaseServlet {
         r.setFillUser(u.getId());
         r.setFillTime(new Timestamp(System.currentTimeMillis()));
         r.setRemark(WebUtil.getSafeParam(p, "remark"));
-        boolean isNew = r.getId() == null;
-        if (isNew) {
-            r.setId(dao.insertReceivable(r));
-        } else {
-            dao.updateReceivable(r);
-            // 编辑模式：先清掉旧附件关联（assess_item_id 会被重新建立），不删除附件文件，只清空 assess_item_id 临时关联
-        }
-        Map<String, Long> itemIdRowKeyMap = saveReceivableAssessItems(r.getId(), p);
-        // 处理 rowAttachMap：将附件关联到新的 assessItemId
-        handleRowAttachMap(r.getId(), p, itemIdRowKeyMap, "RECEIVABLE");
-        Map<String, Object> ret = new HashMap<>();
-        ret.put("id", r.getId());
-        ret.put("itemIdRowKeyMap", itemIdRowKeyMap);
+        final boolean isNew = r.getId() == null;
+        Map<String, Object> ret = BaseDao.executeInTransaction((Connection conn) -> {
+            if (isNew) {
+                r.setId(dao.insertReceivableWithConn(conn, r));
+            } else {
+                dao.updateReceivableWithConn(conn, r);
+            }
+            Map<String, Long> itemIdRowKeyMap = saveReceivableAssessItems(conn, r.getId(), p);
+            // 处理 rowAttachMap：将附件关联到新的 assessItemId
+            handleRowAttachMap(conn, r.getId(), p, itemIdRowKeyMap, "RECEIVABLE");
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", r.getId());
+            result.put("itemIdRowKeyMap", itemIdRowKeyMap);
+            return result;
+        });
         ResponseUtil.ok(resp, ret);
     }
 
-    private Map<String, Long> saveReceivableAssessItems(Long receivableId, Map<String, Object> p) {
+    private Map<String, Long> saveReceivableAssessItems(Connection conn, long receivableId, Map<String, Object> p) throws SQLException {
         Map<String, Long> rowKeyToItemId = new HashMap<>();
-        if (receivableId == null) return rowKeyToItemId;
-        assessItemDao.deleteByReceivable(receivableId);
+        assessItemDao.deleteByReceivableWithConn(conn, receivableId);
         Object obj = p.get("assessItems");
         if (obj == null) return rowKeyToItemId;
-        String json = new Gson().toJson(obj);
+        String json = obj instanceof String ? (String) obj : new Gson().toJson(obj);
         if ("[]".equals(json) || "{}".equals(json)) return rowKeyToItemId;
         Type t = new TypeToken<List<AssessItemDetail>>() {}.getType();
         List<AssessItemDetail> list = new Gson().fromJson(json, t);
@@ -207,17 +211,17 @@ public class ReceivablePayableServlet extends BaseServlet {
             d.setReceivableId(receivableId);
             d.setPayableId(null);
             d.setSortNo(i + 1);
-            Long newId = assessItemDao.insertReceivableItem(d);
+            Long newId = assessItemDao.insertReceivableItemWithConn(conn, d);
             if (rowKey != null) rowKeyToItemId.put(rowKey, newId);
         }
         return rowKeyToItemId;
     }
 
     /** 处理 rowAttachMap：根据 rowKey -> attachIds 的映射，更新附件的 assess_item_id */
-    private void handleRowAttachMap(Long mainId, Map<String, Object> p, Map<String, Long> rowKeyToItemId, String type) {
+    private void handleRowAttachMap(Connection conn, Long mainId, Map<String, Object> p, Map<String, Long> rowKeyToItemId, String type) throws SQLException {
         Object ram = p.get("rowAttachMap");
         if (ram == null) return;
-        String json = new Gson().toJson(ram);
+        String json = ram instanceof String ? (String) ram : new Gson().toJson(ram);
         if ("[]".equals(json) || "{}".equals(json)) return;
         Type t = new TypeToken<Map<String, List<Long>>>() {}.getType();
         Map<String, List<Long>> rowAttachMap;
@@ -233,9 +237,9 @@ public class ReceivablePayableServlet extends BaseServlet {
             for (Long aid : attachIds) {
                 if (aid == null) continue;
                 if ("RECEIVABLE".equals(type)) {
-                    assessItemDao.updateReceivableAttachItemId(aid, itemId, mainId);
+                    assessItemDao.updateReceivableAttachItemIdWithConn(conn, aid, itemId, mainId);
                 } else {
-                    assessItemDao.updatePayableAttachItemId(aid, itemId, mainId);
+                    assessItemDao.updatePayableAttachItemIdWithConn(conn, aid, itemId, mainId);
                 }
             }
         }
@@ -352,26 +356,29 @@ public class ReceivablePayableServlet extends BaseServlet {
         r.setFillUser(u.getId());
         r.setFillTime(new Timestamp(System.currentTimeMillis()));
         r.setRemark(WebUtil.getSafeParam(p, "remark"));
-        if (r.getId() == null) {
-            r.setId(dao.insertPayable(r));
-        } else {
-            dao.updatePayable(r);
-        }
-        Map<String, Long> itemIdRowKeyMap = savePayableAssessItems(r.getId(), p);
-        handleRowAttachMap(r.getId(), p, itemIdRowKeyMap, "PAYABLE");
-        Map<String, Object> ret = new HashMap<>();
-        ret.put("id", r.getId());
-        ret.put("itemIdRowKeyMap", itemIdRowKeyMap);
+        final boolean isNew = r.getId() == null;
+        Map<String, Object> ret = BaseDao.executeInTransaction((Connection conn) -> {
+            if (isNew) {
+                r.setId(dao.insertPayableWithConn(conn, r));
+            } else {
+                dao.updatePayableWithConn(conn, r);
+            }
+            Map<String, Long> itemIdRowKeyMap = savePayableAssessItems(conn, r.getId(), p);
+            handleRowAttachMap(conn, r.getId(), p, itemIdRowKeyMap, "PAYABLE");
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", r.getId());
+            result.put("itemIdRowKeyMap", itemIdRowKeyMap);
+            return result;
+        });
         ResponseUtil.ok(resp, ret);
     }
 
-    private Map<String, Long> savePayableAssessItems(Long payableId, Map<String, Object> p) {
+    private Map<String, Long> savePayableAssessItems(Connection conn, long payableId, Map<String, Object> p) throws SQLException {
         Map<String, Long> rowKeyToItemId = new HashMap<>();
-        if (payableId == null) return rowKeyToItemId;
-        assessItemDao.deleteByPayable(payableId);
+        assessItemDao.deleteByPayableWithConn(conn, payableId);
         Object obj = p.get("assessItems");
         if (obj == null) return rowKeyToItemId;
-        String json = new Gson().toJson(obj);
+        String json = obj instanceof String ? (String) obj : new Gson().toJson(obj);
         if ("[]".equals(json) || "{}".equals(json)) return rowKeyToItemId;
         Type t = new TypeToken<List<AssessItemDetail>>() {}.getType();
         List<AssessItemDetail> list = new Gson().fromJson(json, t);
@@ -392,7 +399,7 @@ public class ReceivablePayableServlet extends BaseServlet {
             d.setPayableId(payableId);
             d.setReceivableId(null);
             d.setSortNo(i + 1);
-            Long newId = assessItemDao.insertPayableItem(d);
+            Long newId = assessItemDao.insertPayableItemWithConn(conn, d);
             if (rowKey != null) rowKeyToItemId.put(rowKey, newId);
         }
         return rowKeyToItemId;
@@ -533,7 +540,7 @@ public class ReceivablePayableServlet extends BaseServlet {
                 assessItemId > 0 ? assessItemId : null, receivableId, f);
         f.setId(attachId);
         String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
-        f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+        f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath() + "&fileName=" + (f.getFileName() == null ? "" : java.net.URLEncoder.encode(f.getFileName(), java.nio.charset.StandardCharsets.UTF_8)));
         Map<String, Object> ret = new HashMap<>();
         ret.put("file", f);
         if (assessItemId > 0) ret.put("assessItemId", assessItemId);
@@ -559,7 +566,7 @@ public class ReceivablePayableServlet extends BaseServlet {
                 assessItemId > 0 ? assessItemId : null, payableId, f);
         f.setId(attachId);
         String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
-        f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+        f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath() + "&fileName=" + (f.getFileName() == null ? "" : java.net.URLEncoder.encode(f.getFileName(), java.nio.charset.StandardCharsets.UTF_8)));
         Map<String, Object> ret = new HashMap<>();
         ret.put("file", f);
         if (assessItemId > 0) ret.put("assessItemId", assessItemId);

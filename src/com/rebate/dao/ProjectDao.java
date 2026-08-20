@@ -36,6 +36,19 @@ public class ProjectDao {
                 p.getStatus(), p.getOwnerUserId(), p.getCreatedBy(), p.getProjectGroupId(), p.getUndertakingDept());
     }
 
+    public Long insertWithConn(Connection conn, Project p) throws SQLException {
+        String sql = "INSERT INTO prj_project(project_code, project_name, brand, co_product, co_mode, co_year, " +
+                "period_start_date, period_end_date, region, target_scale, expected_rebate, expected_cost, " +
+                "description, bpm_process_id, bpm_project_id, bpm_synced, " +
+                "status, owner_user_id, created_by, project_group_id, undertaking_dept) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        return BaseDao.insertReturnIdWithConn(conn, sql, p.getProjectCode(), p.getProjectName(), p.getBrand(), p.getCoProduct(), p.getCoMode(),
+                p.getCoYear(), p.getPeriodStartDate(), p.getPeriodEndDate(), p.getRegion(), p.getTargetScale(),
+                p.getExpectedRebate(), p.getExpectedCost(),
+                p.getDescription(), p.getBpmProcessId(), p.getBpmProjectId(), p.getBpmSynced(),
+                p.getStatus(), p.getOwnerUserId(), p.getCreatedBy(), p.getProjectGroupId(), p.getUndertakingDept());
+    }
+
     public int update(Project p) {
         String sql = "UPDATE prj_project SET project_code=?, project_name=?, brand=?, co_product=?, co_mode=?, " +
                 "co_year=?, period_start_date=?, period_end_date=?, region=?, target_scale=?, " +
@@ -183,42 +196,100 @@ public class ProjectDao {
     }
 
     /**
-     * 从BPM数据库查询近一年的立项列表（供用户选择引入）
+     * 事务内版本：如果 name 存在 -> 返回 id；不存在则插入后返回新 id。空串返回 null
      */
-    public List<Map<String, Object>> listBpmProjects() {
+    public Long ensureGroupWithConn(Connection conn, String name, Long userId) throws SQLException {
+        if (name == null) return null;
+        String n = name.trim();
+        if (n.isEmpty()) return null;
+        Long existing = BaseDao.queryOneWithConn(conn, "SELECT id FROM prj_project_group WHERE name = ?",
+                (ResultSet rs) -> rs.getLong("id"), n);
+        if (existing != null) return existing;
+        return BaseDao.insertReturnIdWithConn(conn, "INSERT INTO prj_project_group(name, created_by) VALUES (?, ?)",
+                n, userId);
+    }
+
+    /**
+     * 从BPM(Oracle)数据库查询近一年的立项列表
+     * @param projectNameFilter 项目名称筛选（模糊匹配，可为空）
+     */
+    public List<Map<String, Object>> listBpmProjects(String projectNameFilter) {
         String url = AppConfig.get("bpm.jdbc.url");
         if (url == null || url.isEmpty()) {
             throw new RuntimeException("BPM数据库未配置(bpm.jdbc.url)");
         }
+        // 加载 Oracle 驱动
+        String driver = AppConfig.get("bpm.jdbc.driver");
+        if (driver != null && !driver.isEmpty()) {
+            try { Class.forName(driver); } catch (ClassNotFoundException e) {
+                throw new RuntimeException("Oracle JDBC驱动未找到: " + e.getMessage(), e);
+            }
+        }
+
+        // 1. 先从本地查最近1年内已引入的 BPM流程实例ID
+        List<String> importedIds = listImportedBpmProcessIds();
+
+        // 2. 构造 Oracle SQL
+        StringBuilder sql = new StringBuilder(
+                "SELECT ID as bpm_process_id, PROJECT_CODE, PROJECT_NAME, " +
+                "SIGN_FACTORY_BRAND, COOP_BREED, COOP_MODE, COOP_PERIOD, " +
+                "COOP_BEGIN_TIME, COOP_END_TIME, COVER_AREA, " +
+                "PROJECT_TARGET, EXPECT_PROJECT_INCOME, EXPECT_MONEY, PROJECT_CONTENT " +
+                "FROM BO_EU_MARKET_APPROVAL " +
+                "WHERE STATUS = 2 AND OVER_DATE > sysDate - 365 ");
+        List<Object> params = new ArrayList<>();
+        if (projectNameFilter != null && !projectNameFilter.isEmpty()) {
+            sql.append("AND PROJECT_NAME LIKE ? ");
+            params.add("%" + projectNameFilter + "%");
+        }
+        if (!importedIds.isEmpty()) {
+            String placeholders = String.join(",", java.util.Collections.nCopies(importedIds.size(), "?"));
+            sql.append("AND ID NOT IN (").append(placeholders).append(") ");
+            params.addAll(importedIds);
+        }
+        sql.append("ORDER BY OVER_DATE DESC");
+
         List<Map<String, Object>> list = new ArrayList<>();
-        String sql = "SELECT 项目编号, 项目名称, 签约厂牌, 合作品种, 合作模式, 合作年度, " +
-                "起始日期, 终止日期, 覆盖地区, 项目目标规模, 预计收益返利金额, 预计费用, 项目信息简述 " +
-                "FROM rebate_bpm_project WHERE createdTime > SYSDATE - 365 ORDER BY createdTime DESC";
         try (Connection c = DriverManager.getConnection(url,
                 AppConfig.get("bpm.jdbc.username"), AppConfig.get("bpm.jdbc.password"));
-             PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 Map<String, Object> m = new HashMap<>();
-                m.put("projectCode", rs.getString("项目编号"));
-                m.put("projectName", rs.getString("项目名称"));
-                m.put("brand", rs.getString("签约厂牌"));
-                m.put("coProduct", rs.getString("合作品种"));
-                m.put("coMode", rs.getString("合作模式"));
-                m.put("coYear", rs.getString("合作年度"));
-                m.put("periodStartDate", rs.getDate("起始日期") == null ? null : rs.getDate("起始日期").toString());
-                m.put("periodEndDate", rs.getDate("终止日期") == null ? null : rs.getDate("终止日期").toString());
-                m.put("region", rs.getString("覆盖地区"));
-                m.put("targetScale", rs.getBigDecimal("项目目标规模"));
-                m.put("expectedRebate", rs.getBigDecimal("预计收益返利金额"));
-                m.put("expectedCost", rs.getBigDecimal("预计费用"));
-                m.put("description", rs.getString("项目信息简述"));
+                m.put("bpmProcessId", rs.getString("bpm_process_id"));
+                m.put("projectCode", rs.getString("PROJECT_CODE"));
+                m.put("projectName", rs.getString("PROJECT_NAME"));
+                m.put("brand", rs.getString("SIGN_FACTORY_BRAND"));
+                m.put("coProduct", rs.getString("COOP_BREED"));
+                m.put("coMode", rs.getString("COOP_MODE"));
+                m.put("coYear", rs.getString("COOP_PERIOD"));
+                m.put("periodStartDate", rs.getDate("COOP_BEGIN_TIME") == null ? null : rs.getDate("COOP_BEGIN_TIME").toString());
+                m.put("periodEndDate", rs.getDate("COOP_END_TIME") == null ? null : rs.getDate("COOP_END_TIME").toString());
+                m.put("region", rs.getString("COVER_AREA"));
+                m.put("targetScale", rs.getBigDecimal("PROJECT_TARGET"));
+                m.put("expectedRebate", rs.getBigDecimal("EXPECT_PROJECT_INCOME"));
+                m.put("expectedCost", rs.getBigDecimal("EXPECT_MONEY"));
+                m.put("description", rs.getString("PROJECT_CONTENT"));
                 list.add(m);
             }
             return list;
         } catch (SQLException e) {
-            throw new RuntimeException("从BPM获取立项数据失败: " + e.getMessage(), e);
+            throw new RuntimeException("从BPM(Oracle)获取立项数据失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 查询本地最近1年内已引入的 BPM流程实例ID 列表（用于排除重复引入）
+     */
+    public List<String> listImportedBpmProcessIds() {
+        return BaseDao.query(
+                "SELECT DISTINCT bpm_process_id FROM prj_project " +
+                "WHERE bpm_process_id IS NOT NULL AND bpm_process_id != '' " +
+                "AND created_at > NOW() - INTERVAL '1 year'",
+                rs -> rs.getString("bpm_process_id"));
     }
 
     private Project map(ResultSet rs) throws SQLException {

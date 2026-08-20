@@ -1,5 +1,6 @@
 package com.rebate.servlet;
 
+import com.rebate.dao.BaseDao;
 import com.rebate.dao.ProjectDao;
 import com.rebate.model.Project;
 import com.rebate.model.UserContext;
@@ -125,10 +126,20 @@ public class ProjectServlet extends BaseServlet {
     }
 
     private void doAdd(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, UserContext u) {
-        Project po = parseProject(p, u.getId());
-        po.setCreatedBy(u.getId());
-        po.setStatus("NEW");
-        Long id = projectDao.insert(po);
+        Long id = BaseDao.executeInTransaction(conn -> {
+            Project po = parseProjectFields(p);
+            po.setCreatedBy(u.getId());
+            po.setStatus("NEW");
+            // 分组懒创建（事务内）：优先用 projectGroupId（已有分组）；否则用 projectGroupName 走懒创建
+            Long gId = WebUtil.getLong(p, "projectGroupId", 0);
+            String gName = WebUtil.getSafeParam(p, "projectGroupName");
+            if (gId != null && gId > 0) {
+                po.setProjectGroupId(gId);
+            } else if (gName != null && !gName.trim().isEmpty()) {
+                po.setProjectGroupId(projectDao.ensureGroupWithConn(conn, gName, u.getId()));
+            }
+            return projectDao.insertWithConn(conn, po);
+        });
         ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", id));
     }
 
@@ -151,6 +162,7 @@ public class ProjectServlet extends BaseServlet {
 
     /**
      * 从 BPM 弹出窗口选择立项后，判定：已存在则更新，不存在则新增
+     * 新增时创建人=当前用户，创建时间=当前时间，bpmProcessId=BPM流程实例ID
      */
     private void doImportBpm(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, UserContext u) {
         String projectCode = WebUtil.getSafeParam(p, "projectCode");
@@ -158,6 +170,7 @@ public class ProjectServlet extends BaseServlet {
             ResponseUtil.fail(resp, "项目编号不能为空");
             return;
         }
+        String bpmProcessId = WebUtil.getSafeParam(p, "bpmProcessId");
         // 检查是否已存在
         Project existing = projectDao.findByProjectCode(projectCode);
         if (existing != null) {
@@ -176,10 +189,13 @@ public class ProjectServlet extends BaseServlet {
             existing.setExpectedRebate(toBd(p.get("expectedRebate")));
             existing.setExpectedCost(toBd(p.get("expectedCost")));
             existing.setDescription(WebUtil.getSafeParam(p, "description"));
+            if (bpmProcessId != null && !bpmProcessId.isEmpty()) {
+                existing.setBpmProcessId(bpmProcessId);
+            }
             projectDao.update(existing);
             ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", existing.getId()));
         } else {
-            // 新增
+            // 新增：创建人=当前用户，创建时间=当前时间，引入后可自由编辑
             Project po = new Project();
             po.setProjectCode(projectCode);
             po.setProjectName(WebUtil.getSafeParam(p, "projectName"));
@@ -196,6 +212,7 @@ public class ProjectServlet extends BaseServlet {
             po.setExpectedRebate(toBd(p.get("expectedRebate")));
             po.setExpectedCost(toBd(p.get("expectedCost")));
             po.setDescription(WebUtil.getSafeParam(p, "description"));
+            po.setBpmProcessId(bpmProcessId);
             po.setBpmProjectId(projectCode);
             po.setBpmSynced(1);
             po.setStatus("NEW");
@@ -207,27 +224,11 @@ public class ProjectServlet extends BaseServlet {
 
     /**
      * 查询 BPM 近一年立项列表（供用户选择）
+     * 支持按项目名称模糊筛选
      */
     private void doListBpmProjects(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
-        List<Map<String, Object>> list = projectDao.listBpmProjects();
-        // 标记本地已存在的项目编号
-        List<String> codes = new java.util.ArrayList<>();
-        for (Map<String, Object> row : list) {
-            Object code = row.get("projectCode");
-            if (code != null && !code.toString().trim().isEmpty()) {
-                codes.add(code.toString());
-            }
-        }
-        java.util.Set<String> existingCodes = new java.util.HashSet<>();
-        for (String code : codes) {
-            if (projectDao.findByProjectCode(code) != null) {
-                existingCodes.add(code);
-            }
-        }
-        for (Map<String, Object> row : list) {
-            Object code = row.get("projectCode");
-            row.put("isExisting", code != null && existingCodes.contains(code.toString()));
-        }
+        String projectName = WebUtil.getSafeParam(p, "projectName");
+        List<Map<String, Object>> list = projectDao.listBpmProjects(projectName);
         ResponseUtil.ok(resp, list);
     }
 
@@ -241,7 +242,7 @@ public class ProjectServlet extends BaseServlet {
         ResponseUtil.ok(resp, projects);
     }
 
-    private Project parseProject(Map<String, Object> p, Long userId) {
+    private Project parseProjectFields(Map<String, Object> p) {
         Project po = new Project();
         po.setProjectCode(WebUtil.getSafeParam(p, "projectCode"));
         po.setProjectName(WebUtil.getSafeParam(p, "projectName"));
@@ -261,7 +262,11 @@ public class ProjectServlet extends BaseServlet {
         po.setOwnerUserId(WebUtil.getLong(p, "ownerUserId", 0) == 0 ? null : WebUtil.getLong(p, "ownerUserId", 0));
         po.setStatus(WebUtil.getSafeParam(p, "status"));
         po.setUndertakingDept(WebUtil.getSafeParam(p, "undertakingDept"));
+        return po;
+    }
 
+    private Project parseProject(Map<String, Object> p, Long userId) {
+        Project po = parseProjectFields(p);
         // 分组：优先用 projectGroupId（已有分组）；如果前端传的是 projectGroupName（文本或新建），走懒创建
         Long gId = WebUtil.getLong(p, "projectGroupId", 0);
         String gName = WebUtil.getSafeParam(p, "projectGroupName");

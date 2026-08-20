@@ -22,70 +22,96 @@ import java.util.Map;
 public class ReceivedPaidDao {
 
     /**
-     * 从BPM数据库按项目编号获取可用的实收数据列表
-     * @param projectCode 项目编号
+     * 从BPM（Oracle）数据库按时间区间+发票号查询实收数据
+     * @param startDate 起始日期（yyyy-MM-dd）
+     * @param endDate   截止日期（yyyy-MM-dd）
+     * @param invoiceNo 发票号码（部分匹配，可为空）
+     * @return BPM数据列表
      */
-    public List<Map<String, Object>> listBpmReceived(String projectCode) {
+    public List<Map<String, Object>> listBpmReceived(String startDate, String endDate, String invoiceNo) {
         String url = AppConfig.get("bpm.jdbc.url");
         if (url == null || url.isEmpty()) {
             throw new RuntimeException("BPM数据库未配置(bpm.jdbc.url)");
         }
+        // 加载 Oracle 驱动
+        String driver = AppConfig.get("bpm.jdbc.driver");
+        if (driver != null && !driver.isEmpty()) {
+            try { Class.forName(driver); } catch (ClassNotFoundException e) {
+                throw new RuntimeException("Oracle JDBC驱动未找到，请将ojdbc8.jar放入WEB-INF/lib: " + e.getMessage(), e);
+            }
+        }
+
+        // 1. 先从本地 prj_received 查已引入的 BPM流程实例ID
+        List<String> importedIds = listImportedBpmProcessIds();
+
+        // 2. 构造 Oracle SQL
+        StringBuilder sql = new StringBuilder(
+                "select a.id as bpm_process_id, b.PROCESS_STATE as status, " +
+                "c.userName as applicant, d.departmentName as apply_dept, " +
+                "to_char(b.createDate,'yyyy-MM-dd') as apply_date, " +
+                "b.finance_code as finance_code, B.BELONG_TO_YEAR as belong_to_year, " +
+                "A.SECONDARY_REBATE_AMOUNT as secondary_rebate_amount, " +
+                "a.REBATE_AMOUNT as rebate_amount, A.SUPPLIER as supplier, " +
+                "A.REBATE_PROJECT as rebate_project, A.INVOICE_NUMBER as invoice_number " +
+                "from BO_EU_COLLECTION_PAY_SUB a " +
+                "inner join BO_EU_COLLECTION_PAY_REBATE b on a.bindid = b.bindid " +
+                "inner join orgUser c on b.createUser = c.userId " +
+                "inner join orgDepartment d on c.departMentId = d.id " +
+                "where b.PROCESS_STATE = '审批完成' " +
+                "and b.belong_to_company = '营销服务中心' " +
+                "and b.createDate >= to_date(?, 'yyyy-MM-dd') " +
+                "and b.createDate < to_date(?, 'yyyy-MM-dd') + 1 ");
+        List<Object> params = new ArrayList<>();
+        params.add(startDate);
+        params.add(endDate);
+        if (invoiceNo != null && !invoiceNo.isEmpty()) {
+            sql.append("and A.INVOICE_NUMBER like ? ");
+            params.add("%" + invoiceNo + "%");
+        }
+        if (!importedIds.isEmpty()) {
+            String placeholders = String.join(",", java.util.Collections.nCopies(importedIds.size(), "?"));
+            sql.append("and a.id not in (").append(placeholders).append(") ");
+            params.addAll(importedIds);
+        }
+        sql.append("order by b.createDate desc");
+
         List<Map<String, Object>> list = new ArrayList<>();
-        String sql = "SELECT 返利类型, 记账日期, 财务编码, 发票号码, 返利金额, 销售税率, " +
-                "价税合计, 部门应得, 收款部门, 项目编号 " +
-                "FROM rebate_received WHERE 项目编号 = ? " +
-                "ORDER BY 记账日期 DESC";
         try (Connection c = DriverManager.getConnection(url,
                 AppConfig.get("bpm.jdbc.username"), AppConfig.get("bpm.jdbc.password"));
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, projectCode);
+             PreparedStatement ps = c.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 Map<String, Object> m = new HashMap<>();
-                m.put("rebateType", rs.getString("返利类型"));
-                m.put("applyDate", rs.getDate("记账日期") == null ? null : rs.getDate("记账日期").toString());
-                m.put("financeCode", rs.getString("财务编码"));
-                m.put("invoiceNo", rs.getString("发票号码"));
-                m.put("rebateAmount", rs.getBigDecimal("返利金额"));
-                m.put("taxRate", rs.getBigDecimal("销售税率"));
-                m.put("totalPriceTax", rs.getBigDecimal("价税合计"));
-                m.put("deptShare", rs.getBigDecimal("部门应得"));
-                m.put("receiveDept", rs.getString("收款部门"));
-                m.put("projectBpmId", rs.getString("项目编号"));
+                m.put("bpmProcessId", rs.getString("bpm_process_id"));
+                m.put("status", rs.getString("status"));
+                m.put("applicant", rs.getString("applicant"));
+                m.put("applyDept", rs.getString("apply_dept"));
+                m.put("applyDate", rs.getString("apply_date"));
+                m.put("financeCode", rs.getString("finance_code"));
+                m.put("belongToYear", rs.getString("belong_to_year"));
+                m.put("secondaryRebateAmount", rs.getBigDecimal("secondary_rebate_amount"));
+                m.put("rebateAmount", rs.getBigDecimal("rebate_amount"));
+                m.put("supplier", rs.getString("supplier"));
+                m.put("rebateProject", rs.getString("rebate_project"));
+                m.put("invoiceNo", rs.getString("invoice_number"));
                 list.add(m);
             }
             return list;
         } catch (SQLException e) {
-            throw new RuntimeException("从BPM获取实收数据失败: " + e.getMessage(), e);
+            throw new RuntimeException("从BPM(Oracle)获取实收数据失败: " + e.getMessage(), e);
         }
     }
 
     /**
-     * 按BPM来源+财务编码查询是否已引入（避免重复）
+     * 查询本地已引入的 BPM流程实例ID 列表（用于排除重复引入）
      */
-    public int countByBpmFinanceCode(String financeCode) {
-        if (financeCode == null || financeCode.isEmpty()) return 0;
-        Long cnt = BaseDao.queryOne(
-                "SELECT COUNT(*) FROM prj_received WHERE finance_code=?",
-                rs -> rs.getLong(1), financeCode);
-        return cnt == null ? 0 : cnt.intValue();
-    }
-
-    /**
-     * 批量查询已引入的财务编码（用于前端标记）
-     * @param financeCodes 财务编码列表
-     * @return 已存在的财务编码Set
-     */
-    public java.util.Set<String> findImportedFinanceCodes(List<String> financeCodes) {
-        if (financeCodes == null || financeCodes.isEmpty()) {
-            return new java.util.HashSet<>();
-        }
-        String placeholders = String.join(",", java.util.Collections.nCopies(financeCodes.size(), "?"));
-        String sql = "SELECT finance_code FROM prj_received WHERE finance_code IN (" + placeholders + ")";
-        List<String> result = BaseDao.query(sql,
-                (java.sql.ResultSet rs) -> rs.getString("finance_code"),
-                financeCodes.toArray());
-        return new java.util.HashSet<>(result);
+    public List<String> listImportedBpmProcessIds() {
+        return BaseDao.query(
+                "SELECT DISTINCT bpm_process_id FROM prj_received WHERE bpm_process_id IS NOT NULL AND bpm_process_id != ''",
+                rs -> rs.getString("bpm_process_id"));
     }
 
     public Long insertReceived(Received r) {
@@ -96,6 +122,50 @@ public class ReceivedPaidDao {
                 r.getProjectId(), r.getStage(), r.getRebateType(), r.getApplicant(), r.getApplyDept(),
                 r.getApplyDate(), r.getFinanceCode(), r.getRebateAmount(), r.getTaxRate(), r.getTotalPriceTax(),
                 r.getDeptShare(), r.getInvoiceNo(), r.getReceiveDept(), r.getStatus() == null ? "DRAFT" : r.getStatus(),
+                r.getRemark());
+    }
+
+    /**
+     * 从BPM引入的实收插入（包含 bpm_process_id、三个确认人/时间、final_time）
+     */
+    public Long insertReceivedFromBpm(Received r) {
+        return BaseDao.insertReturnId(
+                "INSERT INTO prj_received(project_id, stage, rebate_type, applicant, apply_dept, " +
+                "apply_date, finance_code, rebate_amount, tax_rate, total_price_tax, dept_share, invoice_no, " +
+                "receive_dept, status, bpm_process_id, purchase_user, purchase_time, op_user, op_time, " +
+                "finance_user, finance_time, final_time, remark) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                r.getProjectId(), r.getStage(), r.getRebateType(), r.getApplicant(), r.getApplyDept(),
+                r.getApplyDate(), r.getFinanceCode(), r.getRebateAmount(), r.getTaxRate(), r.getTotalPriceTax(),
+                r.getDeptShare(), r.getInvoiceNo(), r.getReceiveDept(),
+                r.getStatus() == null ? "FINAL" : r.getStatus(),
+                r.getBpmProcessId(),
+                r.getPurchaseUser(), r.getPurchaseTime(),
+                r.getOpUser(), r.getOpTime(),
+                r.getFinanceUser(), r.getFinanceTime(),
+                r.getFinalTime(),
+                r.getRemark());
+    }
+
+    /**
+     * 事务内版本：从BPM引入的实收插入
+     */
+    public Long insertReceivedFromBpmWithConn(Connection conn, Received r) throws SQLException {
+        return BaseDao.insertReturnIdWithConn(conn,
+                "INSERT INTO prj_received(project_id, stage, rebate_type, applicant, apply_dept, " +
+                "apply_date, finance_code, rebate_amount, tax_rate, total_price_tax, dept_share, invoice_no, " +
+                "receive_dept, status, bpm_process_id, purchase_user, purchase_time, op_user, op_time, " +
+                "finance_user, finance_time, final_time, remark) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                r.getProjectId(), r.getStage(), r.getRebateType(), r.getApplicant(), r.getApplyDept(),
+                r.getApplyDate(), r.getFinanceCode(), r.getRebateAmount(), r.getTaxRate(), r.getTotalPriceTax(),
+                r.getDeptShare(), r.getInvoiceNo(), r.getReceiveDept(),
+                r.getStatus() == null ? "FINAL" : r.getStatus(),
+                r.getBpmProcessId(),
+                r.getPurchaseUser(), r.getPurchaseTime(),
+                r.getOpUser(), r.getOpTime(),
+                r.getFinanceUser(), r.getFinanceTime(),
+                r.getFinalTime(),
                 r.getRemark());
     }
 

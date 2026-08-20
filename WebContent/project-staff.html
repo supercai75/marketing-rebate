@@ -361,8 +361,8 @@
     }
 
     function downloadTemplate() {
-        var token = RB.token ? RB.token : (localStorage.getItem('rb_token') || '');
-        var url = '/api/project-staff?op=downloadStaffTemplate&token=' + encodeURIComponent(token);
+        var token = RB.getToken();
+        var url = './api/project-staff?op=downloadStaffTemplate&token=' + encodeURIComponent(token);
         window.open(url, '_blank');
     }
 
@@ -383,35 +383,24 @@
         var fd = new FormData();
         fd.append('file', fileInput.files[0]);
         fd.append('projectId', pid);
-        var token = RB.token ? RB.token : (localStorage.getItem('rb_token') || '');
-        fd.append('token', token);
 
         RB.showLoading();
-        $.ajax({
-            url: '/api/project-staff?op=importStaffExcel',
-            type: 'POST',
-            data: fd,
-            processData: false,
-            contentType: false,
-            success: function (r) {
-                RB.hideLoading();
-                if (r.code === 0) {
-                    var msg = '导入完成：成功 ' + (r.data.ok || 0) + ' 条，失败 ' + (r.data.fail || 0) + ' 条';
-                    if (r.data.errors && r.data.errors.length > 0) {
-                        msg += '\n错误详情：\n' + r.data.errors.slice(0, 20).join('\n');
-                        if (r.data.errors.length > 20) msg += '\n... 共 ' + r.data.errors.length + ' 条错误，仅显示前20条';
-                    }
-                    alert(msg);
-                    RB.closeModal('modalImport');
-                    load();
-                } else {
-                    RB.toast(r.msg || '导入失败', 'error');
+        RB.api('/api/project-staff?op=importStaffExcel', 'POST', fd).done(function (r) {
+            RB.hideLoading();
+            if (r && r.code === 0) {
+                var msg = '导入完成：成功 ' + (r.data.ok || 0) + ' 条，失败 ' + (r.data.fail || 0) + ' 条';
+                if (r.data.errors && r.data.errors.length > 0) {
+                    msg += '\n错误详情：\n' + r.data.errors.slice(0, 20).join('\n');
+                    if (r.data.errors.length > 20) msg += '\n... 共 ' + r.data.errors.length + ' 条错误，仅显示前20条';
                 }
-            },
-            error: function () {
-                RB.hideLoading();
-                RB.toast('网络异常', 'error');
+                alert(msg);
+                RB.closeModal('modalImport');
+                load();
+            } else if (r && r.code !== 401) {
+                RB.toast(r.msg || '导入失败', 'error');
             }
+        }).fail(function () {
+            RB.hideLoading();
         });
     }
 </script>

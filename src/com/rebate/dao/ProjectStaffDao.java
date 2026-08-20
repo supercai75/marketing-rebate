@@ -3,6 +3,7 @@ package com.rebate.dao;
 import com.rebate.model.ProjectStaff;
 
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -46,6 +47,12 @@ public class ProjectStaffDao {
     public Long insert(ProjectStaff s) {
         String sql = "INSERT INTO prj_project_staff(project_id, user_name, user_code, dept_name, position, work_type, labor_cost_ratio, expense_ratio) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql, s.getProjectId(), s.getUserName(), s.getUserCode(), s.getDeptName(),
+                s.getPosition(), s.getWorkType(), s.getLaborCostRatio(), s.getExpenseRatio());
+    }
+
+    public Long insertWithConn(Connection conn, ProjectStaff s) throws SQLException {
+        String sql = "INSERT INTO prj_project_staff(project_id, user_name, user_code, dept_name, position, work_type, labor_cost_ratio, expense_ratio) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
+        return BaseDao.insertReturnIdWithConn(conn, sql, s.getProjectId(), s.getUserName(), s.getUserCode(), s.getDeptName(),
                 s.getPosition(), s.getWorkType(), s.getLaborCostRatio(), s.getExpenseRatio());
     }
 

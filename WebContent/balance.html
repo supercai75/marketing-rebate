@@ -209,28 +209,20 @@
 
     function load() {
         $('#loadingOverlay').show();
-        RB.post('/api/overview?op=balanceTable', { coYear: $('#selYear').val() }).done(function (r) {
+        var params = {
+            coYear: $('#selYear').val(),
+            undertakingDept: $('#selUndertakingDept').val(),
+            projectGroupId: $('#selProjectGroup').val()
+        };
+        var selProjectId = $('#selProject').val();
+        RB.post('/api/overview?op=balanceTable', params).done(function (r) {
             if (r.code !== 0) { RB.toast(r.msg, 'error'); $('#loadingOverlay').hide(); return; }
-            var projectId = $('#selProject').val();
-            var dept = $('#selUndertakingDept').val();
-            var groupId = $('#selProjectGroup').val();
-            var filteredData = r.data || [];
-            if (projectId) {
-                filteredData = filteredData.filter(function(item) {
-                    return String(item.projectId) === String(projectId);
-                });
+            var rows = r.data || [];
+            if (selProjectId) {
+                // 单个项目过滤：用户通过"选择单个项目"按钮指定时，再收窄一行
+                rows = rows.filter(function(item) { return String(item.projectId) === String(selProjectId); });
             }
-            if (dept) {
-                filteredData = filteredData.filter(function(item) {
-                    return String(item.undertakingDept || '') === String(dept);
-                });
-            }
-            if (groupId) {
-                filteredData = filteredData.filter(function(item) {
-                    return String(item.projectGroupId || '') === String(groupId);
-                });
-            }
-            render(filteredData);
+            render(rows);
             $('#loadingOverlay').hide();
         }).fail(function() {
             $('#loadingOverlay').hide();
@@ -340,8 +332,13 @@
 
     function exportXlsx() {
         $('#loadingOverlay').show();
-        var url = './api/overview?op=exportBalance&coYear=' + $('#selYear').val() + '&projectId=' + $('#selProject').val();
-        
+        var params = [
+            'coYear=' + encodeURIComponent($('#selYear').val() || ''),
+            'projectId=' + encodeURIComponent($('#selProject').val() || ''),
+            'undertakingDept=' + encodeURIComponent($('#selUndertakingDept').val() || ''),
+            'projectGroupId=' + encodeURIComponent($('#selProjectGroup').val() || '')
+        ];
+        var url = './api/overview?op=exportBalance&' + params.join('&');
         downloadWithXhr(url, '项目平衡表.xlsx');
     }
 

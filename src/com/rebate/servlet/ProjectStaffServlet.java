@@ -1,5 +1,6 @@
 package com.rebate.servlet;
 
+import com.rebate.dao.BaseDao;
 import com.rebate.dao.ProjectStaffDao;
 import com.rebate.model.ProjectStaff;
 import com.rebate.model.UserContext;
@@ -9,7 +10,6 @@ import com.rebate.util.TokenUtil;
 import com.rebate.util.WebUtil;
 
 import javax.servlet.annotation.MultipartConfig;
-import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
@@ -19,7 +19,6 @@ import java.util.*;
 /**
  * 项目作业人员管理
  */
-@WebServlet("/api/project-staff")
 @MultipartConfig
 public class ProjectStaffServlet extends BaseServlet {
 
@@ -153,8 +152,8 @@ public class ProjectStaffServlet extends BaseServlet {
         if (file == null) { ResponseUtil.fail(resp, "请选择要导入的Excel文件"); return; }
 
         List<Map<String, String>> rows = ExcelUtil.readSheetAsMap(file.getInputStream());
-        int ok = 0, fail = 0;
         List<String> errs = new ArrayList<>();
+        List<ProjectStaff> toInsert = new ArrayList<>();
         Map<String, String> workTypeMap = new HashMap<>();
         workTypeMap.put("全职", "FULL"); workTypeMap.put("FULL", "FULL");
         workTypeMap.put("兼职", "PART"); workTypeMap.put("PART", "PART");
@@ -183,15 +182,28 @@ public class ProjectStaffServlet extends BaseServlet {
                 s.setWorkType(wt);
                 s.setLaborCostRatio(labor);
                 s.setExpenseRatio(expense);
-                dao.insert(s);
-                ok++;
+                toInsert.add(s);
             } catch (Exception ex) {
-                fail++;
                 errs.add("第" + (i + 2) + "行：" + ex.getMessage());
             }
         }
         Map<String, Object> r = new HashMap<>();
-        r.put("ok", ok); r.put("fail", fail); r.put("errors", errs);
+        if (!errs.isEmpty()) {
+            // 有错误行则整体回滚（未执行任何插入），返回错误报告
+            r.put("ok", 0);
+            r.put("fail", errs.size());
+            r.put("errors", errs);
+            r.put("message", "存在错误行，全部回滚，未导入任何数据");
+            ResponseUtil.ok(resp, r);
+            return;
+        }
+        int ok = BaseDao.executeInTransaction(conn -> {
+            for (ProjectStaff s : toInsert) {
+                dao.insertWithConn(conn, s);
+            }
+            return toInsert.size();
+        });
+        r.put("ok", ok); r.put("fail", 0); r.put("errors", errs);
         ResponseUtil.ok(resp, r);
     }
 

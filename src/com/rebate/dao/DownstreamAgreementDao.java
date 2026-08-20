@@ -2,6 +2,7 @@ package com.rebate.dao;
 
 import com.rebate.model.DownstreamAgreement;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -20,8 +21,33 @@ public class DownstreamAgreementDao {
                 "policy_detail, rebate_calc_rule, settle_basis, settle_ratio, rebate_pay_type, rebate_pay_time, " +
                 "team_assess_settle, required_staff_num, formal_count, formal_names, informal_count, informal_names, " +
                 "created_by) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql,
+                a.getProjectId(), a.getUpstreamId(), a.getVersion(), a.getIsCurrent(), a.getBpmAgreeId(),
+                a.getUpstreamName(), a.getUpstreamNo(), a.getAgreementName(), a.getAgreementNo(),
+                a.getPeriodStartDate(), a.getPeriodEndDate(), a.getRegion(), a.getTargetTerminal(),
+                a.getCalcBasis(), a.getTargetScale(), a.getCalcMethod(),
+                a.getCalcMode() != null ? a.getCalcMode() : "PROGRESSIVE",
+                a.getRebateCalcBasis(),
+                a.getDistributor(), a.getDistributorType(),
+                a.getTargetDept(), a.getFlowContact(), a.getFlowPhone(), a.getFlowChannel(), a.getFlowProvideMethod(),
+                a.getStage1Target(), a.getStage2Target(), a.getStage3Target(), a.getStage4Target(), a.getOwnerUserId(),
+                a.getPolicyDetail(), a.getRebateCalcRule(), a.getSettleBasis(), a.getSettleRatio(),
+                a.getRebatePayType(), a.getRebatePayTime(), a.getTeamAssessSettle(), a.getRequiredStaffNum(),
+                a.getFormalCount(), a.getFormalNames(), a.getInformalCount(), a.getInformalNames(), a.getCreatedBy());
+    }
+
+    public Long insertWithConn(Connection conn, DownstreamAgreement a) throws SQLException {
+        String sql = "INSERT INTO prj_downstream_agreement(project_id, upstream_id, version, is_current, bpm_agree_id, " +
+                "upstream_name, upstream_no, agreement_name, agreement_no, period_start_date, period_end_date, " +
+                "region, target_terminal, calc_basis, target_scale, calc_method, calc_mode, rebate_calc_basis, distributor, distributor_type, " +
+                "target_dept, flow_contact, flow_phone, flow_channel, flow_provide_method, " +
+                "stage1_target, stage2_target, stage3_target, stage4_target, owner_user_id, " +
+                "policy_detail, rebate_calc_rule, settle_basis, settle_ratio, rebate_pay_type, rebate_pay_time, " +
+                "team_assess_settle, required_staff_num, formal_count, formal_names, informal_count, informal_names, " +
+                "created_by) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        return BaseDao.insertReturnIdWithConn(conn, sql,
                 a.getProjectId(), a.getUpstreamId(), a.getVersion(), a.getIsCurrent(), a.getBpmAgreeId(),
                 a.getUpstreamName(), a.getUpstreamNo(), a.getAgreementName(), a.getAgreementNo(),
                 a.getPeriodStartDate(), a.getPeriodEndDate(), a.getRegion(), a.getTargetTerminal(),
@@ -68,6 +94,11 @@ public class DownstreamAgreementDao {
                 projectId, agreementNo, excludeId);
     }
 
+    public int markNotCurrentWithConn(Connection conn, long projectId, String agreementNo, long excludeId) throws SQLException {
+        return BaseDao.updateWithConn(conn, "UPDATE prj_downstream_agreement SET is_current=0 WHERE project_id=? AND agreement_no=? AND id<>?",
+                projectId, agreementNo, excludeId);
+    }
+
     /**
      * 获取当前最新版本（is_current=1）的协议ID，用于新版本创建前识别上一个生效版本。
      * 若没有 current 版本，返回 null。
@@ -94,6 +125,24 @@ public class DownstreamAgreementDao {
         affected[3] = BaseDao.update("UPDATE flow_split_record         SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
         affected[4] = BaseDao.update("UPDATE prj_payable              SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
         affected[5] = BaseDao.update("UPDATE prj_paid                 SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        return affected;
+    }
+
+    /**
+     * 迁移下游协议关联业务数据（事务内版本）：从旧 agreement_id 移动到新 agreement_id。
+     * SQL 与 {@link #migrateAssociatedData(long, long)} 完全一致，仅改为使用外部 Connection。
+     */
+    public int[] migrateAssociatedDataWithConn(Connection conn, long oldAgreementId, long newAgreementId) throws SQLException {
+        if (oldAgreementId <= 0 || newAgreementId <= 0 || oldAgreementId == newAgreementId) {
+            return new int[0];
+        }
+        int[] affected = new int[6];
+        affected[0] = BaseDao.updateWithConn(conn, "UPDATE flow_downstream_batch    SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[1] = BaseDao.updateWithConn(conn, "UPDATE flow_downstream_record   SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[2] = BaseDao.updateWithConn(conn, "UPDATE flow_downstream_final    SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[3] = BaseDao.updateWithConn(conn, "UPDATE flow_split_record         SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[4] = BaseDao.updateWithConn(conn, "UPDATE prj_payable              SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
+        affected[5] = BaseDao.updateWithConn(conn, "UPDATE prj_paid                 SET agreement_id=? WHERE agreement_id=?", newAgreementId, oldAgreementId);
         return affected;
     }
 

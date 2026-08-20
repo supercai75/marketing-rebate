@@ -1,5 +1,6 @@
 package com.rebate.servlet;
 
+import com.rebate.dao.BaseDao;
 import com.rebate.dao.ProjectDao;
 import com.rebate.dao.ReceivedPaidDao;
 import com.rebate.model.Paid;
@@ -14,6 +15,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -244,61 +246,29 @@ public class ReceivedPaidServlet extends BaseServlet {
     // ====================== 从BPM引入实收 ======================
 
     /**
-     * 按项目编号从BPM数据库查询可用的实收数据（供用户选择）
+     * 从BPM(Oracle)按时间区间+发票号查询可用实收数据
+     * 参数：startDate, endDate, invoiceNo（可选）
      */
     private void doListBpmReceived(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) {
-        long projectId = WebUtil.getLong(p, "projectId", 0);
-        if (projectId <= 0) {
-            ResponseUtil.fail(resp, "请选择项目");
+        String startDate = WebUtil.getSafeParam(p, "startDate");
+        String endDate = WebUtil.getSafeParam(p, "endDate");
+        String invoiceNo = WebUtil.getSafeParam(p, "invoiceNo");
+        if (startDate == null || startDate.isEmpty() || endDate == null || endDate.isEmpty()) {
+            ResponseUtil.fail(resp, "请填写时间区间");
             return;
         }
-        Project project = projectDao.findById(projectId);
-        if (project == null) {
-            ResponseUtil.fail(resp, "项目不存在");
-            return;
-        }
-        String projectCode = project.getProjectCode();
-        if (projectCode == null || projectCode.isEmpty()) {
-            ResponseUtil.ok(resp, Collections.emptyList());
-            return;
-        }
-        List<Map<String, Object>> list = dao.listBpmReceived(projectCode);
-        // 批量查询已引入的财务编码，避免N次单条查询
-        List<String> financeCodes = new ArrayList<>();
-        for (Map<String, Object> row : list) {
-            Object fc = row.get("financeCode");
-            if (fc != null && !fc.toString().trim().isEmpty()) {
-                financeCodes.add(fc.toString());
-            }
-        }
-        java.util.Set<String> importedSet = dao.findImportedFinanceCodes(financeCodes);
-        // 附加 isImported 标记
-        for (Map<String, Object> row : list) {
-            Object fc = row.get("financeCode");
-            row.put("isImported", fc != null && importedSet.contains(fc.toString()));
-        }
+        List<Map<String, Object>> list = dao.listBpmReceived(startDate, endDate, invoiceNo);
         ResponseUtil.ok(resp, list);
     }
 
     /**
-     * 用户确认引入：将一条BPM数据按阶段拆分为多条实收记录（终稿状态）
-     *
-     * 请求参数：
-     *   projectId: 项目ID
-     *   rebateType: 返利类型（票折/服务费）
-     *   applyDate: 申请日期
-     *   financeCode: 财务编码
-     *   invoiceNo: 发票号码
-     *   rebateAmount: 返利金额
-     *   taxRate: 销售税率
-     *   totalPriceTax: 价税合计
-     *   receiveDept: 收款部门
-     *   stageOne: 阶段一金额（部门应得分配到阶段一的金额）
-     *   stageTwo: 阶段二金额
-     *   stageThree: 阶段三金额
-     *   stageFour: 阶段四金额
-     *   (四个阶段之和必须等于BPM的部门应得)
+     * 批量从BPM引入实收
+     * 参数：projectId, items(JSON数组)
+     * 每个item: bpmProcessId, applicant, applyDept, applyDate, financeCode, belongToYear,
+     *           secondaryRebateAmount, rebateAmount, supplier, rebateProject, invoiceNo,
+     *           taxRate, deptShare, rebateType
      */
+    @SuppressWarnings("unchecked")
     private void doImportFromBpm(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p,
                                  com.rebate.model.UserContext u) {
         long projectId = WebUtil.getLong(p, "projectId", 0);
@@ -306,76 +276,77 @@ public class ReceivedPaidServlet extends BaseServlet {
             ResponseUtil.fail(resp, "请选择项目");
             return;
         }
-
-        String rebateType = WebUtil.getSafeParam(p, "rebateType");
-        String applyDate = WebUtil.getSafeParam(p, "applyDate");
-        String financeCode = WebUtil.getSafeParam(p, "financeCode");
-        String invoiceNo = WebUtil.getSafeParam(p, "invoiceNo");
-        BigDecimal rebateAmount = toBd(p.get("rebateAmount"));
-        BigDecimal taxRate = toBd(p.get("taxRate"));
-        BigDecimal totalPriceTax = toBd(p.get("totalPriceTax"));
-        String receiveDeptStr = WebUtil.getSafeParam(p, "receiveDept");
-
-        BigDecimal stageOne = toBd(p.get("stageOne"));
-        BigDecimal stageTwo = toBd(p.get("stageTwo"));
-        BigDecimal stageThree = toBd(p.get("stageThree"));
-        BigDecimal stageFour = toBd(p.get("stageFour"));
-        BigDecimal deptShareBpm = toBd(p.get("deptShare"));
-
-        // 校验：各阶段之和 == 部门应得
-        BigDecimal stageSum = stageOne.add(stageTwo).add(stageThree).add(stageFour);
-        if (stageSum.compareTo(deptShareBpm) != 0) {
-            ResponseUtil.fail(resp, "各阶段金额之和(" + stageSum + ")必须等于BPM部门应得(" + deptShareBpm + ")");
+        Object itemsObj = p.get("items");
+        if (itemsObj == null) {
+            ResponseUtil.fail(resp, "请选择要引入的记录");
+            return;
+        }
+        final List<Map<String, Object>> items;
+        if (itemsObj instanceof String) {
+            // JSON 字符串解析
+            try {
+                items = com.rebate.util.JsonUtil.parseList((String) itemsObj);
+            } catch (Exception e) {
+                ResponseUtil.fail(resp, "items格式错误: " + e.getMessage());
+                return;
+            }
+        } else if (itemsObj instanceof List) {
+            items = (List<Map<String, Object>>) itemsObj;
+        } else {
+            ResponseUtil.fail(resp, "items格式错误");
+            return;
+        }
+        if (items.isEmpty()) {
+            ResponseUtil.fail(resp, "请选择要引入的记录");
             return;
         }
 
-        // 校验：至少有一个阶段有金额
-        if (stageSum.compareTo(BigDecimal.ZERO) == 0) {
-            ResponseUtil.fail(resp, "各阶段金额之和不能为0");
-            return;
-        }
-
-        Timestamp now = new Timestamp(System.currentTimeMillis());
-
-        // 按阶段有值则写入一条实收记录（终稿状态FINAL）
-        String[] stages = {"阶段一", "阶段二", "阶段三", "阶段四"};
-        BigDecimal[] stageAmounts = {stageOne, stageTwo, stageThree, stageFour};
-        List<Long> insertedIds = new ArrayList<>();
-        for (int i = 0; i < 4; i++) {
-            if (stageAmounts[i] == null || stageAmounts[i].compareTo(BigDecimal.ZERO) == 0) {
-                continue;
+        final Timestamp now = new Timestamp(System.currentTimeMillis());
+        final long userId = u.getId();
+        final List<Long> ids = new ArrayList<>();
+        final int[] count = {0};
+        BaseDao.<Void>executeInTransaction((Connection conn) -> {
+            for (Map<String, Object> item : items) {
+                Received r = new Received();
+                r.setProjectId(projectId);
+                r.setStage("全年");
+                r.setRebateType(getStr(item, "rebateType"));
+                r.setApplicant(getStr(item, "applicant"));
+                r.setApplyDept(getStr(item, "applyDept"));
+                String ad = getStr(item, "applyDate");
+                if (ad != null && !ad.isEmpty()) {
+                    try { r.setApplyDate(Date.valueOf(ad)); } catch (Exception ignore) {}
+                }
+                r.setFinanceCode(getStr(item, "financeCode"));
+                r.setRebateAmount(toBd(item.get("rebateAmount")));
+                r.setTaxRate(toBd(item.get("taxRate")));
+                r.setTotalPriceTax(toBd(item.get("rebateAmount"))); // 返利金额存入价税合计
+                r.setDeptShare(toBd(item.get("deptShare")));
+                r.setInvoiceNo(getStr(item, "invoiceNo"));
+                r.setReceiveDept(getStr(item, "applyDept"));
+                r.setStatus("FINAL");
+                r.setBpmProcessId(getStr(item, "bpmProcessId"));
+                r.setPurchaseUser(userId);
+                r.setPurchaseTime(now);
+                r.setOpUser(userId);
+                r.setOpTime(now);
+                r.setFinanceUser(userId);
+                r.setFinanceTime(now);
+                r.setFinalTime(now);
+                r.setRemark("从BPM引入");
+                Long id = dao.insertReceivedFromBpmWithConn(conn, r);
+                if (id != null) { count[0]++; ids.add(id); }
             }
-            Received r = new Received();
-            r.setProjectId(projectId);
-            r.setStage(stages[i]);
-            r.setRebateType(rebateType);
-            r.setApplicant(u.getName() != null ? u.getName() : (u.getLoginName() != null ? u.getLoginName() : "SYSTEM"));
-            r.setApplyDept("营销中心");
-            if (applyDate != null && !applyDate.isEmpty()) {
-                try {
-                    r.setApplyDate(Date.valueOf(applyDate));
-                } catch (Exception ignore) {}
-            }
-            r.setFinanceCode(financeCode);
-            r.setInvoiceNo(invoiceNo);
-            r.setRebateAmount(rebateAmount);
-            r.setTaxRate(taxRate);
-            r.setTotalPriceTax(totalPriceTax);
-            r.setDeptShare(stageAmounts[i]);
-            r.setReceiveDept(receiveDeptStr);
-            // 从BPM引入的直接为终稿状态
-            r.setStatus("FINAL");
-            r.setFinanceUser(u.getId());
-            r.setFinanceTime(now);
-            r.setFinalTime(now);
-            r.setRemark("从BPM引入，原始财务编码: " + (financeCode != null ? financeCode : ""));
-            Long id = dao.insertReceived(r);
-            if (id != null) insertedIds.add(id);
-        }
+            return null;
+        });
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("insertedCount", count[0]);
+        result.put("ids", ids);
+        ResponseUtil.ok(resp, result);
+    }
 
-        ResponseUtil.ok(resp, new HashMap<String, Object>() {{
-            put("insertedCount", insertedIds.size());
-            put("ids", insertedIds);
-        }});
+    private String getStr(Map<String, Object> m, String key) {
+        Object v = m.get(key);
+        return v == null ? "" : v.toString();
     }
 }

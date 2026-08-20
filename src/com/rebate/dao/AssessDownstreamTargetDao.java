@@ -3,6 +3,7 @@ package com.rebate.dao;
 import com.rebate.model.AssessDownstreamTarget;
 
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -73,6 +74,32 @@ public class AssessDownstreamTargetDao {
             );
         } else {
             BaseDao.update(
+                "INSERT INTO prj_assess_downstream_target(agreement_id, assess_group_id, group_name, group_code, total_target, stage1_target, stage2_target, stage3_target, stage4_target, remark) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                t.getAgreementId(), t.getAssessGroupId(), t.getGroupName(), t.getGroupCode(),
+                t.getTotalTarget(), t.getStage1Target(), t.getStage2Target(), t.getStage3Target(),
+                t.getStage4Target(), t.getRemark()
+            );
+        }
+    }
+
+    /**
+     * 新增或更新（按协议+考核组唯一）—— 事务内版本，使用外部 Connection。
+     * 查询与写入均走同一 Connection，确保事务内可见未提交数据。
+     */
+    public void upsertWithConn(Connection conn, AssessDownstreamTarget t) throws SQLException {
+        AssessDownstreamTarget existing = BaseDao.queryOneWithConn(conn,
+            "SELECT t.*, g.group_name, g.group_code FROM prj_assess_downstream_target t " +
+            "LEFT JOIN prj_assess_group g ON t.assess_group_id = g.id " +
+            "WHERE t.agreement_id = ? AND t.assess_group_id = ?",
+            this::map, t.getAgreementId(), t.getAssessGroupId());
+        if (existing != null) {
+            BaseDao.updateWithConn(conn,
+                "UPDATE prj_assess_downstream_target SET group_name=?, group_code=?, total_target=?, stage1_target=?, stage2_target=?, stage3_target=?, stage4_target=?, remark=? WHERE id=?",
+                t.getGroupName(), t.getGroupCode(), t.getTotalTarget(), t.getStage1Target(),
+                t.getStage2Target(), t.getStage3Target(), t.getStage4Target(), t.getRemark(), existing.getId()
+            );
+        } else {
+            BaseDao.updateWithConn(conn,
                 "INSERT INTO prj_assess_downstream_target(agreement_id, assess_group_id, group_name, group_code, total_target, stage1_target, stage2_target, stage3_target, stage4_target, remark) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 t.getAgreementId(), t.getAssessGroupId(), t.getGroupName(), t.getGroupCode(),
                 t.getTotalTarget(), t.getStage1Target(), t.getStage2Target(), t.getStage3Target(),

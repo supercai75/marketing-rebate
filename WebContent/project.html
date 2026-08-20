@@ -88,27 +88,32 @@
 
 <!-- 从BPM引入立项 - 弹出窗口 -->
 <div class="modal-mask" id="modalBpmList">
-    <div class="modal" style="width:1100px;max-height:85vh;">
+    <div class="modal" style="width:1000px;max-height:85vh;">
         <div class="modal-header">从BPM引入立项 - 选择项目<span class="spacer"></span><span class="close" onclick="RB.closeModal('modalBpmList')">×</span></div>
-        <div class="modal-body" style="max-height:65vh;overflow-y:auto;">
-            <div style="margin-bottom:10px;padding:8px 12px;background:#e3f2fd;color:#1565c0;border-radius:4px;font-size:13px;">
-                以下为BPM近一年内创建的立项，请选择一条引入。已在本系统存在的项目将显示"已存在"标记，选择后系统将根据项目编号判定更新或新增。
+        <div class="modal-body" style="max-height:68vh;overflow-y:auto;">
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px; padding:10px; background:#f5f7fa; border-radius:4px;">
+                <label>项目名称筛选：</label>
+                <input type="text" id="bpmProjNameFilter" placeholder="输入项目名称关键词" style="width:300px; padding:4px 8px; border:1px solid #dcdfe6; border-radius:4px;">
+                <button class="btn btn-primary" id="btnBpmProjFilter">筛选</button>
+                <span id="bpmProjTip" style="color:#909399; font-size:12px; margin-left:8px;"></span>
             </div>
             <div class="table-wrap" style="margin:0;">
-                <table>
+                <table style="font-size:13px; table-layout:fixed;">
+                    <colgroup>
+                        <col style="width:50px;">
+                        <col style="width:30%;">
+                        <col style="width:18%;">
+                        <col style="width:12%;">
+                        <col style="width:10%;">
+                        <col style="width:20%;">
+                    </colgroup>
                     <thead><tr>
                         <th>选择</th>
-                        <th>项目编号</th>
                         <th>项目名称</th>
                         <th>签约厂牌</th>
+                        <th>合作品种</th>
                         <th>合作年度</th>
-                        <th>合作模式</th>
-                        <th>起始日期</th>
-                        <th>终止日期</th>
-                        <th>项目目标规模</th>
-                        <th>预计收益</th>
-                        <th>预计费用</th>
-                        <th>本地状态</th>
+                        <th>覆盖地区</th>
                     </tr></thead>
                     <tbody id="bpmBody"></tbody>
                 </table>
@@ -116,6 +121,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn" onclick="RB.closeModal('modalBpmList')">关闭</button>
+            <button class="btn btn-primary" id="btnBpmImport" disabled>确定引入</button>
         </div>
     </div>
 </div>
@@ -181,6 +187,9 @@
         $('#btnImportBpm').on('click', function () {
             RB.withPerm('project:edit', function() { loadBpmProjectList(); }, '权限不足，无法引入立项');
         });
+        $('#btnBpmProjFilter').on('click', function () { queryBpmProjects($('#bpmProjNameFilter').val().trim()); });
+        $('#bpmProjNameFilter').on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); queryBpmProjects($(this).val().trim()); } });
+        $('#btnBpmImport').on('click', function () { RB.withPerm('project:edit', confirmBpmProjectImport, '权限不足'); });
 
         $('#btnSave').on('click', saveForm);
         $('#btnSavePerson').on('click', savePerson);
@@ -462,60 +471,74 @@
 
     // ==================== BPM引入立项 ====================
     var bpmRows = [];
+    var bpmSelectedIdx = -1;
 
     function loadBpmProjectList() {
-        RB.post('/api/project?op=listBpmProjects', {}).done(function (r) {
+        $('#bpmProjNameFilter').val('');
+        bpmSelectedIdx = -1;
+        $('#btnBpmImport').prop('disabled', true);
+        $('#bpmProjTip').text('');
+        queryBpmProjects('');
+        RB.openModal('modalBpmList');
+    }
+
+    function queryBpmProjects(nameFilter) {
+        RB.post('/api/project?op=listBpmProjects', { projectName: nameFilter || '' }).done(function (r) {
             if (r.code !== 0) { RB.toast(r.msg || '获取BPM数据失败', 'error'); return; }
             bpmRows = r.data || [];
+            bpmSelectedIdx = -1;
+            $('#btnBpmImport').prop('disabled', true);
             renderBpmList(bpmRows);
-            RB.openModal('modalBpmList');
-        }).fail(function () { RB.toast('网络错误，请稍后重试', 'error'); });
+            $('#bpmProjTip').text('共 ' + bpmRows.length + ' 条可引入项目');
+        }).fail(function () { RB.toast('网络错误', 'error'); });
     }
 
     function renderBpmList(rows) {
         var html = '';
         if (!rows || rows.length === 0) {
-            html = '<tr><td colspan="12" style="text-align:center;color:#999;padding:30px;">BPM中暂无近一年的立项数据</td></tr>';
+            html = '<tr><td colspan="6" style="text-align:center;color:#999;padding:30px;">无符合条件的BPM立项数据</td></tr>';
         } else {
             for (var i = 0; i < rows.length; i++) {
                 var x = rows[i];
-                var isExist = x.isExisting;
-                var actionBtn = isExist
-                    ? '<span style="color:#f56c6c;font-size:12px;">已存在-将更新</span>'
-                    : '<a class="op" data-act="importRow" data-idx="' + i + '">引入</a>';
-                html += '<tr' + (isExist ? ' style="background:#fff9f9;"' : '') + '>' +
-                    '<td><input type="radio" name="bpmRow" value="' + i + '"></td>' +
-                    '<td>' + esc(x.projectCode) + '</td>' +
-                    '<td>' + esc(x.projectName) + '</td>' +
-                    '<td>' + esc(x.brand) + '</td>' +
-                    '<td>' + esc(x.coYear) + '</td>' +
-                    '<td>' + esc(x.coMode) + '</td>' +
-                    '<td>' + esc(x.periodStartDate) + '</td>' +
-                    '<td>' + esc(x.periodEndDate) + '</td>' +
-                    '<td>' + RB.formatMoney(x.targetScale) + '</td>' +
-                    '<td>' + RB.formatMoney(x.expectedRebate) + '</td>' +
-                    '<td>' + RB.formatMoney(x.expectedCost) + '</td>' +
-                    '<td>' + actionBtn + '</td>' +
+                html += '<tr data-idx="' + i + '" style="cursor:pointer;">' +
+                    '<td style="text-align:center;"><input type="radio" name="bpmRow" value="' + i + '"></td>' +
+                    '<td style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escAttr(x.projectName) + '">' + escAttr(x.projectName) + '</td>' +
+                    '<td style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escAttr(x.brand) + '">' + escAttr(x.brand) + '</td>' +
+                    '<td style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escAttr(x.coProduct) + '">' + escAttr(x.coProduct) + '</td>' +
+                    '<td style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escAttr(x.coYear) + '">' + escAttr(x.coYear) + '</td>' +
+                    '<td style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escAttr(x.region) + '">' + escAttr(x.region) + '</td>' +
                     '</tr>';
             }
         }
         $('#bpmBody').html(html);
-        // 绑定行内"引入"按钮
-        $('#bpmBody').find('a.op[data-act="importRow"]').off('click').on('click', function () {
+        // 绑定行点击=单选
+        $('#bpmBody > tr').off('click').on('click', function () {
             var idx = $(this).data('idx');
-            doBpmImport(bpmRows[idx]);
+            if (idx == null) return;
+            bpmSelectedIdx = idx;
+            $('#bpmBody input[name="bpmRow"]').prop('checked', false);
+            $(this).find('input[name="bpmRow"]').prop('checked', true);
+            $('#bpmBody > tr').css('background', '');
+            $(this).css('background', '#ecf5ff');
+            $('#btnBpmImport').prop('disabled', false);
         });
+    }
+
+    function escAttr(v) {
+        if (v == null) return '';
+        return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     function esc(v) { return v == null ? '' : String(v); }
 
-    function doBpmImport(row) {
-        if (!row || !row.projectCode) { RB.toast('项目编号不能为空', 'error'); return; }
-        var isExist = row.isExisting;
+    function confirmBpmProjectImport() {
+        if (bpmSelectedIdx < 0 || !bpmRows[bpmSelectedIdx]) { RB.toast('请选择一个项目', 'error'); return; }
+        var row = bpmRows[bpmSelectedIdx];
         RB.confirm(
-            (isExist ? '项目编号 <strong>' + esc(row.projectCode) + '</strong> 已存在，将更新该项目信息。' : '将新增项目：<strong>' + esc(row.projectName) + '</strong>（编号：' + esc(row.projectCode) + '）') + '<br>确认引入？',
+            '将引入项目：<strong>' + esc(row.projectName) + '</strong>（编号：' + esc(row.projectCode) + '）<br>引入后可自由编辑，确认？',
             function () {
                 var payload = {
+                    bpmProcessId: row.bpmProcessId,
                     projectCode: row.projectCode,
                     projectName: row.projectName,
                     brand: row.brand,
@@ -532,7 +555,7 @@
                 };
                 RB.post('/api/project?op=importFromBpm', payload).done(function (r) {
                     if (r.code === 0) {
-                        RB.toast(isExist ? '项目已更新' : '项目已新增', 'success');
+                        RB.toast('项目已引入', 'success');
                         RB.closeModal('modalBpmList');
                         state.page = 1;
                         load();

@@ -3,6 +3,7 @@ package com.rebate.dao;
 import com.rebate.model.AssessItemDetail;
 import com.rebate.model.AttachFile;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -12,12 +13,18 @@ import java.util.List;
  */
 public class AssessItemDetailDao {
 
+	private boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
+		for(int i = 1; i <= rs.getMetaData().getColumnCount(); i++) {
+			if(rs.getMetaData().getColumnName(i).toLowerCase().equals(columnName.toLowerCase())) {return true;}
+		}
+		return false;
+	}
     private AssessItemDetail map(ResultSet rs) throws SQLException {
         AssessItemDetail d = new AssessItemDetail();
         d.setId(rs.getLong("id"));
-        Object rId = rs.getObject("receivable_id");
+        Object rId = hasColumn(rs, "receivable_id")?rs.getObject("receivable_id"):null;
         d.setReceivableId(rId == null ? null : ((Number) rId).longValue());
-        Object pId = rs.getObject("payable_id");
+        Object pId = hasColumn(rs, "payable_id")?rs.getObject("payable_id"):null;
         d.setPayableId(pId == null ? null : ((Number) pId).longValue());
         d.setItemType(rs.getString("item_type"));
         d.setItemName(rs.getString("item_name"));
@@ -133,6 +140,42 @@ public class AssessItemDetailDao {
     }
     public int updatePayableAttachItemId(Long id, Long assessItemId, Long payableId) {
         return BaseDao.update("UPDATE prj_payable_assess_attach SET assess_item_id=?, payable_id=? WHERE id=?",
+                assessItemId, payableId, id);
+    }
+
+    // ==================== 事务内版本（*WithConn）====================
+
+    public void deleteByReceivableWithConn(Connection conn, Long receivableId) throws SQLException {
+        BaseDao.updateWithConn(conn, "DELETE FROM prj_receivable_assess_item WHERE receivable_id=?", receivableId);
+    }
+
+    public void deleteByPayableWithConn(Connection conn, Long payableId) throws SQLException {
+        BaseDao.updateWithConn(conn, "DELETE FROM prj_payable_assess_item WHERE payable_id=?", payableId);
+    }
+
+    public Long insertReceivableItemWithConn(Connection conn, AssessItemDetail item) throws SQLException {
+        String sql = "INSERT INTO prj_receivable_assess_item(receivable_id, item_type, item_name, remark, " +
+                "target_value, actual_value, reward_amount, attach_file_id, sort_no) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        return BaseDao.insertReturnIdWithConn(conn, sql, item.getReceivableId(), item.getItemType(), item.getItemName(),
+                item.getRemark(), item.getTargetValue(), item.getActualValue(), item.getRewardAmount(),
+                item.getAttachFileId(), item.getSortNo());
+    }
+
+    public Long insertPayableItemWithConn(Connection conn, AssessItemDetail item) throws SQLException {
+        String sql = "INSERT INTO prj_payable_assess_item(payable_id, item_type, item_name, remark, " +
+                "target_value, actual_value, reward_amount, attach_file_id, sort_no) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        return BaseDao.insertReturnIdWithConn(conn, sql, item.getPayableId(), item.getItemType(), item.getItemName(),
+                item.getRemark(), item.getTargetValue(), item.getActualValue(), item.getRewardAmount(),
+                item.getAttachFileId(), item.getSortNo());
+    }
+
+    public int updateReceivableAttachItemIdWithConn(Connection conn, Long id, Long assessItemId, Long receivableId) throws SQLException {
+        return BaseDao.updateWithConn(conn, "UPDATE prj_receivable_assess_attach SET assess_item_id=?, receivable_id=? WHERE id=?",
+                assessItemId, receivableId, id);
+    }
+
+    public int updatePayableAttachItemIdWithConn(Connection conn, Long id, Long assessItemId, Long payableId) throws SQLException {
+        return BaseDao.updateWithConn(conn, "UPDATE prj_payable_assess_attach SET assess_item_id=?, payable_id=? WHERE id=?",
                 assessItemId, payableId, id);
     }
 }

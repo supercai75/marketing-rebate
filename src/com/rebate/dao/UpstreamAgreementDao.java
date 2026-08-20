@@ -41,6 +41,28 @@ public class UpstreamAgreementDao {
                 a.getFormalCount(), a.getFormalNames(), a.getInformalCount(), a.getInformalNames(), a.getCreatedBy());
     }
 
+    public Long insertWithConn(Connection conn, UpstreamAgreement a) throws SQLException {
+        String sql = "INSERT INTO prj_upstream_agreement(project_id, version, is_current, bpm_agree_id, " +
+                "agreement_name, agreement_no, period_start_date, period_end_date, region, target_terminal, " +
+                "calc_basis, target_scale, calc_method, calc_mode, rebate_calc_basis, supplier, target_dept, flow_contact, flow_phone, " +
+                "flow_channel, flow_provide_method, stage1_target, stage2_target, stage3_target, stage4_target, " +
+                "owner_user_id, policy_detail, rebate_calc_rule, settle_basis, settle_ratio, rebate_pay_type, " +
+                "rebate_pay_time, team_assess_settle, required_staff_num, formal_count, formal_names, " +
+                "informal_count, informal_names, created_by) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        return BaseDao.insertReturnIdWithConn(conn, sql,
+                a.getProjectId(), a.getVersion(), a.getIsCurrent(), a.getBpmAgreeId(),
+                a.getAgreementName(), a.getAgreementNo(), a.getPeriodStartDate(), a.getPeriodEndDate(),
+                a.getRegion(), a.getTargetTerminal(), a.getCalcBasis(), a.getTargetScale(), a.getCalcMethod(),
+                a.getCalcMode() != null ? a.getCalcMode() : "PROGRESSIVE",
+                a.getRebateCalcBasis(),
+                a.getSupplier(), a.getTargetDept(), a.getFlowContact(), a.getFlowPhone(), a.getFlowChannel(),
+                a.getFlowProvideMethod(), a.getStage1Target(), a.getStage2Target(), a.getStage3Target(), a.getStage4Target(),
+                a.getOwnerUserId(), a.getPolicyDetail(), a.getRebateCalcRule(), a.getSettleBasis(), a.getSettleRatio(),
+                a.getRebatePayType(), a.getRebatePayTime(), a.getTeamAssessSettle(), a.getRequiredStaffNum(),
+                a.getFormalCount(), a.getFormalNames(), a.getInformalCount(), a.getInformalNames(), a.getCreatedBy());
+    }
+
     public int update(UpstreamAgreement a) {
         String sql = "UPDATE prj_upstream_agreement SET agreement_name=?, agreement_no=?, period_start_date=?, " +
                 "period_end_date=?, region=?, target_terminal=?, calc_basis=?, target_scale=?, calc_method=?, calc_mode=?, rebate_calc_basis=?, " +
@@ -63,6 +85,11 @@ public class UpstreamAgreementDao {
 
     public int markNotCurrent(long projectId, long excludeId) {
         return BaseDao.update("UPDATE prj_upstream_agreement SET is_current=0 WHERE project_id=? AND id<>?",
+                projectId, excludeId);
+    }
+
+    public int markNotCurrentWithConn(Connection conn, long projectId, long excludeId) throws SQLException {
+        return BaseDao.updateWithConn(conn, "UPDATE prj_upstream_agreement SET is_current=0 WHERE project_id=? AND id<>?",
                 projectId, excludeId);
     }
 

@@ -4,6 +4,7 @@ import com.rebate.model.AssessGroup;
 import com.rebate.model.AssessItem;
 import com.rebate.model.RebateRule;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -76,6 +77,13 @@ public class RebateRuleDao {
                 rule.getCalcMode() != null ? rule.getCalcMode() : "PROGRESSIVE", rule.getSharedGroupIds());
     }
 
+    public Long insertRuleWithConn(Connection conn, RebateRule rule) throws SQLException {
+        String sql = "INSERT INTO prj_upstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no, expression, calc_mode, shared_group_ids) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        return BaseDao.insertReturnIdWithConn(conn, sql, rule.getAgreementId(), rule.getStageCode(), rule.getThresholdLow(),
+                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo(), rule.getExpression(),
+                rule.getCalcMode() != null ? rule.getCalcMode() : "PROGRESSIVE", rule.getSharedGroupIds());
+    }
+
     public List<RebateRule> listDownstreamRebateRules(Long agreementId) {
         return BaseDao.query("SELECT * FROM prj_downstream_rebate_rule WHERE agreement_id=? ORDER BY sort_no", this::mapRule, agreementId);
     }
@@ -87,6 +95,13 @@ public class RebateRuleDao {
     public Long insertDownstreamRebateRule(RebateRule rule) {
         String sql = "INSERT INTO prj_downstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no, expression, calc_mode, shared_group_ids) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return BaseDao.insertReturnId(sql, rule.getAgreementId(), rule.getStageCode(), rule.getThresholdLow(),
+                rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo(), rule.getExpression(),
+                rule.getCalcMode() != null ? rule.getCalcMode() : "PROGRESSIVE", rule.getSharedGroupIds());
+    }
+
+    public Long insertDownstreamRebateRuleWithConn(Connection conn, RebateRule rule) throws SQLException {
+        String sql = "INSERT INTO prj_downstream_rebate_rule(agreement_id, stage_code, threshold_low, threshold_high, rebate_ratio, reward_type, assess_group_id, sort_no, expression, calc_mode, shared_group_ids) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        return BaseDao.insertReturnIdWithConn(conn, sql, rule.getAgreementId(), rule.getStageCode(), rule.getThresholdLow(),
                 rule.getThresholdHigh(), rule.getRebateRatio(), rule.getRewardType(), rule.getAssessGroupId(), rule.getSortNo(), rule.getExpression(),
                 rule.getCalcMode() != null ? rule.getCalcMode() : "PROGRESSIVE", rule.getSharedGroupIds());
     }

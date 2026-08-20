@@ -45,7 +45,13 @@ public class OverviewServlet extends BaseServlet {
             case "overview": doOverview(req, resp, p); break;
             case "agreementOverview": doAgreementOverview(req, resp, p); break;
             case "overviewByAssessGroup": doOverviewByAssessGroup(req, resp, p); break;
-            case "balanceTable": ResponseUtil.ok(resp, service.balanceTable(WebUtil.getSafeParam(p, "coYear"))); break;
+            case "balanceTable": {
+                String coYear = WebUtil.getSafeParam(p, "coYear");
+                String undertakingDept = WebUtil.getSafeParam(p, "undertakingDept");
+                String projectGroupId = WebUtil.getSafeParam(p, "projectGroupId");
+                ResponseUtil.ok(resp, service.balanceTable(coYear, undertakingDept, projectGroupId));
+                break;
+            }
             case "payableEstimate": doPayableEstimate(req, resp, p); break;
             case "recalcRebate":
             case "calcRebate": doRecalcRebate(req, resp, p); break;
@@ -103,7 +109,7 @@ public class OverviewServlet extends BaseServlet {
         if (files == null) return null;
         String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
         for (AttachFile f : files) {
-            f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+            f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath() + "&fileName=" + (f.getFileName() == null ? "" : java.net.URLEncoder.encode(f.getFileName(), java.nio.charset.StandardCharsets.UTF_8)));
         }
         return files;
     }
@@ -167,8 +173,10 @@ public class OverviewServlet extends BaseServlet {
     private void doExportBalance(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p) throws Exception {
         String coYear = WebUtil.getSafeParam(p, "coYear");
         String projectId = WebUtil.getSafeParam(p, "projectId");
+        String undertakingDept = WebUtil.getSafeParam(p, "undertakingDept");
+        String projectGroupId = WebUtil.getSafeParam(p, "projectGroupId");
         
-        Workbook wb = service.exportBalance(coYear, projectId);
+        Workbook wb = service.exportBalance(coYear, projectId, undertakingDept, projectGroupId);
         
         String fileName = "项目平衡表";
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");

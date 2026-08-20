@@ -11,13 +11,16 @@ window.RebateCalc = (function () {
   'use strict';
 
   /**
-   * 简易表达式求值：支持 + - * / ( ) 和变量 X
+   * 简易表达式求值：支持 + - * / ( ) 和变量 X、Y
+   * 表达式结果为百分比数值（与后端 ExpressionUtil 约定一致）。
    */
-  function evalExpr(expr, x) {
+  function evalExpr(expr, x, y) {
     var src = (expr || '').trim();
     if (!src) return null;
     var pos = 0;
     var len = src.length;
+    var xv = Number(x) || 0;
+    var yv = Number(y) || 0;
     function skipWs() { while (pos < len && /\s/.test(src.charAt(pos))) pos++; }
     function parseExpr() {
       var left = parseTerm();
@@ -68,7 +71,11 @@ window.RebateCalc = (function () {
       }
       if (c === 'X' || c === 'x') {
         pos++;
-        return Number(x) || 0;
+        return xv;
+      }
+      if (c === 'Y' || c === 'y') {
+        pos++;
+        return yv;
       }
       var start = pos;
       var hasDot = false;
@@ -102,26 +109,29 @@ window.RebateCalc = (function () {
   }
 
   /**
-   * 根据规则 + 实际 X 值，计算返利比例（返回 0.045 代表 4.5%）
+   * 根据规则 + 实际 X / Y 值，计算返利比例（返回 0.045 代表 4.5%）
    * rule: { thresholdLow, thresholdHigh, rebateRatio, expression, rewardType }
-   * actualX: 根据 rewardType 决定的 X（达成率百分比数值 如 80 表示 80%，或达成额金额，或增长率百分比）
+   * actualX: 根据 rewardType 决定的 X（达成率%、增长率%、达成额等）
+   * actualY: 完成的核算数量/金额（可选，默认 0）
    *
    * 单位约定：
    *   - rebateRatio 存储为小数（0.05 表示 5%），直接返回
    *   - expression 计算结果为百分比数值（如 0.125*(X-60)+2 = 4.5 表示 4.5%），需 /100 转为小数
    *   - expression 为纯数字时也视为百分比数值（如 4.5 表示 4.5%），需 /100
    */
-  function ratioByRule(rule, actualX) {
+  function ratioByRule(rule, actualX, actualY) {
     if (!rule) return 0;
     var expr = (rule.expression || '').trim();
     var ratio = Number(rule.rebateRatio) || 0;
+    // X 先做阈值封顶，与后端 RebateCalcUtil.capX 保持一致
+    var cappedX = capX(actualX, rule.thresholdHigh);
     if (expr) {
       if (isPureNumber(expr)) {
         // 用户直接写返利比例数值（百分比数值，如 4.5 表示 4.5%），需 /100 转小数
         return parseFloat(expr) / 100;
       }
       try {
-        var val = evalExpr(expr, actualX);
+        var val = evalExpr(expr, cappedX, actualY);
         if (val == null || isNaN(val)) return ratio;
         // 表达式结果为百分比数值（如 4.5 表示 4.5%），需 /100 转小数
         return val / 100;

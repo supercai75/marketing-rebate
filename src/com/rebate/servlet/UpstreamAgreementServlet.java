@@ -3,6 +3,7 @@ package com.rebate.servlet;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.rebate.dao.AgreementSubDao;
+import com.rebate.dao.BaseDao;
 import com.rebate.dao.ProjectDao;
 import com.rebate.dao.RebateRuleDao;
 import com.rebate.dao.UpstreamAgreementDao;
@@ -24,7 +25,9 @@ import javax.servlet.http.Part;
 import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.Date;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -111,21 +114,29 @@ public class UpstreamAgreementServlet extends BaseServlet {
         if (files == null) return null;
         String base = req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath();
         for (AttachFile f : files) {
-            f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath());
+            f.setDownloadUrl(base + "/api/file/download?path=" + f.getFilePath() + "&fileName=" + (f.getFileName() == null ? "" : java.net.URLEncoder.encode(f.getFileName(), java.nio.charset.StandardCharsets.UTF_8)));
         }
         return files;
     }
 
     private void doAdd(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p, com.rebate.model.UserContext u) {
         UpstreamAgreement a = parse(p);
+        String mode = a.getCalcMode() == null || a.getCalcMode().isEmpty() ? "PROGRESSIVE" : a.getCalcMode();
+        if ("PROGRESSIVE".equalsIgnoreCase(mode) && !com.rebate.service.RebateCalcService.sameBasis(a.getCalcBasis(), a.getRebateCalcBasis())) {
+            ResponseUtil.fail(resp, "递进式计算返利要求指标核算依据与返利计算依据一致（金额与核算金额视为相同）");
+            return;
+        }
         a.setCreatedBy(u.getId());
         Integer v = dao.findCurrentByProject(a.getProjectId()) == null ? 1
                 : dao.findCurrentByProject(a.getProjectId()).getVersion() + 1;
         a.setVersion(v);
         a.setIsCurrent(1);
-        Long id = dao.insert(a);
-        if (id != null) dao.markNotCurrent(a.getProjectId(), id);
-        saveSubTables(id, p);
+        Long id = BaseDao.executeInTransaction(conn -> {
+            Long newId = dao.insertWithConn(conn, a);
+            if (newId != null) dao.markNotCurrentWithConn(conn, a.getProjectId(), newId);
+            saveSubTables(conn, newId, p);
+            return newId;
+        });
         ResponseUtil.ok(resp, java.util.Collections.singletonMap("id", id));
     }
 
@@ -135,10 +146,18 @@ public class UpstreamAgreementServlet extends BaseServlet {
         if (a == null) { ResponseUtil.fail(resp, "协议不存在"); return; }
         UpstreamAgreement upd = parse(p);
         upd.setId(id);
+        String mode = upd.getCalcMode() == null || upd.getCalcMode().isEmpty() ? "PROGRESSIVE" : upd.getCalcMode();
+        if ("PROGRESSIVE".equalsIgnoreCase(mode) && !com.rebate.service.RebateCalcService.sameBasis(upd.getCalcBasis(), upd.getRebateCalcBasis())) {
+            ResponseUtil.fail(resp, "递进式计算返利要求指标核算依据与返利计算依据一致（金额与核算金额视为相同）");
+            return;
+        }
         dao.update(upd);
         subDao.clearUpstreamTeamTargets(id);
         ruleDao.deleteByAgreement(id);
-        saveSubTables(id, p);
+        BaseDao.<Void>executeInTransaction((Connection conn) -> {
+            saveSubTables(conn, id, p);
+            return null;
+        });
         ResponseUtil.ok(resp);
     }
 
@@ -276,7 +295,7 @@ public class UpstreamAgreementServlet extends BaseServlet {
         ResponseUtil.ok(resp, fillUrl(req, attachs));
     }
 
-    private void saveSubTables(long agreementId, Map<String, Object> p) {
+    private void saveSubTables(Connection conn, long agreementId, Map<String, Object> p) throws SQLException {
         // 保存团队目标
         Object teamObj = p.get("teamTargets");
         if (teamObj != null) {
@@ -286,7 +305,7 @@ public class UpstreamAgreementServlet extends BaseServlet {
             if (list != null) {
                 for (TeamTarget tt : list) {
                     tt.setAgreementId(agreementId);
-                    subDao.insertTeamTarget(tt);
+                    subDao.insertTeamTargetWithConn(conn, tt);
                 }
             }
         }
@@ -318,7 +337,7 @@ public class UpstreamAgreementServlet extends BaseServlet {
                             rule.setAssessGroupId(assessGroupId);
                             rule.setSortNo(i + 1);
                             rule.setSharedGroupIds(normalizeSharedGroupIds(rule.getSharedGroupIds()));
-                            ruleDao.insertRule(rule);
+                        ruleDao.insertRuleWithConn(conn, rule);
                         }
                     }
                 }
@@ -338,7 +357,7 @@ public class UpstreamAgreementServlet extends BaseServlet {
                         if (assessGroupId != null && assessGroupId > 0) {
                             rule.setAssessGroupId(assessGroupId);
                         }
-                        ruleDao.insertRule(rule);
+                        ruleDao.insertRuleWithConn(conn, rule);
                     }
                 }
             } catch (Exception ignore) {}

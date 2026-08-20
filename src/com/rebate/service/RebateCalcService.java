@@ -85,7 +85,7 @@ public class RebateCalcService {
         List<List<Map<String, Object>>> stageDetails = new ArrayList<>();
         BigDecimal[] stageRebates = computeStageRebateAmounts(
                 rules, groupDataList, stageActuals, stageRebateActuals,
-                stageTargets, totalTarget, prevYearData, fullYearHolder, agreement == null ? "PROGRESSIVE" : agreement.getCalcMode(), stageDetails);
+                stageTargets, totalTarget, prevYearData, fullYearHolder, agreement == null ? "PROGRESSIVE" : agreement.getCalcMode(), stageDetails, isQtyBasis(rebateBasis));
 
         List<List<RebateRule>> projStageRules = new ArrayList<>();
         for (int i = 0; i < 4; i++) projStageRules.add(filterStageRules(rules, STAGE_CODES[i]));
@@ -135,7 +135,7 @@ public class RebateCalcService {
         List<List<Map<String, Object>>> stageDetails = new ArrayList<>();
         BigDecimal[] stageRebateAmounts = computeStageRebateAmounts(
                 allRules, groupDataList, stageActuals, stageRebateActuals,
-                stageTargets, totalTarget, prevYearData, fullYearHolder, up.getCalcMode(), stageDetails);
+                stageTargets, totalTarget, prevYearData, fullYearHolder, up.getCalcMode(), stageDetails, isQtyBasis(rebateBasis));
 
         List<List<RebateRule>> projStageRules = new ArrayList<>();
         for (int i = 0; i < 4; i++) projStageRules.add(filterStageRules(allRules, STAGE_CODES[i]));
@@ -195,7 +195,7 @@ public class RebateCalcService {
             List<List<Map<String, Object>>> stageDetails = new ArrayList<>();
             BigDecimal[] stageRebates = computeStageRebateAmounts(
                     rules, groupDataList, stageActuals, stageRebateActuals,
-                    stageTargets, totalTarget, prevYearData, fullYearHolder, agreement == null ? "PROGRESSIVE" : agreement.getCalcMode(), stageDetails);
+                    stageTargets, totalTarget, prevYearData, fullYearHolder, agreement == null ? "PROGRESSIVE" : agreement.getCalcMode(), stageDetails, isQtyBasis(rebateBasis));
 
             for (int i = 0; i < 4; i++) {
                 projStageActuals[i] = projStageActuals[i].add(stageActuals[i]);
@@ -269,7 +269,7 @@ public class RebateCalcService {
         }
     }
 
-    private static boolean sameBasis(String a, String b) {
+    public static boolean sameBasis(String a, String b) {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
         String aa = a.equalsIgnoreCase("AMT") ? "CALC_AMT" : a.toUpperCase();
@@ -284,9 +284,9 @@ public class RebateCalcService {
                                                     BigDecimal[] stageActuals, BigDecimal[] stageRebateActuals,
                                                     BigDecimal[] stageTargets,
                                                     BigDecimal totalTarget, Map<String, Object> prevYearData,
-                                                    BigDecimal[] outFullYear, String calcMode) {
+                                                    BigDecimal[] outFullYear, String calcMode, boolean qtyBased) {
         return computeStageRebateAmounts(allRules, groupDataList, stageActuals, stageRebateActuals,
-                stageTargets, totalTarget, prevYearData, outFullYear, calcMode, null);
+                stageTargets, totalTarget, prevYearData, outFullYear, calcMode, null, qtyBased);
     }
 
     private BigDecimal[] computeStageRebateAmounts(List<RebateRule> allRules, List<GroupStageData> groupDataList,
@@ -294,7 +294,7 @@ public class RebateCalcService {
                                                     BigDecimal[] stageTargets,
                                                     BigDecimal totalTarget, Map<String, Object> prevYearData,
                                                     BigDecimal[] outFullYear, String calcMode,
-                                                    List<List<Map<String, Object>>> outStageDetails) {
+                                                    List<List<Map<String, Object>>> outStageDetails, boolean qtyBased) {
         BigDecimal[] stageRebateAmounts = zeros();
         for (int i = 0; i < 4; i++) {
             List<RebateRule> stageRules = filterStageRules(allRules, STAGE_CODES[i]);
@@ -303,7 +303,7 @@ public class RebateCalcService {
             stageRebateAmounts[i] = calcRebateForGroups(
                     stageRules, groupDataList,
                     stageActuals[i], stageRebateActuals[i],
-                    stageTargets[i], prevActual, i, calcMode, stageDetails);
+                    stageTargets[i], prevActual, i, calcMode, stageDetails, qtyBased);
             if (outStageDetails != null) outStageDetails.add(stageDetails);
         }
         if (outFullYear != null) {
@@ -314,7 +314,7 @@ public class RebateCalcService {
                 BigDecimal prevTotalActual = extractPrevTotal(prevYearData);
                 outFullYear[0] = calcRebateForGroups(
                         fullYearRules, groupDataList,
-                        totalActual, totalRebateActual, totalTarget, prevTotalActual, -1, calcMode);
+                        totalActual, totalRebateActual, totalTarget, prevTotalActual, -1, calcMode, qtyBased);
             }
         }
         return stageRebateAmounts;
@@ -527,20 +527,21 @@ public class RebateCalcService {
     private BigDecimal calcRebateForGroups(List<RebateRule> rules, List<GroupStageData> groups,
                                            BigDecimal fallbackCalcActual, BigDecimal fallbackRebateActual,
                                            BigDecimal fallbackTarget,
-                                           BigDecimal fallbackPrev, int stageIdx, String calcMode) {
+                                           BigDecimal fallbackPrev, int stageIdx, String calcMode,
+                                           boolean qtyBased) {
         return calcRebateForGroups(rules, groups, fallbackCalcActual, fallbackRebateActual,
-                fallbackTarget, fallbackPrev, stageIdx, calcMode, null);
+                fallbackTarget, fallbackPrev, stageIdx, calcMode, null, qtyBased);
     }
 
     private BigDecimal calcRebateForGroups(List<RebateRule> rules, List<GroupStageData> groups,
                                            BigDecimal fallbackCalcActual, BigDecimal fallbackRebateActual,
                                            BigDecimal fallbackTarget,
                                            BigDecimal fallbackPrev, int stageIdx, String calcMode,
-                                           List<Map<String, Object>> details) {
+                                           List<Map<String, Object>> details, boolean qtyBased) {
         if (rules == null || rules.isEmpty()) return BigDecimal.ZERO;
         if (groups == null || groups.isEmpty()) {
             return calcRulesByType(rules, fallbackCalcActual, fallbackRebateActual,
-                    fallbackTarget, fallbackPrev, calcMode, details, "项目汇总");
+                    fallbackTarget, fallbackPrev, calcMode, details, "项目汇总", qtyBased);
         }
         BigDecimal total = BigDecimal.ZERO;
 
@@ -570,7 +571,7 @@ public class RebateCalcService {
                 BigDecimal rebA = valForStage(gd.stageRebateActuals, stageIdx, gd.totalRebateActual);
                 BigDecimal t = valForStage(gd.stageTargets, stageIdx, gd.totalTarget);
                 BigDecimal p = valForStage(gd.prevStageActuals, stageIdx, gd.prevTotalActual);
-                total = total.add(calcRulesByType(rulesForGroup, calcA, rebA, t, p, calcMode, details, gd.groupName));
+                total = total.add(calcRulesByType(rulesForGroup, calcA, rebA, t, p, calcMode, details, gd.groupName, qtyBased));
             }
         }
         // ================================================================
@@ -641,7 +642,7 @@ public class RebateCalcService {
                 if (groupRules.isEmpty()) continue;
                 BigDecimal ownRebateActual = valForStage(gd.stageRebateActuals, stageIdx, gd.totalRebateActual);
                 // calcActual = 共享汇总值；rebateActual = 本组实际值；target = 共享目标
-                total = total.add(calcRulesByType(groupRules, sharedCalc, ownRebateActual, sharedTarget, sharedPrev, calcMode, details, gd.groupName + "(共享)"));
+                total = total.add(calcRulesByType(groupRules, sharedCalc, ownRebateActual, sharedTarget, sharedPrev, calcMode, details, gd.groupName + "(共享)", qtyBased));
             }
         }
 
@@ -668,7 +669,7 @@ public class RebateCalcService {
                     aggPrev = aggPrev.add(valForStage(gd.prevStageActuals, stageIdx, gd.prevTotalActual));
                 }
             }
-            total = total.add(calcRulesByType(e.getValue(), aggCalc, aggRebate, aggTarget, aggPrev, calcMode, details, "共享组" + e.getKey()));
+            total = total.add(calcRulesByType(e.getValue(), aggCalc, aggRebate, aggTarget, aggPrev, calcMode, details, "共享组" + e.getKey(), qtyBased));
         }
         return total;
     }
@@ -681,13 +682,13 @@ public class RebateCalcService {
      * @param calcMode     返利计算模式 PROGRESSIVE / FLAT（来自协议）
      */
     private BigDecimal calcRulesByType(List<RebateRule> rules, BigDecimal calcActual, BigDecimal rebateActual,
-                                       BigDecimal target, BigDecimal prevActual, String calcMode) {
-        return calcRulesByType(rules, calcActual, rebateActual, target, prevActual, calcMode, null, null);
+                                       BigDecimal target, BigDecimal prevActual, String calcMode, boolean qtyBased) {
+        return calcRulesByType(rules, calcActual, rebateActual, target, prevActual, calcMode, null, null, qtyBased);
     }
 
     private BigDecimal calcRulesByType(List<RebateRule> rules, BigDecimal calcActual, BigDecimal rebateActual,
                                        BigDecimal target, BigDecimal prevActual, String calcMode,
-                                       List<Map<String, Object>> details, String groupName) {
+                                       List<Map<String, Object>> details, String groupName, boolean qtyBased) {
         if (rules == null || rules.isEmpty()) return BigDecimal.ZERO;
         Map<String, List<RebateRule>> byType = new LinkedHashMap<>();
         for (RebateRule r : rules) {
@@ -703,14 +704,14 @@ public class RebateCalcService {
             // 返利计算基数：统一使用 rebateActual（返利计算依据口径的实际值）
             BigDecimal base = nz(rebateActual);
             // actualY（Y变量） = rebateBasis 实际值（完成核算数量/金额）
-            BigDecimal rebateAmt = RebateCalcUtil.calcRebateAmount(typeRules, x, nz(rebateActual), base, nz(target), calcMode);
+            BigDecimal rebateAmt = RebateCalcUtil.calcRebateAmount(typeRules, x, nz(rebateActual), base, nz(target), calcMode, qtyBased);
             total = total.add(rebateAmt);
 
             // 收集明细
             if (details != null) {
                 RebateRule matchedRule = RebateCalcUtil.matchRule(typeRules, x);
                 BigDecimal effectiveRatio = matchedRule != null
-                        ? RebateCalcUtil.calcRatioByRule(matchedRule, x, nz(rebateActual))
+                        ? RebateCalcUtil.calcRatioByRule(matchedRule, x, nz(rebateActual), qtyBased)
                         : BigDecimal.ZERO;
                 Map<String, Object> detail = new LinkedHashMap<>();
                 detail.put("groupName", groupName != null ? groupName : "默认");
@@ -720,6 +721,7 @@ public class RebateCalcService {
                 detail.put("effectiveRatio", effectiveRatio.setScale(4, RoundingMode.HALF_UP));
                 detail.put("rebateAmount", rebateAmt.setScale(2, RoundingMode.HALF_UP));
                 detail.put("calcMode", calcMode != null ? calcMode : "PROGRESSIVE");
+                detail.put("qtyBased", qtyBased);
                 detail.put("matchedRule", matchedRule);
                 detail.put("target", target != null ? target.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
                 detail.put("calcActual", calcActual != null ? calcActual.setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
@@ -727,6 +729,13 @@ public class RebateCalcService {
             }
         }
         return total;
+    }
+
+    /** 返利计算依据为 数量/销售数量 时，返利比例视同每数量单位的金额 */
+    private static boolean isQtyBasis(String rebateBasis) {
+        if (rebateBasis == null) return false;
+        String b = rebateBasis.toUpperCase();
+        return b.equals("QTY") || b.equals("SALE_QTY");
     }
 
     // ================================================================

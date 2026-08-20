@@ -3,6 +3,7 @@ package com.rebate.dao;
 import com.rebate.model.Payable;
 import com.rebate.model.Receivable;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -25,6 +26,22 @@ public class ReceivablePayableDao {
 
     public int updateReceivable(Receivable r) {
         return BaseDao.update("UPDATE prj_receivable SET stage=?, scale_amount=?, assess_amount=?, " +
+                "total_amount=?, estimate_amount=?, tax_rate=?, status=?, fill_user=?, fill_time=?, remark=? WHERE id=?",
+                r.getStage(), r.getScaleAmount(), r.getAssessAmount(), r.getTotalAmount(), r.getEstimateAmount(),
+                r.getTaxRate(), r.getStatus(), r.getFillUser(), r.getFillTime(), r.getRemark(), r.getId());
+    }
+
+    public Long insertReceivableWithConn(Connection conn, Receivable r) throws SQLException {
+        return BaseDao.insertReturnIdWithConn(conn, "INSERT INTO prj_receivable(project_id, stage, scale_amount, assess_amount, " +
+                "total_amount, estimate_amount, tax_rate, status, fill_user, fill_time, remark) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                r.getProjectId(), r.getStage(), r.getScaleAmount(), r.getAssessAmount(),
+                r.getTotalAmount(), r.getEstimateAmount(), r.getTaxRate(), r.getStatus(), r.getFillUser(),
+                r.getFillTime(), r.getRemark());
+    }
+
+    public int updateReceivableWithConn(Connection conn, Receivable r) throws SQLException {
+        return BaseDao.updateWithConn(conn, "UPDATE prj_receivable SET stage=?, scale_amount=?, assess_amount=?, " +
                 "total_amount=?, estimate_amount=?, tax_rate=?, status=?, fill_user=?, fill_time=?, remark=? WHERE id=?",
                 r.getStage(), r.getScaleAmount(), r.getAssessAmount(), r.getTotalAmount(), r.getEstimateAmount(),
                 r.getTaxRate(), r.getStatus(), r.getFillUser(), r.getFillTime(), r.getRemark(), r.getId());
@@ -64,6 +81,21 @@ public class ReceivablePayableDao {
 
     public int updatePayable(Payable p) {
         return BaseDao.update("UPDATE prj_payable SET stage=?, scale_amount=?, assess_amount=?, " +
+                "total_amount=?, estimate_amount=?, tax_rate=?, status=?, fill_user=?, fill_time=?, remark=? WHERE id=?",
+                p.getStage(), p.getScaleAmount(), p.getAssessAmount(), p.getTotalAmount(), p.getEstimateAmount(),
+                p.getTaxRate(), p.getStatus(), p.getFillUser(), p.getFillTime(), p.getRemark(), p.getId());
+    }
+
+    public Long insertPayableWithConn(Connection conn, Payable p) throws SQLException {
+        return BaseDao.insertReturnIdWithConn(conn, "INSERT INTO prj_payable(project_id, agreement_id, stage, scale_amount, assess_amount, " +
+                "total_amount, estimate_amount, tax_rate, status, fill_user, fill_time, remark) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                p.getProjectId(), p.getAgreementId(), p.getStage(), p.getScaleAmount(), p.getAssessAmount(),
+                p.getTotalAmount(), p.getEstimateAmount(), p.getTaxRate(), p.getStatus(), p.getFillUser(), p.getFillTime(), p.getRemark());
+    }
+
+    public int updatePayableWithConn(Connection conn, Payable p) throws SQLException {
+        return BaseDao.updateWithConn(conn, "UPDATE prj_payable SET stage=?, scale_amount=?, assess_amount=?, " +
                 "total_amount=?, estimate_amount=?, tax_rate=?, status=?, fill_user=?, fill_time=?, remark=? WHERE id=?",
                 p.getStage(), p.getScaleAmount(), p.getAssessAmount(), p.getTotalAmount(), p.getEstimateAmount(),
                 p.getTaxRate(), p.getStatus(), p.getFillUser(), p.getFillTime(), p.getRemark(), p.getId());

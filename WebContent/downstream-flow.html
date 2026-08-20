@@ -102,6 +102,10 @@
 
 <div id="tabCurrent" class="tab-pane" style="display:none;">
     <div class="toolbar">
+        <input id="filterProductCurrent" placeholder="筛选产品名称" style="width:140px;">
+        <input id="filterSpecCurrent" placeholder="筛选规格" style="width:120px;">
+        <input id="filterSellerCurrent" placeholder="筛选销售方" style="width:140px;">
+        <input id="filterSellerCityCurrent" placeholder="筛选销售城市" style="width:120px;">
         <input id="filterMonthCurrent" placeholder="筛选月份 yyyyMM">
         <input id="filterBuyerCurrent" placeholder="筛选采购方">
         <input id="filterBuyerCityCurrent" placeholder="筛选采购方城市">
@@ -114,7 +118,7 @@
         <table class="table-nowrap">
             <thead><tr>
                 <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
-                <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th>
+                <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th><th>含税金额</th>
                 <th>采购方</th><th>采购方城市</th><th>客户等级</th><th>考核组</th><th width="60">操作</th>
             </tr></thead>
             <tbody id="currentBody"></tbody>
@@ -145,7 +149,7 @@
         <table class="table-nowrap">
             <thead><tr>
                 <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
-                <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th>
+                <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th><th>含税金额</th>
                 <th>采购方</th><th>采购方城市</th><th>客户等级</th><th>考核组</th>
             </tr></thead>
             <tbody id="invalidBody"></tbody>
@@ -164,6 +168,14 @@
 </div>
 
 <div id="tabAdd" class="tab-pane" style="display:none;">
+    <div id="directImportDiv" style="display:none; padding: 20px;">
+        <h3 style="margin-bottom:16px;">直接导入下游流向</h3>
+        <div style="margin-bottom:16px;">
+            <button class="btn btn-success" id="btnDirectImport">+ 导入Excel</button>
+            <input type="file" id="directFileInput" accept=".xlsx" style="display:none;">
+            <span style="color:#909399; font-size:12px; margin-left:10px;">Excel格式与上游流向导入相同，需包含：月份、业务日期、产品名称、规格、销售方名称、销售方城市、核算价格、数量、核算金额、采购方名称</span>
+        </div>
+    </div>
     <div class="wrapper">
         <div class="toolbar">
             <input id="filterMonth" placeholder="筛选月份 yyyyMM">
@@ -198,7 +210,7 @@
                 <thead><tr>
                     <th width="50">选择</th>
                     <th>月份</th><th>业务日期</th><th>产品名称</th><th>规格</th><th>销售方</th><th>销售城市</th>
-                    <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th>
+                    <th>核算价格</th><th>数量</th><th>销售数量</th><th>核算金额</th><th>中标价金额</th><th>无税金额</th><th>含税金额</th>
                     <th>采购方</th><th>采购方城市</th><th>客户等级</th><th>考核组</th>
                 </tr></thead>
                 <tbody id="sourceBody"></tbody>
@@ -297,6 +309,7 @@
     // IN 筛选缓存：key 是字段名（productName/sellerName/buyerName/buyerCity），value 是数组
     var inFilterCache = {};
     var curInField = null;
+    var isDirectImport = false;
 
     $(function () {
         RB.checkLogin(function () { 
@@ -306,22 +319,49 @@
                 display: '#txtProject',
                 hidden: '#projectId',
                 coYear: function() { return $('#selYear').val(); },
-                onChange: function() { 
-                    var id = $('#projectId').val(); 
-                    curProject = id ? {id: id} : null; 
-                    loadAgreements(); 
-                    curAgreement = null; 
+                onChange: function() {
+                    var id = $('#projectId').val();
+                    curProject = id ? {id: id} : null;
+                    loadAgreements();
+                    curAgreement = null;
                     clearTabTables();
+                    // 检查是否直接导入项目，异步完成后立即刷新 tabAdd 内部显示，避免用户点了才变化
+                    var applyDirect = function(flag) {
+                        isDirectImport = !!flag;
+                        var tabAddVisible = $('#tabAdd').is(':visible');
+                        refreshAddTabLayout(tabAddVisible);
+                    };
+                    if (id) {
+                        RB.post('/api/downstream-flow?op=isDirectImport', { projectId: id }).done(function(r) {
+                            applyDirect(r.code === 0 && r.data && r.data.isDirectImport);
+                        });
+                    } else {
+                        applyDirect(false);
+                    }
                     loadTabData();
                 }
             });
         });
 
         $('#btnSearch').on('click', function () { loadStage(); loadCurrent(); loadInvalid(); });
-        $('#agreementId').on('change', function () { 
-            var id = $(this).val(); 
-            curAgreement = id ? {id: id} : null; 
+        $('#agreementId').on('change', function () {
+            var id = $(this).val();
+            curAgreement = id ? {id: id} : null;
             clearTabTables();
+            // 协议切换不改变项目的直接导入属性，但这里保险起见同步一次，并立即应用到 tabAdd 显示
+            var pid = $('#projectId').val();
+            var applyDirect = function(flag) {
+                isDirectImport = !!flag;
+                var tabAddVisible = $('#tabAdd').is(':visible');
+                refreshAddTabLayout(tabAddVisible);
+            };
+            if (pid) {
+                RB.post('/api/downstream-flow?op=isDirectImport', { projectId: pid }).done(function(r) {
+                    applyDirect(r.code === 0 && r.data && r.data.isDirectImport);
+                });
+            } else {
+                applyDirect(false);
+            }
         });
         $('#btnLoadSource').on('click', function () { sourcePage = 1; recalcSourcePageSize(); loadSource(); });
         $('#btnLoadCurrent').on('click', function () { currentPage = 1; recalcCurrentPageSize(); loadCurrent(); });
@@ -332,6 +372,33 @@
         $('#btnSelectAll').on('click', toggleSelectAll);
         $('#btnSelectInverse').on('click', toggleSelectInverse);
         $('#btnSelectAllPage').on('click', toggleCheckAllPage);
+
+        // 直接导入下游流向（proj_flow_set 注册项目）
+        $('#btnDirectImport').on('click', function() { $('#directFileInput').click(); });
+        $('#directFileInput').on('change', function() {
+            var f = this.files[0];
+            if (!f) return;
+            var aid = $('#agreementId').val();
+            if (!aid) { RB.toast('请先选择下游协议', 'error'); return; }
+            $('#loadingOverlay').show();
+            var fd = new FormData();
+            fd.append('file', f);
+            fd.append('projectId', $('#projectId').val());
+            fd.append('agreementId', aid);
+            RB.api('/api/downstream-flow?op=importDirect', 'POST', fd).done(function(r) {
+                $('#loadingOverlay').hide();
+                if (r.code === 0) {
+                    RB.toast('导入成功 ' + r.data.totalCount + ' 条', 'success');
+                    loadCurrent();
+                } else {
+                    RB.toast(r.msg || '导入失败', 'error');
+                }
+            }).fail(function() {
+                $('#loadingOverlay').hide();
+                RB.toast('导入失败', 'error');
+            });
+            $('#directFileInput').val('');
+        });
 
         // IN 筛选按钮绑定
         $('.btn-in').on('click', function () {
@@ -364,7 +431,7 @@
             if (t === 'stage') loadStage();
             if (t === 'current') { recalcCurrentPageSize(); loadCurrent(); }
             if (t === 'invalid') { recalcInvalidPageSize(); loadInvalid(); }
-            if (t === 'add') { recalcSourcePageSize(); loadSource(); }
+            if (t === 'add') refreshAddTabLayout(true);
         });
         
         $(window).on('resize', function () {
@@ -391,6 +458,21 @@
         if (wrap.length === 0) { invalidPageSize = 10; return; }
         var h = $(window).height() - 200;
         invalidPageSize = Math.max(5, Math.floor(h / 36));
+    }
+
+    /**
+     * 根据 isDirectImport 标志立即切换「新增下游流向」页签内部显示。
+     * @param {boolean} needDataLoad 当前 tabAdd 正在显示/用户刚切过来，需要时加载数据
+     */
+    function refreshAddTabLayout(needDataLoad) {
+        if (isDirectImport) {
+            $('#directImportDiv').show();
+            $('.wrapper').hide();
+        } else {
+            $('#directImportDiv').hide();
+            $('.wrapper').show();
+            if (needDataLoad) { recalcSourcePageSize(); loadSource(); }
+        }
     }
 
     // ================ IN 批量筛选相关 ================
@@ -498,10 +580,14 @@
     function loadCurrent() {
         var pid = $('#projectId').val();
         var aid = $('#agreementId').val();
-        if (!pid) { $('#currentBody').html('<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
+        if (!pid) { $('#currentBody').html('<tr><td colspan="18" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
         $('#loadingOverlay').show();
         RB.post('/api/downstream-flow?op=listRecords', {
             projectId: pid,
+            productName: $('#filterProductCurrent').val(),
+            spec: $('#filterSpecCurrent').val(),
+            sellerName: $('#filterSellerCurrent').val(),
+            sellerCity: $('#filterSellerCityCurrent').val(),
             month: $('#filterMonthCurrent').val(),
             buyerName: $('#filterBuyerCurrent').val(),
             buyerCity: $('#filterBuyerCityCurrent').val(),
@@ -570,6 +656,7 @@
                 '<td>' + (r.calcAmount ?? '') + '</td>' +
                 '<td>' + (r.bidAmount ?? '') + '</td>' +
                 '<td>' + (r.noTaxAmount ?? '') + '</td>' +
+                '<td>' + (r.taxAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
                 '<td>' + (r.customerLevel || '') + '</td>' +
@@ -577,7 +664,7 @@
                 '<td><button class="btn btn-danger btn-sm" onclick="removeCurrentRecord(' + r.id + ')">剔除</button></td>' +
                 '</tr>';
         }
-        $('#currentBody').html(html || '<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        $('#currentBody').html(html || '<tr><td colspan="18" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
         updateCurrentPagination();
     }
 
@@ -592,7 +679,7 @@
     function loadInvalid() {
         var pid = $('#projectId').val();
         var aid = $('#agreementId').val();
-        if (!pid) { $('#invalidBody').html('<tr><td colspan="16" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
+        if (!pid) { $('#invalidBody').html('<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">请选择项目</td></tr>'); return; }
         $('#loadingOverlay').show();
         RB.post('/api/downstream-flow?op=listRecords', {
             projectId: pid,
@@ -632,13 +719,14 @@
                 '<td>' + (r.calcAmount ?? '') + '</td>' +
                 '<td>' + (r.bidAmount ?? '') + '</td>' +
                 '<td>' + (r.noTaxAmount ?? '') + '</td>' +
+                '<td>' + (r.taxAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
                 '<td>' + (r.customerLevel || '') + '</td>' +
                 '<td>' + (r.assessGroupName || '') + '</td>' +
                 '</tr>';
         }
-        $('#invalidBody').html(html || '<tr><td colspan="16" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        $('#invalidBody').html(html || '<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
         updateInvalidPagination();
     }
 
@@ -687,13 +775,14 @@
                 '<td>' + (r.calcAmount ?? '') + '</td>' +
                 '<td>' + (r.bidAmount ?? '') + '</td>' +
                 '<td>' + (r.noTaxAmount ?? '') + '</td>' +
+                '<td>' + (r.taxAmount ?? '') + '</td>' +
                 '<td>' + (r.buyerName || '') + '</td>' +
                 '<td>' + (r.buyerCity || '') + '</td>' +
                 '<td>' + (r.customerLevel || '') + '</td>' +
                 '<td>' + (r.assessGroupName || '') + '</td>' +
                 '</tr>';
         }
-        $('#sourceBody').html(html || '<tr><td colspan="18" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
+        $('#sourceBody').html(html || '<tr><td colspan="19" style="text-align:center;color:#999;padding:30px;">暂无数据</td></tr>');
         
         $('.row-check').off('change').on('change', function () {
             var id = $(this).data('id');
@@ -719,9 +808,9 @@
     }
 
     function clearTabTables() {
-        $('#currentBody').html('<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
-        $('#invalidBody').html('<tr><td colspan="16" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
-        $('#sourceBody').html('<tr><td colspan="18" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        $('#currentBody').html('<tr><td colspan="18" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        $('#invalidBody').html('<tr><td colspan="17" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
+        $('#sourceBody').html('<tr><td colspan="19" style="text-align:center;color:#999;padding:30px;">请查询</td></tr>');
         selectedRows = [];
         updateSelectedCount();
     }
@@ -908,12 +997,20 @@
     function exportCurrent() {
         if (!curProject) { RB.toast('请先选择项目', 'error'); return; }
         $('#loadingOverlay').show();
+        var productName = $('#filterProductCurrent').val();
+        var spec = $('#filterSpecCurrent').val();
+        var sellerName = $('#filterSellerCurrent').val();
+        var sellerCity = $('#filterSellerCityCurrent').val();
         var month = $('#filterMonthCurrent').val();
         var buyerName = $('#filterBuyerCurrent').val();
         var buyerCity = $('#filterBuyerCityCurrent').val();
         var customerLevel = $('#filterCustomerLevelCurrent').val();
         var agreementId = $('#agreementId').val();
         var url = './api/downstream-flow?op=exportCurrent&projectId=' + curProject.id;
+        if (productName) url += '&productName=' + encodeURIComponent(productName);
+        if (spec) url += '&spec=' + encodeURIComponent(spec);
+        if (sellerName) url += '&sellerName=' + encodeURIComponent(sellerName);
+        if (sellerCity) url += '&sellerCity=' + encodeURIComponent(sellerCity);
         if (month) url += '&month=' + month;
         if (buyerName) url += '&buyerName=' + encodeURIComponent(buyerName);
         if (buyerCity) url += '&buyerCity=' + encodeURIComponent(buyerCity);

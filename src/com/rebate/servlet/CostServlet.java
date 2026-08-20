@@ -1,5 +1,6 @@
 package com.rebate.servlet;
 
+import com.rebate.dao.BaseDao;
 import com.rebate.dao.CostDao;
 import com.rebate.model.ProjectExpense;
 import com.rebate.model.ProjectLabor;
@@ -174,11 +175,13 @@ public class CostServlet extends BaseServlet {
             l.setSource("INPUT");
             // 使用新的分摊规则
             List<ProjectLabor> labors = alloc.allocLaborByRule(l);
-            List<Long> ids = new ArrayList<>();
-            for (ProjectLabor labor : labors) {
-                Long id = dao.insertLabor(labor);
-                ids.add(id);
-            }
+            List<Long> ids = BaseDao.executeInTransaction(conn -> {
+                List<Long> idList = new ArrayList<>();
+                for (ProjectLabor labor : labors) {
+                    idList.add(dao.insertLaborWithConn(conn, labor));
+                }
+                return idList;
+            });
             ResponseUtil.ok(resp, java.util.Collections.singletonMap("ids", ids));
         } else {
             ProjectExpense e = parseExpense(p);
@@ -186,11 +189,13 @@ public class CostServlet extends BaseServlet {
             e.setSource("INPUT");
             // 使用新的分摊规则
             List<ProjectExpense> expenses = alloc.allocateExpenseByRule(e);
-            List<Long> ids = new ArrayList<>();
-            for (ProjectExpense exp : expenses) {
-                Long id = dao.insertExpense(exp);
-                ids.add(id);
-            }
+            List<Long> ids = BaseDao.executeInTransaction(conn -> {
+                List<Long> idList = new ArrayList<>();
+                for (ProjectExpense exp : expenses) {
+                    idList.add(dao.insertExpenseWithConn(conn, exp));
+                }
+                return idList;
+            });
             ResponseUtil.ok(resp, java.util.Collections.singletonMap("ids", ids));
         }
     }
@@ -296,13 +301,13 @@ public class CostServlet extends BaseServlet {
         Part file = req.getPart("file");
         if (file == null) { ResponseUtil.fail(resp, "请选择 Excel"); return; }
         List<Map<String, String>> rows = ExcelUtil.readSheetAsMap(file.getInputStream());
-        int ok = 0, fail = 0;
         List<String> errs = new ArrayList<>();
+        List<ProjectLabor> toInsert = new ArrayList<>();
         for (int i = 0; i < rows.size(); i++) {
             try {
                 Map<String, String> row = rows.get(i);
                 ProjectLabor l = new ProjectLabor();
-                
+
                 String month = row.get("月度");
                 if (month != null && month.length() >= 7) {
                     l.setMonthYyyymm(month.substring(0, 7));
@@ -317,21 +322,32 @@ public class CostServlet extends BaseServlet {
                 l.setTotalCost(total == null || total.isEmpty() ? l.getSalary().add(l.getWelfare()) : new BigDecimal(total));
                 l.setSource("IMPORT");
                 l.setImportUser(u.getId());
-                
+
                 // 使用新的分摊规则
                 List<ProjectLabor> labors = alloc.allocLaborByRule(l);
-                for (ProjectLabor labor : labors) {
-                    dao.insertLabor(labor);
-                }
-                ok++;
+                toInsert.addAll(labors);
             } catch (Exception ex) {
-                fail++;
                 errs.add("第" + (i + 2) + "行: " + ex.getMessage());
             }
         }
         Map<String, Object> r = new HashMap<>();
+        if (!errs.isEmpty()) {
+            // 有错误行则整体回滚（未执行任何插入），返回错误报告
+            r.put("ok", 0);
+            r.put("fail", errs.size());
+            r.put("errors", errs);
+            r.put("message", "存在错误行，全部回滚，未导入任何数据");
+            ResponseUtil.ok(resp, r);
+            return;
+        }
+        int ok = BaseDao.executeInTransaction(conn -> {
+            for (ProjectLabor labor : toInsert) {
+                dao.insertLaborWithConn(conn, labor);
+            }
+            return toInsert.size();
+        });
         r.put("ok", ok);
-        r.put("fail", fail);
+        r.put("fail", 0);
         r.put("errors", errs);
         ResponseUtil.ok(resp, r);
     }
@@ -341,17 +357,17 @@ public class CostServlet extends BaseServlet {
         String projectIdStr = req.getParameter("projectId");
         if (file == null) { ResponseUtil.fail(resp, "请选择 Excel"); return; }
         List<Map<String, String>> rows = ExcelUtil.readSheetAsMap(file.getInputStream());
-        int ok = 0, fail = 0;
         List<String> errs = new ArrayList<>();
+        List<ProjectExpense> toInsert = new ArrayList<>();
         for (int i = 0; i < rows.size(); i++) {
             try {
                 Map<String, String> row = rows.get(i);
                 ProjectExpense e = new ProjectExpense();
-                
+
                 // 注意：这里不要设置 projectId，让分摊逻辑自动处理
                 String rd = row.get("报销时间");
                 if (rd != null && !rd.isEmpty()) {
-                    try { e.setReimburseDate(Date.valueOf(rd)); } catch (Exception ex) { 
+                    try { e.setReimburseDate(Date.valueOf(rd)); } catch (Exception ex) {
                         try { e.setReimburseDate(Date.valueOf(rd.substring(0, 10))); } catch (Exception ex2) {}
                     }
                 }
@@ -368,21 +384,32 @@ public class CostServlet extends BaseServlet {
                 e.setAmount(a == null || a.isEmpty() ? BigDecimal.ZERO : new BigDecimal(a));
                 e.setSource("IMPORT");
                 e.setImportUser(u.getId());
-                
+
                 // 使用新的分摊规则
                 List<ProjectExpense> expenses = alloc.allocateExpenseByRule(e);
-                for (ProjectExpense exp : expenses) {
-                    dao.insertExpense(exp);
-                }
-                ok++;
+                toInsert.addAll(expenses);
             } catch (Exception ex) {
-                fail++;
                 errs.add("第" + (i + 2) + "行: " + ex.getMessage());
             }
         }
         Map<String, Object> r = new HashMap<>();
+        if (!errs.isEmpty()) {
+            // 有错误行则整体回滚（未执行任何插入），返回错误报告
+            r.put("ok", 0);
+            r.put("fail", errs.size());
+            r.put("errors", errs);
+            r.put("message", "存在错误行，全部回滚，未导入任何数据");
+            ResponseUtil.ok(resp, r);
+            return;
+        }
+        int ok = BaseDao.executeInTransaction(conn -> {
+            for (ProjectExpense exp : toInsert) {
+                dao.insertExpenseWithConn(conn, exp);
+            }
+            return toInsert.size();
+        });
         r.put("ok", ok);
-        r.put("fail", fail);
+        r.put("fail", 0);
         r.put("errors", errs);
         ResponseUtil.ok(resp, r);
     }
