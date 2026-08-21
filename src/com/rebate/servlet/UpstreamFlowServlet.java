@@ -341,9 +341,9 @@ public class UpstreamFlowServlet extends BaseServlet {
 
         List<UpstreamFlowRecord> records = dao.listRecords(pid, month, isValid);
 
-        List<String> headers = Arrays.asList("月份", "业务日期", "产品名称", "规格", "销售方", "销售城市",
+        List<String> headers = Arrays.asList("月份", "业务日期", "产品名称", "规格", "销售方名称", "销售方城市",
                 "核算价格", "数量", "销售数量", "核算金额", "中标金额", "无税金额", "含税金额",
-                "采购方", "采购方城市", "考核组", "状态");
+                "采购方名称", "采购方城市", "考核组", "状态");
         List<List<String>> rows = new ArrayList<>();
         for (UpstreamFlowRecord r : records) {
             String state = r.getIsFinal() == 1 ? "终版" : (r.getIsValid() == 1 ? "有效" : "失效");

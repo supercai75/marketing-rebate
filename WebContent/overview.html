@@ -693,7 +693,7 @@
                 'BID_AMT':'中标金额口径', 'TAX_AMT':'含税金额口径' };
             return map[b] || (b || '-');
         };
-        var calcModeLabel = function(m) { return m === 'PROGRESSIVE' ? '递进式（只计超阈值部分）' : (m === 'FLAT' ? '全部计算（达成即整体适用）' : (m || '-')); };
+        var calcModeLabel = function(m) { return m === 'PROGRESSIVE' ? '递进式（只计阈值上下限之间部分）' : (m === 'FLAT' ? '全部计算（达成即整体适用）' : (m || '-')); };
 
         // 专职团队信息
         var formalInfo = '';
@@ -782,11 +782,11 @@
             });
 
             var rulesTableHtml = '';
-            ['S1', 'S2', 'S3', 'S4'].forEach(function (sc) {
+            ['ALL', 'S1', 'S2', 'S3', 'S4', 'FULL_YEAR'].forEach(function (sc) {
                 var rows = [];
                 Object.keys(stageMap[sc] || {}).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (k) { rows.push(stageMap[sc][k]); });
                 if (rows.length === 0) return;
-                rulesTableHtml += '<div style="margin-top:6px;"><strong style="font-size:12px;color:#606266;">' + sc + ' 阶段</strong>' +
+                rulesTableHtml += '<div style="margin-top:6px;"><strong style="font-size:12px;color:#606266;">' + stageName(sc) + '</strong>' +
                     '<table class="sub-table" style="margin-top:4px;">' +
                     '<thead><tr><th style="width:60px;">序号</th><th class="num">阈值下限</th><th class="num">阈值上限</th><th class="num">返利比例</th><th>计算模式</th><th>奖励类型</th><th>表达式/备注</th></tr></thead><tbody>';
                 rows.forEach(function (r, idx) {
@@ -868,7 +868,15 @@
         html += '</div>';
         $('#upstreamInfo').html(html);
     }
-
+	function stageName(sc){
+		if(sc=='ALL'){return '全部阶段';
+		}else if(sc=='S1'){return '阶段一';
+		}else if(sc=='S2'){return '阶段二';
+		}else if(sc=='S3'){return '阶段三';
+		}else if(sc=='S4'){return '阶段四';
+		}else if(sc=='FULL_YEAR'){return '全年';
+		}
+	}
     function toggleUpstreamGroup(el, gidStr) {
         $(el).siblings().removeClass('active');
         $(el).addClass('active');
@@ -951,7 +959,7 @@
                     'BID_AMT':'中标金额口径', 'TAX_AMT':'含税金额口径' };
                 return map[b] || (b || '-');
             };
-            var calcModeLabel = function(m) { return m === 'PROGRESSIVE' ? '递进式（只计超阈值部分）' : (m === 'FLAT' ? '全部计算（达成即整体适用）' : (m || '-')); };
+            var calcModeLabel = function(m) { return m === 'PROGRESSIVE' ? '递进式（只计阈值上下限之间部分）' : (m === 'FLAT' ? '全部计算（达成即整体适用）' : (m || '-')); };
 
             var formalInfo = '';
             if (down.formalCount) formalInfo += '正式 ' + down.formalCount + '人';
@@ -1030,11 +1038,11 @@
                 });
 
                 var tgRulesHtml = '';
-                ['S1', 'S2', 'S3', 'S4'].forEach(function (sc) {
+                ['ALL','S1', 'S2', 'S3', 'S4', 'FULL_YEAR'].forEach(function (sc) {
                     var rows = [];
                     Object.keys(tgStageMap[sc] || {}).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (k) { rows.push(tgStageMap[sc][k]); });
                     if (rows.length === 0) return;
-                    tgRulesHtml += '<div style="margin-top:6px;"><strong style="font-size:12px;color:#606266;">' + sc + ' 阶段</strong>' +
+                    tgRulesHtml += '<div style="margin-top:6px;"><strong style="font-size:12px;color:#606266;">' + stageName(sc) + ' </strong>' +
                         '<table class="sub-table" style="margin-top:4px;">' +
                         '<thead><tr><th style="width:60px;">序号</th><th class="num">阈值下限</th><th class="num">阈值上限</th><th class="num">返利比例</th><th>计算模式</th><th>奖励类型</th><th>表达式/备注</th></tr></thead><tbody>';
                     rows.forEach(function (r, idx) {

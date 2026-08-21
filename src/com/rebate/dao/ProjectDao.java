@@ -60,6 +60,20 @@ public class ProjectDao {
                 p.getStatus(), p.getOwnerUserId(), p.getProjectGroupId(), p.getUndertakingDept(), p.getId());
     }
 
+    /**
+     * 事务内更新（与阶段-月份配置保存共用同一 Connection）
+     */
+    public int updateWithConn(Connection conn, Project p) throws SQLException {
+        String sql = "UPDATE prj_project SET project_code=?, project_name=?, brand=?, co_product=?, co_mode=?, " +
+                "co_year=?, period_start_date=?, period_end_date=?, region=?, target_scale=?, " +
+                "expected_rebate=?, expected_cost=?, description=?, " +
+                "status=?, owner_user_id=?, project_group_id=?, undertaking_dept=? WHERE id=?";
+        return BaseDao.updateWithConn(conn, sql, p.getProjectCode(), p.getProjectName(), p.getBrand(), p.getCoProduct(), p.getCoMode(),
+                p.getCoYear(), p.getPeriodStartDate(), p.getPeriodEndDate(), p.getRegion(), p.getTargetScale(),
+                p.getExpectedRebate(), p.getExpectedCost(), p.getDescription(),
+                p.getStatus(), p.getOwnerUserId(), p.getProjectGroupId(), p.getUndertakingDept(), p.getId());
+    }
+
     public int updateStatus(long id, String status) {
         return BaseDao.update("UPDATE prj_project SET status=? WHERE id=?", status, id);
     }

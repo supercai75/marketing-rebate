@@ -78,6 +78,23 @@
                 <div class="form-item col-4"><label>状态</label>
                     <select id="f_status"><option value="NEW">新建</option><option value="RUNNING">进行中</option><option value="CLOSED">已关闭</option></select></div>
             </div>
+            <div id="stageConfigSection" style="display:none; margin-top:12px; padding:12px; background:#f5f7fa; border:1px solid #dcdfe6; border-radius:4px;">
+                <div style="font-weight:bold; margin-bottom:8px; color:#e6a23c;">
+                    项目周期非12个月（共 <span id="stageMonthCount">0</span> 个月），请定义每个阶段对应的月份区间
+                </div>
+                <table style="width:100%; font-size:13px;">
+                    <thead><tr>
+                        <th style="text-align:left; padding:4px;">阶段</th>
+                        <th style="text-align:left; padding:4px;">起始月份</th>
+                        <th style="text-align:left; padding:4px;">截止月份</th>
+                        <th style="text-align:left; padding:4px;">说明</th>
+                    </tr></thead>
+                    <tbody id="stageConfigBody"></tbody>
+                </table>
+                <div style="margin-top:6px; color:#909399; font-size:12px;">
+                    提示：默认按等分预填，可按需调整；四阶段需连续且覆盖整个项目周期。
+                </div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn" onclick="RB.closeModal('modalForm')">取消</button>
@@ -194,6 +211,9 @@
         $('#btnSave').on('click', saveForm);
         $('#btnSavePerson').on('click', savePerson);
         $('#btnAddPerson').on('click', function () { RB.withPerm('project:edit', function() { clearPersonForm(); $('#pf_projectId').val(curProject.id); RB.openModal('modalPersonForm'); }, '权限不足，无法新增项目'); });
+
+        // 项目周期变化时，判断是否非12个月 → 显示阶段-月份配置
+        $('#f_periodStartDate, #f_periodEndDate').on('change', updateStageConfigVisibility);
     });
 
     function loadYears() {
@@ -326,6 +346,8 @@
         $('#f_periodStartDate').val(''); $('#f_periodEndDate').val('');
         $('#f_status').val('NEW');
         $('#f_projectGroupId').val('');
+        $('#stageConfigSection').hide();
+        $('#stageConfigBody').empty();
     }
     function fillForm(p) {
         $('#f_projectCode').val(p.projectCode || '');
@@ -345,6 +367,147 @@
         $('#f_projectGroupId').val(p.projectGroupId || '');
         $('#f_projectGroupName').val('');
         $('#f_undertakingDept').val(p.undertakingDept || '');
+        // 加载已有阶段-月份配置(非12个月周期项目)
+        loadStageConfig(p.id);
+    }
+
+    // ==================== 阶段-月份配置 ====================
+    var STAGE_DEFS = [
+        { code: 'S1', name: '阶段一' },
+        { code: 'S2', name: '阶段二' },
+        { code: 'S3', name: '阶段三' },
+        { code: 'S4', name: '阶段四' }
+    ];
+
+    function loadStageConfig(projectId) {
+        if (!projectId) { updateStageConfigVisibility(); return; }
+        RB.post('/api/project?op=getStageConfig', { id: projectId }).done(function (r) {
+            if (r.code !== 0 || !r.data) { updateStageConfigVisibility(); return; }
+            var d = r.data;
+            if (d.isFullYear) {
+                $('#stageConfigSection').hide();
+                return;
+            }
+            // 非整12个月：显示配置区
+            $('#stageMonthCount').text(d.monthCount);
+            var existing = {};
+            (d.configs || []).forEach(function (c) { existing[c.stageCode] = c; });
+            renderStageRows(existing, d.defaultRanges);
+            $('#stageConfigSection').show();
+        }).fail(function () { updateStageConfigVisibility(); });
+    }
+
+    function updateStageConfigVisibility() {
+        var ps = $('#f_periodStartDate').val();
+        var pe = $('#f_periodEndDate').val();
+        if (!ps || !pe) { $('#stageConfigSection').hide(); return; }
+        var cnt = monthDiff(ps, pe);
+        if (cnt === 12) {
+            $('#stageConfigSection').hide();
+        } else {
+            $('#stageMonthCount').text(cnt);
+            // 周期变化时丢弃旧配置，按等分预填供用户调整
+            renderStageRows({}, suggestStageSplit(ps, pe));
+            $('#stageConfigSection').show();
+        }
+    }
+
+    /**
+     * 将项目周期等分为4段，返回 { S1:[start,end], ... } (YYYYMM 数组)。
+     * 多余月份优先分配给靠前的阶段。
+     */
+    function suggestStageSplit(startStr, endStr) {
+        var start = new Date(startStr), end = new Date(endStr);
+        var total = monthDiff(startStr, endStr);
+        if (total < 4) total = 4;
+        var base = Math.floor(total / 4);
+        var extra = total % 4;
+        var r = {};
+        var cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+        for (var i = 0; i < 4; i++) {
+            var len = base + (i < extra ? 1 : 0);
+            var from = new Date(cursor);
+            var to = new Date(cursor.getFullYear(), cursor.getMonth() + len - 1, 1);
+            r[STAGE_DEFS[i].code] = [dateToYyyymm(from), dateToYyyymm(to)];
+            cursor = new Date(cursor.getFullYear(), cursor.getMonth() + len, 1);
+        }
+        return r;
+    }
+
+    function dateToYyyymm(d) {
+        return d.getFullYear() * 100 + (d.getMonth() + 1);
+    }
+
+    function renderStageRows(existing, defaultRanges) {
+        var html = '';
+        for (var i = 0; i < STAGE_DEFS.length; i++) {
+            var s = STAGE_DEFS[i];
+            var ex = existing[s.code] || {};
+            var defR = defaultRanges && defaultRanges[s.code] ? defaultRanges[s.code] : null;
+            var startVal = ex.startYyyymm ? yyyymmToMonth(ex.startYyyymm) : (defR ? yyyymmToMonth(defR[0]) : '');
+            var endVal = ex.endYyyymm ? yyyymmToMonth(ex.endYyyymm) : (defR ? yyyymmToMonth(defR[1]) : '');
+            html += '<tr>' +
+                '<td style="padding:4px;">' + s.name + ' (' + s.code + ')</td>' +
+                '<td style="padding:4px;"><input type="month" class="sc-start" data-code="' + s.code + '" value="' + (startVal || '') + '" style="width:140px;"></td>' +
+                '<td style="padding:4px;"><input type="month" class="sc-end" data-code="' + s.code + '" value="' + (endVal || '') + '" style="width:140px;"></td>' +
+                '<td style="padding:4px; color:#909399; font-size:12px;">月度数据将按此区间汇总到该阶段</td>' +
+                '</tr>';
+        }
+        $('#stageConfigBody').html(html);
+    }
+
+    function collectStageConfigs() {
+        var arr = [];
+        $('#stageConfigBody tr').each(function () {
+            var code = $(this).find('.sc-start').data('code');
+            var sVal = $(this).find('.sc-start').val();
+            var eVal = $(this).find('.sc-end').val();
+            arr.push({
+                stageCode: code,
+                startYyyymm: sVal ? monthToYyyymm(sVal) : null,
+                endYyyymm: eVal ? monthToYyyymm(eVal) : null
+            });
+        });
+        return arr;
+    }
+
+    function validateStageConfigs(arr) {
+        if (arr.length !== 4) return '阶段配置必须包含 S1-S4 共4个阶段';
+        var prevEnd = 0;
+        var ps = $('#f_periodStartDate').val();
+        var pe = $('#f_periodEndDate').val();
+        var periodStartYm = ps ? monthToYyyymm(ps) : 0;
+        var periodEndYm = pe ? monthToYyyymm(pe) : 999999;
+        for (var i = 0; i < arr.length; i++) {
+            var c = arr[i];
+            if (!c.startYyyymm || !c.endYyyymm) return '阶段 ' + c.stageCode + ' 的起始/截止月份不能为空';
+            if (c.endYyyymm < c.startYyyymm) return '阶段 ' + c.stageCode + ' 的截止月份不能早于起始月份';
+            if (c.startYyyymm <= prevEnd) return '阶段 ' + c.stageCode + ' 的起始月份必须晚于前一阶段的截止月份';
+            prevEnd = c.endYyyymm;
+        }
+        if (arr[0].startYyyymm > periodStartYm) return '阶段S1起始月份必须不晚于项目起始月份(' + periodStartYm + ')';
+        if (arr[3].endYyyymm < periodEndYm) return '阶段S4截止月份必须不早于项目终止月份(' + periodEndYm + ')';
+        return null;
+    }
+
+    // "2026-01" -> 202601 ; "2026-01-15" -> 202601
+    function monthToYyyymm(s) {
+        if (!s) return 0;
+        var parts = String(s).split('-');
+        if (parts.length < 2) return 0;
+        return parseInt(parts[0], 10) * 100 + parseInt(parts[1], 10);
+    }
+    // 202601 -> "2026-01"
+    function yyyymmToMonth(n) {
+        if (!n) return '';
+        var y = Math.floor(n / 100), m = n % 100;
+        return y + '-' + (m < 10 ? '0' + m : m);
+    }
+    // 起止日期之间的整月数(含起止月)
+    function monthDiff(start, end) {
+        var s = new Date(start), e = new Date(end);
+        if (isNaN(s.getTime()) || isNaN(e.getTime())) return 0;
+        return (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1;
     }
 
     function saveForm() {
@@ -375,6 +538,13 @@
             if (gid) p.projectGroupId = gid;
         }
         if (!p.projectName) { RB.toast('请填写项目名称', 'error'); return; }
+        // 非12个月周期：收集并校验阶段-月份配置
+        if ($('#stageConfigSection').is(':visible')) {
+            var stageArr = collectStageConfigs();
+            var err = validateStageConfigs(stageArr);
+            if (err) { RB.toast(err, 'error'); return; }
+            p.stageConfigs = JSON.stringify(stageArr);
+        }
         var op = curProject ? 'update' : 'add';
         RB.post('/api/project?op=' + op, p).done(function (r) {
             if (r.code === 0) {

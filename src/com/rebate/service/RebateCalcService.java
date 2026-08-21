@@ -241,29 +241,22 @@ public class RebateCalcService {
         try {
             com.rebate.dao.DownstreamFlowDao dsFlowDao = new com.rebate.dao.DownstreamFlowDao();
             List<Map<String, Object>> monthData = dsFlowDao.sumByAgreement(down.getId(), rebateBasis);
-            Map<String, BigDecimal> result = new HashMap<>();
-            result.put("S1", BigDecimal.ZERO); result.put("S2", BigDecimal.ZERO);
-            result.put("S3", BigDecimal.ZERO); result.put("S4", BigDecimal.ZERO);
-            if (project.getPeriodStartDate() != null) {
-                Calendar cal = Calendar.getInstance();
-                cal.setTime(project.getPeriodStartDate());
-                int startYear = cal.get(Calendar.YEAR);
-                int startMonth = cal.get(Calendar.MONTH) + 1;
-                for (Map<String, Object> m : monthData) {
-                    BigDecimal scale = (BigDecimal) m.get("scale");
-                    if (scale == null) continue;
-                    String month = (String) m.get("month");
-                    if (month == null || month.length() < 6) continue;
-                    int yyyymm = Integer.parseInt(month);
-                    int monthOffset = (yyyymm / 100 - startYear) * 12 + (yyyymm % 100 - startMonth);
-                    int stageIdx = monthOffset / 3;
-                    if (stageIdx >= 0 && stageIdx < 4) {
-                        String[] stages = {"S1", "S2", "S3", "S4"};
-                        result.put(stages[stageIdx], result.get(stages[stageIdx]).add(scale));
-                    }
-                }
+            Map<String, BigDecimal> monthScale = new HashMap<>();
+            for (Map<String, Object> m : monthData) {
+                BigDecimal scale = (BigDecimal) m.get("scale");
+                if (scale == null) continue;
+                String month = (String) m.get("month");
+                if (month == null || month.length() < 6) continue;
+                monthScale.put(month, scale);
             }
-            return new BigDecimal[]{result.get("S1"), result.get("S2"), result.get("S3"), result.get("S4")};
+            // 阶段-月份区间: 按项目阶段配置(整12个月走默认, 非12个月读 prj_stage_month_config)
+            Map<String, int[]> ranges = StageMonthService.getStageRanges(project.getId());
+            return new BigDecimal[]{
+                StageMonthService.sumByRange(monthScale, ranges.get("S1")),
+                StageMonthService.sumByRange(monthScale, ranges.get("S2")),
+                StageMonthService.sumByRange(monthScale, ranges.get("S3")),
+                StageMonthService.sumByRange(monthScale, ranges.get("S4"))
+            };
         } catch (Exception ex) {
             return calcStageActuals;
         }

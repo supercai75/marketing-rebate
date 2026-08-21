@@ -319,32 +319,23 @@ public class OverviewService {
         result.put("S4", BigDecimal.ZERO);
         
         Project project = projectDao.findById(projectId);
-        if (project == null || project.getPeriodStartDate() == null) {
+        if (project == null) {
             return result;
         }
         
         // 根据计算依据选择列（支持 QTY/SALE_QTY/CALC_AMT/BID_AMT 多口径）
         String sumCol = ProjectScaleService.basisToColumn(basis);
-        
-        java.sql.Date startDate = project.getPeriodStartDate();
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.setTime(startDate);
-        int startYear = cal.get(java.util.Calendar.YEAR);
-        int startMonth = cal.get(java.util.Calendar.MONTH) + 1;
-        
-        // 计算各阶段的 YYYYMM 范围
+
+        // 阶段-月份区间: 整12个月走默认(自起始月每3月一阶段), 非12个月读 prj_stage_month_config
+        Map<String, int[]> ranges = StageMonthService.getStageRanges(projectId);
+        String[] sc = StageMonthService.stageCodes();
         int[][] stages = new int[4][2];
         for (int i = 0; i < 4; i++) {
-            int stageStartMonth = startMonth + i * 3;
-            int stageEndMonth = stageStartMonth + 2;
-            int stageStartYear = startYear + (stageStartMonth - 1) / 12;
-            int stageStartMonthOfYear = ((stageStartMonth - 1) % 12) + 1;
-            int stageEndYear = startYear + (stageEndMonth - 1) / 12;
-            int stageEndMonthOfYear = ((stageEndMonth - 1) % 12) + 1;
-            stages[i][0] = stageStartYear * 100 + stageStartMonthOfYear;
-            stages[i][1] = stageEndYear * 100 + stageEndMonthOfYear;
+            int[] rg = ranges.get(sc[i]);
+            stages[i][0] = (rg == null) ? 0 : rg[0];
+            stages[i][1] = (rg == null) ? -1 : rg[1]; // 空区间保证不命中任何月份
         }
-        
+
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT ");
         sql.append("  COALESCE(SUM(CASE WHEN r.month_yyyymm::int BETWEEN ? AND ? THEN r." + sumCol + " END), 0) as s1, ");
@@ -356,7 +347,7 @@ public class OverviewService {
         if (assessGroupId != null && assessGroupId > 0) {
             sql.append("AND r.assess_group_id = ?");
         }
-        
+
         List<Object> params = new ArrayList<>();
         for (int[] stage : stages) {
             params.add(stage[0]);
@@ -403,17 +394,12 @@ public class OverviewService {
             }
         }
         
-        // 阶段划分 (假设项目周期为12个月，按季度划分)
-        BigDecimal s1a = BigDecimal.ZERO, s2a = BigDecimal.ZERO, s3a = BigDecimal.ZERO, s4a = BigDecimal.ZERO;
-        for (Map.Entry<String, BigDecimal> e : monthScale.entrySet()) {
-            String month = e.getKey();
-            if (month == null || month.length() < 6) continue;
-            int m = Integer.parseInt(month.substring(4, 6));
-            if (m >= 1 && m <= 3) s1a = s1a.add(e.getValue());
-            else if (m >= 4 && m <= 6) s2a = s2a.add(e.getValue());
-            else if (m >= 7 && m <= 9) s3a = s3a.add(e.getValue());
-            else s4a = s4a.add(e.getValue());
-        }
+        // 阶段-月份区间: 按项目阶段配置(整12个月走默认, 非12个月读 prj_stage_month_config)
+        Map<String, int[]> ranges = StageMonthService.getStageRanges(agreement.getProjectId());
+        BigDecimal s1a = StageMonthService.sumByRange(monthScale, ranges.get("S1"));
+        BigDecimal s2a = StageMonthService.sumByRange(monthScale, ranges.get("S2"));
+        BigDecimal s3a = StageMonthService.sumByRange(monthScale, ranges.get("S3"));
+        BigDecimal s4a = StageMonthService.sumByRange(monthScale, ranges.get("S4"));
         
         BigDecimal totalTarget = agreement.getTargetScale() == null ? BigDecimal.ZERO : agreement.getTargetScale();
         BigDecimal s1t = agreement.getStage1Target() == null ? BigDecimal.ZERO : agreement.getStage1Target();

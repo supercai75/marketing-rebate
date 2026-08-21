@@ -56,19 +56,21 @@ public class ProjectScaleService {
 
         boolean all4Filled = nz(stage1).signum() > 0 && nz(stage2).signum() > 0
                 && nz(stage3).signum() > 0 && nz(stage4).signum() > 0;
+        // 阶段-月份区间: 整12个月走默认(自起始月每3月一阶段), 非12个月读 prj_stage_month_config
+        java.util.Map<String, int[]> ranges = StageMonthService.getStageRanges(projectId);
         if (all4Filled) {
-            r.put("stage1Actual", sumRange(monthScale, 1, 3));
-            r.put("stage2Actual", sumRange(monthScale, 4, 6));
-            r.put("stage3Actual", sumRange(monthScale, 7, 9));
-            r.put("stage4Actual", sumRange(monthScale, 10, 12));
+            r.put("stage1Actual", StageMonthService.sumByRange(monthScale, ranges.get("S1")));
+            r.put("stage2Actual", StageMonthService.sumByRange(monthScale, ranges.get("S2")));
+            r.put("stage3Actual", StageMonthService.sumByRange(monthScale, ranges.get("S3")));
+            r.put("stage4Actual", StageMonthService.sumByRange(monthScale, ranges.get("S4")));
         } else if (nz(stage1).signum() > 0 && nz(stage2).signum() > 0) {
-            r.put("stage1Actual", sumRange(monthScale, 1, 6));
-            r.put("stage2Actual", sumRange(monthScale, 7, 12));
+            r.put("stage1Actual", StageMonthService.sumByRanges(monthScale, ranges, "S1", "S2"));
+            r.put("stage2Actual", StageMonthService.sumByRanges(monthScale, ranges, "S3", "S4"));
             r.put("stage3Actual", BigDecimal.ZERO);
             r.put("stage4Actual", BigDecimal.ZERO);
         } else {
-            // 只有阶段1填了: 整年算阶段1
-            r.put("stage1Actual", total);
+            // 只有阶段1填了: 整周期算阶段1
+            r.put("stage1Actual", StageMonthService.sumByRanges(monthScale, ranges, "S1", "S2", "S3", "S4"));
             r.put("stage2Actual", BigDecimal.ZERO);
             r.put("stage3Actual", BigDecimal.ZERO);
             r.put("stage4Actual", BigDecimal.ZERO);

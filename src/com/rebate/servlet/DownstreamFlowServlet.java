@@ -4,6 +4,7 @@ import com.rebate.dao.DownstreamFlowDao;
 import com.rebate.dao.RebateRuleDao;
 import com.rebate.model.DownstreamFlowRecord;
 import com.rebate.service.FlowImportService;
+import com.rebate.service.StageMonthService;
 import com.rebate.util.ExcelUtil;
 import com.rebate.util.ResponseUtil;
 import com.rebate.util.TokenUtil;
@@ -206,27 +207,27 @@ public class DownstreamFlowServlet extends BaseServlet {
         java.math.BigDecimal stage3Actual = java.math.BigDecimal.ZERO;
         java.math.BigDecimal stage4Actual = java.math.BigDecimal.ZERO;
         
+        // 阶段-月份区间: 按项目阶段配置(整12个月走默认, 非12个月读 prj_stage_month_config)
+        java.util.Map<String, int[]> ranges = StageMonthService.getStageRanges(agreement.getProjectId());
+
         for (DownstreamFlowRecord r : allRecords) {
             // 根据计算依据选择使用数量或金额
-            java.math.BigDecimal value = useQuantity 
+            java.math.BigDecimal value = useQuantity
                 ? (r.getQuantity() != null ? r.getQuantity() : java.math.BigDecimal.ZERO)
                 : (r.getCalcAmount() != null ? r.getCalcAmount() : java.math.BigDecimal.ZERO);
             totalActual = totalActual.add(value);
-            
-            // 按阶段聚合（根据月份判断）
+
+            // 按阶段聚合（依据项目阶段-月份配置）
             String month = r.getMonthYyyymm();
-            if (month != null && month.length() == 6) {
-                int m = Integer.parseInt(month.substring(4, 6));
-                if (m >= 1 && m <= 3) {
-                    stage1Actual = stage1Actual.add(value);
-                } else if (m >= 4 && m <= 6) {
-                    stage2Actual = stage2Actual.add(value);
-                } else if (m >= 7 && m <= 9) {
-                    stage3Actual = stage3Actual.add(value);
-                } else {
-                    stage4Actual = stage4Actual.add(value);
-                }
+            int yyyymm = -1;
+            if (month != null && month.length() >= 6) {
+                try { yyyymm = Integer.parseInt(month.substring(0, 6)); } catch (NumberFormatException ignore) {}
             }
+            String sc = StageMonthService.stageOfYyyymm(ranges, yyyymm);
+            if ("S1".equals(sc)) stage1Actual = stage1Actual.add(value);
+            else if ("S2".equals(sc)) stage2Actual = stage2Actual.add(value);
+            else if ("S3".equals(sc)) stage3Actual = stage3Actual.add(value);
+            else if ("S4".equals(sc)) stage4Actual = stage4Actual.add(value);
         }
         
         // 计算达成率
