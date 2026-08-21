@@ -189,6 +189,15 @@
     </servlet-mapping>
 
     <servlet>
+        <servlet-name>upstreamReportServlet</servlet-name>
+        <servlet-class>com.rebate.servlet.UpstreamReportServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>upstreamReportServlet</servlet-name>
+        <url-pattern>/api/upstream-report</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
         <servlet-name>fileDownloadServlet</servlet-name>
         <servlet-class>com.rebate.servlet.FileDownloadServlet</servlet-class>
     </servlet>

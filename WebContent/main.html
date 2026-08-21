@@ -87,6 +87,7 @@
             <ul>
                 <li><a href="overview.html" target="content">项目概览</a></li>
                 <li><a href="balance.html" target="content">项目平衡表</a></li>
+                <li id="menuUpstreamReport" style="display:none;"><a href="upstream-report.html" target="content">上游达成报表</a></li>
             </ul>
         </div>
     </div>
@@ -115,6 +116,10 @@
 <script>
     RB.checkLogin(function (u) {
         $('#userName').text(u.name + ' / ' + (u.deptName || ''));
+        // 上游达成报表: 仅对有 upstream_report:view 权限的用户显示菜单
+        if (RB.hasPerm('upstream_report:view')) {
+            $('#menuUpstreamReport').show();
+        }
     });
 
     // 菜单折叠/展开
