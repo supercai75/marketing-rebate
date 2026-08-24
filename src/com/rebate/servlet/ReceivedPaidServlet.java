@@ -263,10 +263,13 @@ public class ReceivedPaidServlet extends BaseServlet {
 
     /**
      * 批量从BPM引入实收
-     * 参数：projectId, items(JSON数组)
+     * 参数：projectId, stage, items(JSON数组)
      * 每个item: bpmProcessId, applicant, applyDept, applyDate, financeCode, belongToYear,
      *           secondaryRebateAmount, rebateAmount, supplier, rebateProject, invoiceNo,
      *           taxRate, deptShare, rebateType
+     *
+     * stage: 阶段一/阶段二/阶段三/阶段四/全年, 必填。
+     * rebateType: 优先取BPM接口返回/用户在前端选择的值; 空值时默认"票折"。
      */
     @SuppressWarnings("unchecked")
     private void doImportFromBpm(HttpServletRequest req, HttpServletResponse resp, Map<String, Object> p,
@@ -274,6 +277,15 @@ public class ReceivedPaidServlet extends BaseServlet {
         long projectId = WebUtil.getLong(p, "projectId", 0);
         if (projectId <= 0) {
             ResponseUtil.fail(resp, "请选择项目");
+            return;
+        }
+        String stage = WebUtil.getSafeParam(p, "stage");
+        if (stage == null || stage.isEmpty()) {
+            ResponseUtil.fail(resp, "请选择引入阶段(阶段一~四或全年)");
+            return;
+        }
+        if (!java.util.Arrays.asList("阶段一", "阶段二", "阶段三", "阶段四", "全年").contains(stage)) {
+            ResponseUtil.fail(resp, "阶段值不合法");
             return;
         }
         Object itemsObj = p.get("items");
@@ -309,8 +321,11 @@ public class ReceivedPaidServlet extends BaseServlet {
             for (Map<String, Object> item : items) {
                 Received r = new Received();
                 r.setProjectId(projectId);
-                r.setStage("全年");
-                r.setRebateType(getStr(item, "rebateType"));
+                r.setStage(stage);
+                String rt = getStr(item, "rebateType");
+                // 返利类型: BPM没返回或传空时, 兜底默认"票折", 不再在所有场景下硬编码固定值
+                if (rt == null || rt.trim().isEmpty()) rt = "票折";
+                r.setRebateType(rt);
                 r.setApplicant(getStr(item, "applicant"));
                 r.setApplyDept(getStr(item, "applyDept"));
                 String ad = getStr(item, "applyDate");

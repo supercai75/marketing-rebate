@@ -49,20 +49,20 @@
         <thead>
             <tr>
                 <th rowspan="2">序号</th>
-                <th colspan="5">项目概况</th>
-                <th colspan="6">项目整体</th>
-                <th colspan="7">阶段一</th>
-                <th colspan="7">阶段二</th>
-                <th colspan="7">阶段三</th>
-                <th colspan="7">阶段四</th>
+                <th colspan="5" align="center">项目概况</th>
+                <th colspan="9" align="center">项目整体</th>
+                <th colspan="10" align="center">阶段一</th>
+                <th colspan="10" align="center">阶段二</th>
+                <th colspan="10" align="center">阶段三</th>
+                <th colspan="10" align="center">阶段四</th>
             </tr>
             <tr>
                 <th>项目名称</th><th>合作厂牌</th><th>负责部门</th><th>合作年度</th><th>协议周期</th>
-                <th>协议指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>达成含税金额</th>
-                <th>指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>含税金额</th><th>中标价金额</th>
-                <th>指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>含税金额</th><th>中标价金额</th>
-                <th>指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>含税金额</th><th>中标价金额</th>
-                <th>指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>含税金额</th><th>中标价金额</th>
+                <th>协议指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>达成含税金额</th><th>应收返利</th><th>实收返利</th><th>应收余额</th>
+                <th>指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>含税金额</th><th>中标价金额</th><th>应收返利</th><th>实收返利</th><th>应收余额</th>
+                <th>指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>含税金额</th><th>中标价金额</th><th>应收返利</th><th>实收返利</th><th>应收余额</th>
+                <th>指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>含税金额</th><th>中标价金额</th><th>应收返利</th><th>实收返利</th><th>应收余额</th>
+                <th>指标</th><th>达成数量</th><th>达成核算金额</th><th>达成率</th><th>达成规模</th><th>含税金额</th><th>中标价金额</th><th>应收返利</th><th>实收返利</th><th>应收余额</th>
             </tr>
         </thead>
         <tbody id="body"></tbody>
@@ -267,6 +267,9 @@
                 rateCell(r.total_rate) +
                 '<td class="num">' + money(r.total_scale) + '</td>' +
                 '<td class="num">' + money(r.total_tax) + '</td>' +
+                '<td class="num">' + money(r.recv_amt) + '</td>' +
+                '<td class="num">' + money(r.recved_amt) + '</td>' +
+                '<td class="num">' + money(r.torecv_amt) + '</td>' +
                 // 阶段一
                 '<td class="num">' + money(r.stage1_target) + '</td>' +
                 '<td class="num">' + money(r.s1_qty) + '</td>' +
@@ -275,6 +278,9 @@
                 '<td class="num">' + money(r.s1_scale) + '</td>' +
                 '<td class="num">' + money(r.s1_tax) + '</td>' +
                 '<td class="num">' + money(r.s1_bid) + '</td>' +
+                '<td class="num">' + money(r.recv_amt1) + '</td>' +
+                '<td class="num">' + money(r.recved_amt1) + '</td>' +
+                '<td class="num">' + money(r.torecv_amt1) + '</td>' +
                 // 阶段二
                 '<td class="num">' + money(r.stage2_target) + '</td>' +
                 '<td class="num">' + money(r.s2_qty) + '</td>' +
@@ -283,6 +289,9 @@
                 '<td class="num">' + money(r.s2_scale) + '</td>' +
                 '<td class="num">' + money(r.s2_tax) + '</td>' +
                 '<td class="num">' + money(r.s2_bid) + '</td>' +
+                '<td class="num">' + money(r.recv_amt2) + '</td>' +
+                '<td class="num">' + money(r.recved_amt2) + '</td>' +
+                '<td class="num">' + money(r.torecv_amt2) + '</td>' +
                 // 阶段三
                 '<td class="num">' + money(r.stage3_target) + '</td>' +
                 '<td class="num">' + money(r.s3_qty) + '</td>' +
@@ -291,6 +300,9 @@
                 '<td class="num">' + money(r.s3_scale) + '</td>' +
                 '<td class="num">' + money(r.s3_tax) + '</td>' +
                 '<td class="num">' + money(r.s3_bid) + '</td>' +
+                '<td class="num">' + money(r.recv_amt3) + '</td>' +
+                '<td class="num">' + money(r.recved_amt3) + '</td>' +
+                '<td class="num">' + money(r.torecv_amt3) + '</td>' +
                 // 阶段四
                 '<td class="num">' + money(r.stage4_target) + '</td>' +
                 '<td class="num">' + money(r.s4_qty) + '</td>' +
@@ -299,6 +311,9 @@
                 '<td class="num">' + money(r.s4_scale) + '</td>' +
                 '<td class="num">' + money(r.s4_tax) + '</td>' +
                 '<td class="num">' + money(r.s4_bid) + '</td>' +
+                '<td class="num">' + money(r.recv_amt4) + '</td>' +
+                '<td class="num">' + money(r.recved_amt4) + '</td>' +
+                '<td class="num">' + money(r.torecv_amt4) + '</td>' +
                 '</tr>';
         }
         if (rows.length === 0) {

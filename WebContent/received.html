@@ -142,6 +142,15 @@
                 <input type="date" id="bpmEndDate" style="padding:4px 8px; border:1px solid #dcdfe6; border-radius:4px;">
                 <label style="margin-left:12px;">发票号码（可选）：</label>
                 <input type="text" id="bpmInvoiceNo" placeholder="部分匹配" style="width:180px; padding:4px 8px; border:1px solid #dcdfe6; border-radius:4px;">
+                <label style="margin-left:12px; color:#e6a23c;">引入阶段：</label>
+                <select id="bpmStage" style="padding:4px 8px; border:1px solid #dcdfe6; border-radius:4px;">
+                    <option value="">请选择阶段</option>
+                    <option value="阶段一">阶段一</option>
+                    <option value="阶段二">阶段二</option>
+                    <option value="阶段三">阶段三</option>
+                    <option value="阶段四">阶段四</option>
+                    <option value="全年">全年</option>
+                </select>
                 <button class="btn btn-primary" id="btnBpmQuery">查询</button>
                 <span id="bpmQueryTip" style="color:#909399; font-size:12px; margin-left:8px;"></span>
             </div>
@@ -551,9 +560,9 @@
                     '<td><strong>' + RB.formatMoney(x.rebateAmount) + '</strong></td>' +
                     '<td><input type="number" step="0.0001" class="bpm-input bpm-tax-rate" value="0.13" style="width:70px; padding:2px 4px; border:1px solid #dcdfe6; border-radius:3px;" disabled></td>' +
                     '<td><input type="number" step="0.01" class="bpm-input bpm-dept-share" value="' + (x.rebateAmount || 0) + '" style="width:100px; padding:2px 4px; border:1px solid #dcdfe6; border-radius:3px;" disabled></td>' +
-                    '<td><select class="bpm-input bpm-rebate-type" style="padding:2px 4px; border:1px solid #dcdfe6; border-radius:3px;" disabled>' +
-                        '<option value="票折">票折</option>' +
-                        '<option value="服务费">服务费</option>' +
+                    '<td><select class="bpm-input bpm-rebate-type" style="padding:2px 4px; border:1px solid #dcdfe6; border-radius:3px;" data-idx="' + i + '" disabled>' +
+                        '<option value="票折" ' + ((x.rebateType && x.rebateType !== '服务费') ? 'selected' : '') + '>票折</option>' +
+                        '<option value="服务费" ' + (x.rebateType === '服务费' ? 'selected' : '') + '>服务费</option>' +
                     '</select></td>' +
                     '<td>' + esc(x.supplier) + '</td>' +
                     '<td>' + esc(x.rebateProject) + '</td>' +
@@ -615,6 +624,8 @@
     function confirmBpmImport() {
         var pid = $('#selProject').val();
         if (!pid) { RB.toast('请先选择项目', 'error'); return; }
+        var stage = $('#bpmStage').val();
+        if (!stage) { RB.toast('请选择引入阶段(阶段一~四或全年)', 'error'); return; }
         var selectedIdx = [];
         $('.bpm-chk:checked').each(function () { selectedIdx.push($(this).data('idx')); });
         if (selectedIdx.length === 0) { RB.toast('请至少选择一条记录', 'error'); return; }
@@ -623,6 +634,7 @@
             var idx = selectedIdx[i];
             var row = bpmRows[idx];
             var tr = $('#bpmBody tr[data-idx="' + idx + '"]');
+            var rt = tr.find('.bpm-rebate-type').val() || (row.rebateType === '服务费' ? '服务费' : '票折');
             items.push({
                 bpmProcessId: row.bpmProcessId,
                 applicant: row.applicant,
@@ -637,12 +649,13 @@
                 invoiceNo: row.invoiceNo,
                 taxRate: tr.find('.bpm-tax-rate').val() || 0,
                 deptShare: tr.find('.bpm-dept-share').val() || 0,
-                rebateType: tr.find('.bpm-rebate-type').val() || '票折'
+                rebateType: rt
             });
         }
         $('#btnBpmImport').prop('disabled', true).text('引入中...');
         RB.post('/api/received-paid?op=importFromBpm', {
             projectId: pid,
+            stage: stage,
             items: JSON.stringify(items)
         }).done(function (r) {
             $('#btnBpmImport').prop('disabled', false).text('确定引入');
